@@ -24,9 +24,21 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
-.env
-
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Apache Hop (3_Hop_ETL)
+3_Hop_ETL/.hop/
+3_Hop_ETL/*.log
+3_Hop_ETL/hop-check.txt
+3_Hop_ETL/.DS_Store
+3_Hop_ETL/Thumbs.db
+
+# Ignore execution data and local logs (repo-wide)
+*.log
+hop-check.txt
+
+# Ignore OS specific files
+.DS_Store
+Thumbs.db

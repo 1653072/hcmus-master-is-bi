@@ -1,0 +1,112 @@
+services:
+  src-ratings-revenues:
+    image: postgres:16-alpine
+    container_name: src-ratings-revenues
+    environment:
+      POSTGRES_DB: ratings_revenues
+      POSTGRES_USER: hop_reader
+      POSTGRES_PASSWORD: hop_reader
+    ports:
+      - "5432:5432"
+    volumes:
+      - src_ratings_data:/var/lib/postgresql/data
+      - ./src-ratings-revenues:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hop_reader -d ratings_revenues"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  src-users:
+    image: postgres:16-alpine
+    container_name: src-users
+    environment:
+      POSTGRES_DB: users
+      POSTGRES_USER: backend_app
+      POSTGRES_PASSWORD: backend_app
+    ports:
+      - "5433:5432"
+    volumes:
+      - src_users_data:/var/lib/postgresql/data
+      - ./src-users:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U backend_app -d users"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  src-mongo:
+    image: mongo:7
+    container_name: src-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - "27017:27017"
+    volumes:
+      - src_mongo_data:/data/db
+      - ./src-mongo:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dw-stg-postgres:
+    image: postgres:16-alpine
+    container_name: dw-stg-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - dw_stg_postgres_data:/var/lib/postgresql/data
+      - ./dw-stg-postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dw-nds-postgres:
+    image: postgres:16-alpine
+    container_name: dw-nds-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - dw_nds_postgres_data:/var/lib/postgresql/data
+      - ./dw-nds-postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dw-dds-postgres:
+    image: postgres:16-alpine
+    container_name: dw-dds-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - dw_dds_postgres_data:/var/lib/postgresql/data
+      - ./dw-dds-postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  src_ratings_data:
+  src_users_data:
+  src_mongo_data:
+  dw_stg_postgres_data:
+  dw_nds_postgres_data:
+  dw_dds_postgres_data:
