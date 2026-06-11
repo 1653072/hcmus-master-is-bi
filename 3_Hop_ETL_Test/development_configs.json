@@ -11,11 +11,30 @@
       "description": "Hop project root directory"
     },
     {
-      "name": "STAGING_DIR",
-      "value": "${PROJECT_HOME}/staging",
-      "description": "Staging directory stores temporary CSV / JSONL data exported from data sources (e.g., PostgreSQL, MongoDB)"
+      "name": "STAGING_RATINGS_DIR",
+      "value": "${PROJECT_HOME}/staging/exported_ratings",
+      "description": "Staging directory stores temporary Ratings CSV file, exported from data sources (e.g., PostgreSQL, MongoDB)"
     },
-
+    {
+      "name": "STAGING_REVENUES_DIR",
+      "value": "${PROJECT_HOME}/staging/exported_revenues",
+      "description": "Staging directory stores temporary Revenues CSV file, exported from data sources (e.g., PostgreSQL, MongoDB)"
+    },
+    {
+      "name": "STAGING_MOVIES_DIR",
+      "value": "${PROJECT_HOME}/staging/exported_movies",
+      "description": "Staging directory stores temporary Movies JSONL file, exported from data sources (e.g., PostgreSQL, MongoDB)"
+    },
+    {
+      "name": "STAGING_GENRES_DIR",
+      "value": "${PROJECT_HOME}/staging/exported_genres",
+      "description": "Staging directory stores temporary Genres JSONL file, exported from data sources (e.g., PostgreSQL, MongoDB)"
+    },
+    {
+      "name": "STAGING_PERSONS_DIR",
+      "value": "${PROJECT_HOME}/staging/exported_persons",
+      "description": "Staging directory stores temporary Persons JSONL file, exported from data sources (e.g., PostgreSQL, MongoDB)"
+    },
     {
       "name": "RATINGS_REVENUES_DB_HOST",
       "value": "localhost",
