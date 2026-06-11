@@ -11,19 +11,22 @@
     <name_sync_with_filename>Y</name_sync_with_filename>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
-    <created_date>2026/06/11 13:00:45.563</created_date>
-    <modified_date>2026/06/11 13:00:45.563</modified_date>
+    <created_date>2026/06/11 16:00:00.000</created_date>
+    <modified_date>2026/06/11 16:00:00.000</modified_date>
   </info>
   <transform>
     <type>TableInput</type>
-    <name>Get stg_ratings LSET from etl_extraction_control</name>
-    <sql>SELECT 
+    <name>Get stg_movies LSET/CET from etl_extraction_control</name>
+    <sql>SELECT
 	control_id,
-	lset
+	lset,
+	to_char(lset AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS lset_iso,
+	CURRENT_TIMESTAMP AS cet,
+	to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS cet_iso
 FROM control.etl_extraction_control
-WHERE 
-	source_name = 'ratings_revenues' 
-	AND table_name = 'stg_ratings'
+WHERE
+	source_name = 'movielens_mongo'
+	AND table_name = 'stg_movies'
 	AND last_run_status = 'SUCCESS'</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
@@ -44,45 +47,36 @@ WHERE
     <attributes/>
   </transform>
   <transform>
-    <type>SystemInfo</type>
-    <name>Get system info (CET)</name>
-    <fields>
-      <field>
-        <name>cet</name>
-        <type>system date (variable)</type>
-      </field>
-    </fields>
-    <distribute>Y</distribute>
-    <copies>1</copies>
-    <GUI>
-      <xloc>240</xloc>
-      <yloc>208</yloc>
-    </GUI>
-    <partitioning>
-      <method>none</method>
-      <schema_name/>
-    </partitioning>
-    <attributes/>
-  </transform>
-  <transform>
     <type>SetVariable</type>
-    <name>Set RATING_CET, RATING_LSET, RATING_CONTROL_ID</name>
+    <name>Set MOVIE workflow variables</name>
     <fields>
       <field>
         <field_name>cet</field_name>
-        <variable_name>RATING_CET</variable_name>
+        <variable_name>MOVIE_CET</variable_name>
         <variable_type>PARENT_WORKFLOW</variable_type>
         <default_value/>
       </field>
       <field>
         <field_name>lset</field_name>
-        <variable_name>RATING_LSET</variable_name>
+        <variable_name>MOVIE_LSET</variable_name>
         <variable_type>PARENT_WORKFLOW</variable_type>
         <default_value/>
       </field>
       <field>
         <field_name>control_id</field_name>
-        <variable_name>RATING_CONTROL_ID</variable_name>
+        <variable_name>MOVIE_CONTROL_ID</variable_name>
+        <variable_type>PARENT_WORKFLOW</variable_type>
+        <default_value/>
+      </field>
+      <field>
+        <field_name>lset_iso</field_name>
+        <variable_name>MOVIE_LSET_ISO</variable_name>
+        <variable_type>PARENT_WORKFLOW</variable_type>
+        <default_value/>
+      </field>
+      <field>
+        <field_name>cet_iso</field_name>
+        <variable_name>MOVIE_CET_ISO</variable_name>
         <variable_type>PARENT_WORKFLOW</variable_type>
         <default_value/>
       </field>
@@ -92,7 +86,7 @@ WHERE
     <copies>1</copies>
     <GUI>
       <xloc>240</xloc>
-      <yloc>336</yloc>
+      <yloc>224</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -102,13 +96,8 @@ WHERE
   </transform>
   <order>
     <hop>
-      <from>Get stg_ratings LSET from etl_extraction_control</from>
-      <to>Get system info (CET)</to>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>Get system info (CET)</from>
-      <to>Set RATING_CET, RATING_LSET, RATING_CONTROL_ID</to>
+      <from>Get stg_movies LSET/CET from etl_extraction_control</from>
+      <to>Set MOVIE workflow variables</to>
       <enabled>Y</enabled>
     </hop>
   </order>

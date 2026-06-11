@@ -37,8 +37,58 @@ WHERE last_update_timestamp > '${RATING_LSET}'::timestamp
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>256</xloc>
+      <xloc>288</xloc>
       <yloc>32</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>TableInput</type>
+    <name>Count stg_ratings rows by LSET/CET</name>
+    <sql>SELECT COUNT(*)::integer AS rows_extracted
+FROM public.ratings
+WHERE last_update_timestamp > '${RATING_LSET}'::timestamp
+  AND last_update_timestamp &lt;= '${RATING_CET}'::timestamp;
+</sql>
+    <limit>0</limit>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>Y</variables_active>
+    <connection>src-ratings-revenues</connection>
+    <lookup/>
+    <sql_from_file/>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>576</xloc>
+      <yloc>32</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>SetVariable</type>
+    <name>Set RATING_ROWS_EXTRACTED</name>
+    <fields>
+      <field>
+        <field_name>rows_extracted</field_name>
+        <variable_name>RATING_ROWS_EXTRACTED</variable_name>
+        <variable_type>PARENT_WORKFLOW</variable_type>
+        <default_value>0</default_value>
+      </field>
+    </fields>
+    <use_formatting>Y</use_formatting>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>576</xloc>
+      <yloc>160</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -84,7 +134,7 @@ WHERE last_update_timestamp > '${RATING_LSET}'::timestamp
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>256</xloc>
+      <xloc>288</xloc>
       <yloc>160</yloc>
     </GUI>
     <partitioning>
@@ -97,6 +147,11 @@ WHERE last_update_timestamp > '${RATING_LSET}'::timestamp
     <hop>
       <from>Query stg_ratings data by LSET/CET</from>
       <to>Export to "exported_ratings.csv" file</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Count stg_ratings rows by LSET/CET</from>
+      <to>Set RATING_ROWS_EXTRACTED</to>
       <enabled>Y</enabled>
     </hop>
   </order>

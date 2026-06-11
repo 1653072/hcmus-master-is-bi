@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>New pipeline</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <created_user>-</created_user>
+    <modified_user>-</modified_user>
+    <created_date>2026/06/11 16:00:00.000</created_date>
+    <modified_date>2026/06/11 16:00:00.000</modified_date>
+  </info>
+  <transform>
+    <type>MongoDbInput</type>
+    <name>Query stg_movies data by LSET/CET</name>
+    <connection>src-mongo-movies</connection>
+    <collection>${MONGO_MOVIES_COLLECTION}</collection>
+    <json_field_name>json_doc</json_field_name>
+    <fields_name/>
+    <json_query>{ "updatedAt": { "$gt": { "$date": "${MOVIE_LSET_ISO}" }, "$lte": { "$date": "${MOVIE_CET_ISO}" } } }</json_query>
+    <query_is_pipeline>N</query_is_pipeline>
+    <output_json>Y</output_json>
+    <execute_for_each_row>N</execute_for_each_row>
+    <mongo_fields/>
+    <distribute>Y</distribute><copies>1</copies>
+    <GUI><xloc>288</xloc><yloc>32</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+  <transform>
+    <type>MongoDbInput</type>
+    <name>Count stg_movies rows by LSET/CET</name>
+    <connection>src-mongo-movies</connection>
+    <collection>${MONGO_MOVIES_COLLECTION}</collection>
+    <json_field_name>json</json_field_name>
+    <fields_name/>
+    <json_query>[
+  { "$match": { "updatedAt": { "$gt": { "$date": "${MOVIE_LSET_ISO}" }, "$lte": { "$date": "${MOVIE_CET_ISO}" } } } },
+  { "$count": "rows_extracted" }
+]</json_query>
+    <query_is_pipeline>Y</query_is_pipeline>
+    <output_json>N</output_json>
+    <execute_for_each_row>N</execute_for_each_row>
+    <mongo_fields>
+      <mongo_field>
+        <field_name>rows_extracted</field_name>
+        <field_path>rows_extracted</field_path>
+        <field_type>Integer</field_type>
+      </mongo_field>
+    </mongo_fields>
+    <distribute>Y</distribute><copies>1</copies>
+    <GUI><xloc>576</xloc><yloc>32</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+  <transform>
+    <type>SetVariable</type>
+    <name>Set MOVIE_ROWS_EXTRACTED</name>
+    <fields>
+      <field><field_name>rows_extracted</field_name><variable_name>MOVIE_ROWS_EXTRACTED</variable_name><variable_type>PARENT_WORKFLOW</variable_type><default_value>0</default_value></field>
+    </fields>
+    <use_formatting>Y</use_formatting>
+    <distribute>Y</distribute><copies>1</copies>
+    <GUI><xloc>576</xloc><yloc>160</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+  <transform>
+    <type>TextFileOutput</type>
+    <name>Export to "exported_movies.jsonl" file</name>
+    <compression>None</compression>
+    <create_parent_folder>Y</create_parent_folder>
+    <separator/>
+    <enclosure/>
+    <enclosure_forced>N</enclosure_forced>
+    <enclosure_fix_disabled>N</enclosure_fix_disabled>
+    <header>N</header>
+    <footer>N</footer>
+    <format>UNIX</format>
+    <encoding>UTF-8</encoding>
+    <endedLine/>
+    <fileNameInField>N</fileNameInField><fileNameField/>
+    <schema_definition/><ignore_fields>N</ignore_fields>
+    <file>
+      <name>${STAGING_MOVIES_DIR}/exported_movies</name>
+      <do_not_open_new_file_init>Y</do_not_open_new_file_init>
+      <extension>jsonl</extension>
+      <append>N</append><split>N</split><haspartno>N</haspartno>
+      <add_date>N</add_date><add_time>N</add_time>
+      <SpecifyFormat>N</SpecifyFormat><date_time_format/>
+      <add_to_result_filenames>Y</add_to_result_filenames>
+      <pad>N</pad><fast_dump>N</fast_dump><splitevery>0</splitevery>
+    </file>
+    <fields/>
+    <distribute>Y</distribute><copies>1</copies>
+    <GUI><xloc>288</xloc><yloc>160</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>  <order>
+    <hop><from>Query stg_movies data by LSET/CET</from><to>Export to "exported_movies.jsonl" file</to><enabled>Y</enabled></hop>
+    <hop><from>Count stg_movies rows by LSET/CET</from><to>Set MOVIE_ROWS_EXTRACTED</to><enabled>Y</enabled></hop>
+  </order>
+  <notepads/>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

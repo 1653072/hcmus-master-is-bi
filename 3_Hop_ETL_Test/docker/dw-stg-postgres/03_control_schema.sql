@@ -28,7 +28,9 @@ CREATE TABLE control.etl_job_log (
 INSERT INTO control.etl_extraction_control (control_id, source_name, table_name, lset, cet, last_run_status, rows_extracted) VALUES
     (1, 'ratings_revenues', 'stg_ratings', '2024-06-01 00:00:00', '2024-06-01 00:00:00', 'SUCCESS', 0),
     (2, 'ratings_revenues', 'stg_revenues', '2024-06-01 00:00:00', '2024-06-01 00:00:00', 'SUCCESS', 0),
-    (3, 'movielens_mongo',  'stg_movies', '2024-06-01 00:00:00', '2024-06-01 00:00:00', 'SUCCESS', 0);
+    (3, 'movielens_mongo',  'stg_movies',  '2024-06-01 00:00:00', '2024-06-01 00:00:00', 'SUCCESS', 0),
+    (4, 'movielens_mongo',  'stg_genres',  '2024-06-01 00:00:00', '2024-06-01 00:00:00', 'SUCCESS', 0),
+    (5, 'movielens_mongo',  'stg_persons', '2024-06-01 00:00:00', '2024-06-01 00:00:00', 'SUCCESS', 0);
 
 -- Init scripts run as postgres; transfer ownership so hop_control can read/write via Hop
 ALTER TABLE control.etl_extraction_control OWNER TO hop_control;
