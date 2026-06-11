@@ -4,8 +4,8 @@
   <name_sync_with_filename>Y</name_sync_with_filename>
   <created_user>-</created_user>
   <modified_user>-</modified_user>
-  <created_date>2026/06/11 16:52:24.488</created_date>
-  <modified_date>2026/06/11 16:52:24.488</modified_date>
+  <created_date>2026/06/11 17:00:00.000</created_date>
+  <modified_date>2026/06/11 17:00:00.000</modified_date>
   <parameters/>
   <actions>
     <action>
@@ -17,18 +17,83 @@
       <weekDay>1</weekDay>
       <minutes>00</minutes>
       <hour>00</hour>
-      <doNotWaitOnFirstExecution>Y</doNotWaitOnFirstExecution>
+      <doNotWaitOnFirstExecution>N</doNotWaitOnFirstExecution>
       <name>Start</name>
       <description/>
       <type>SPECIAL</type>
       <attributes/>
-      <xloc>50</xloc>
-      <yloc>50</yloc>
+      <xloc>192</xloc>
+      <yloc>32</yloc>
+      <parallel>N</parallel>
+      <attributes_hac/>
+    </action>
+    <action>
+      <filename>${PROJECT_HOME}/workflows/01_sub_workflow_export_all_data_sources_to_files.hwf</filename>
+      <params_from_previous>N</params_from_previous>
+      <exec_per_row>N</exec_per_row>
+      <set_logfile>Y</set_logfile>
+      <logfile>${PROJECT_HOME}/workflows/workflow_logs/01_sub_workflow_export_all_data_sources_to_files</logfile>
+      <logext>txt</logext>
+      <add_date>Y</add_date>
+      <add_time>Y</add_time>
+      <loglevel>Basic</loglevel>
+      <set_append_logfile>Y</set_append_logfile>
+      <create_parent_folder>Y</create_parent_folder>
+      <wait_until_finished>Y</wait_until_finished>
+      <parameters>
+        <pass_all_parameters>Y</pass_all_parameters>
+      </parameters>
+      <run_configuration>local</run_configuration>
+      <name>01_sub_workflow_export_all_data_sources_to_files.hwf</name>
+      <type>WORKFLOW</type>
+      <attributes/>
+      <xloc>192</xloc>
+      <yloc>144</yloc>
+      <parallel>N</parallel>
+      <attributes_hac/>
+    </action>
+    <action>
+      <filename>${PROJECT_HOME}/workflows/02_sub_workflow_load_exported_files_to_staging.hwf</filename>
+      <params_from_previous>N</params_from_previous>
+      <exec_per_row>N</exec_per_row>
+      <set_logfile>Y</set_logfile>
+      <logfile>${PROJECT_HOME}/workflows/workflow_logs/02_sub_workflow_load_exported_files_to_staging</logfile>
+      <logext>txt</logext>
+      <add_date>Y</add_date>
+      <add_time>Y</add_time>
+      <loglevel>Basic</loglevel>
+      <set_append_logfile>Y</set_append_logfile>
+      <create_parent_folder>Y</create_parent_folder>
+      <wait_until_finished>Y</wait_until_finished>
+      <parameters>
+        <pass_all_parameters>Y</pass_all_parameters>
+      </parameters>
+      <run_configuration>local</run_configuration>
+      <name>02_sub_workflow_load_exported_files_to_staging.hwf</name>
+      <type>WORKFLOW</type>
+      <attributes/>
+      <xloc>192</xloc>
+      <yloc>304</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
   </actions>
-  <hops/>
+  <hops>
+    <hop>
+      <from>Start</from>
+      <to>01_sub_workflow_export_all_data_sources_to_files.hwf</to>
+      <evaluation>Y</evaluation>
+      <unconditional>Y</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>01_sub_workflow_export_all_data_sources_to_files.hwf</from>
+      <to>02_sub_workflow_load_exported_files_to_staging.hwf</to>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+  </hops>
   <notepads/>
   <attributes/>
 </workflow>

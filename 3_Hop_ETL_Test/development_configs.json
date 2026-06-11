@@ -36,6 +36,11 @@
       "description": "Staging directory stores temporary Persons JSONL file, exported from data sources (e.g., PostgreSQL, MongoDB)"
     },
     {
+      "name": "STAGING_BATCH_ID",
+      "value": "INIT",
+      "description": "Runtime batch id for staging loads — overwritten by 00_init_staging_batch_id pipeline"
+    },
+    {
       "name": "RATINGS_REVENUES_DB_HOST",
       "value": "localhost",
       "description": "PSQL #1 host — Ratings & Revenues source (docker: src-ratings-revenues)"
