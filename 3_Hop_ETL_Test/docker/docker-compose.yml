@@ -1,7 +1,9 @@
+name: hcmus-master-is-bi-db
+
 services:
   src-ratings-revenues:
     image: postgres:16-alpine
-    container_name: src-ratings-revenues
+    container_name: hcmus-master-is-bi-db-src-ratings-revenues
     environment:
       POSTGRES_DB: ratings_revenues
       POSTGRES_USER: hop_reader
@@ -19,7 +21,7 @@ services:
 
   src-users:
     image: postgres:16-alpine
-    container_name: src-users
+    container_name: hcmus-master-is-bi-db-src-users
     environment:
       POSTGRES_DB: users
       POSTGRES_USER: backend_app
@@ -37,7 +39,7 @@ services:
 
   src-mongo:
     image: mongo:7
-    container_name: src-mongo
+    container_name: hcmus-master-is-bi-db-src-mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin
@@ -54,7 +56,7 @@ services:
 
   dw-stg-postgres:
     image: postgres:16-alpine
-    container_name: dw-stg-postgres
+    container_name: hcmus-master-is-bi-db-dw-stg-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -71,7 +73,7 @@ services:
 
   dw-nds-postgres:
     image: postgres:16-alpine
-    container_name: dw-nds-postgres
+    container_name: hcmus-master-is-bi-db-dw-nds-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -88,7 +90,7 @@ services:
 
   dw-dds-postgres:
     image: postgres:16-alpine
-    container_name: dw-dds-postgres
+    container_name: hcmus-master-is-bi-db-dw-dds-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
