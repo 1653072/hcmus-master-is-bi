@@ -1,0 +1,7 @@
+2026/06/12 00:11:26 - 03_update_stg_revenues_lset_cet.hpl - Using run configuration [local]
+2026/06/12 00:11:26 - 03_update_stg_revenues_lset_cet - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/12 00:11:26 - 03_update_stg_revenues_lset_cet - Execution started for pipeline [03_update_stg_revenues_lset_cet]
+2026/06/12 00:11:26 - Update stg_revenues LSET/CET in etl_extraction_control.0 - Finished reading query, closing connection.
+2026/06/12 00:11:26 - Update stg_revenues LSET/CET in etl_extraction_control.0 - Finished processing (I=0, O=0, R=0, W=1, U=0, E=0)
+2026/06/12 00:11:26 - 03_update_stg_revenues_lset_cet - Pipeline duration : 0.022 seconds [  0.022" ]
+2026/06/12 00:11:26 - 03_update_stg_revenues_lset_cet - Execution finished on a local pipeline engine with run configuration 'local'

@@ -17,7 +17,7 @@
       <weekDay>1</weekDay>
       <minutes>00</minutes>
       <hour>00</hour>
-      <doNotWaitOnFirstExecution>N</doNotWaitOnFirstExecution>
+      <doNotWaitOnFirstExecution>Y</doNotWaitOnFirstExecution>
       <name>Start</name>
       <description/>
       <type>SPECIAL</type>

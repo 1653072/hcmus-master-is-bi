@@ -1,0 +1,19 @@
+2026/06/12 00:11:28 - 02_sub_workflow_load_exported_files_to_staging - Start of workflow execution
+2026/06/12 00:11:28 - 02_sub_workflow_load_exported_files_to_staging - Starting action [Start]
+2026/06/12 00:11:28 - 02_sub_workflow_load_exported_files_to_staging - Finished action [Start] (result=[true])
+2026/06/12 00:11:28 - 02_sub_workflow_load_exported_files_to_staging - Starting action [Check DB connections]
+2026/06/12 00:11:28 - 02_sub_workflow_load_exported_files_to_staging - Finished action [Check DB connections] (result=[true])
+2026/06/12 00:11:28 - 02_sub_workflow_load_exported_files_to_staging - Starting action [00_init_staging_batch_id.hpl]
+2026/06/12 00:11:29 - 02_sub_workflow_load_exported_files_to_staging - Finished action [00_init_staging_batch_id.hpl] (result=[true])
+2026/06/12 00:11:29 - 02_sub_workflow_load_exported_files_to_staging - Starting action [01_load_exported_ratings_to_staging.hpl]
+2026/06/12 00:11:30 - 02_sub_workflow_load_exported_files_to_staging - Finished action [01_load_exported_ratings_to_staging.hpl] (result=[true])
+2026/06/12 00:11:30 - 02_sub_workflow_load_exported_files_to_staging - Starting action [02_load_exported_revenues_to_staging.hpl]
+2026/06/12 00:11:31 - 02_sub_workflow_load_exported_files_to_staging - Finished action [02_load_exported_revenues_to_staging.hpl] (result=[true])
+2026/06/12 00:11:31 - 02_sub_workflow_load_exported_files_to_staging - Starting action [03_load_exported_movies_to_staging.hpl]
+2026/06/12 00:11:32 - 02_sub_workflow_load_exported_files_to_staging - Finished action [03_load_exported_movies_to_staging.hpl] (result=[true])
+2026/06/12 00:11:32 - 02_sub_workflow_load_exported_files_to_staging - Starting action [04_load_exported_genres_to_staging.hpl]
+2026/06/12 00:11:33 - 02_sub_workflow_load_exported_files_to_staging - Finished action [04_load_exported_genres_to_staging.hpl] (result=[true])
+2026/06/12 00:11:33 - 02_sub_workflow_load_exported_files_to_staging - Starting action [05_load_exported_persons_to_staging.hpl]
+2026/06/12 00:11:34 - 02_sub_workflow_load_exported_files_to_staging - Finished action [05_load_exported_persons_to_staging.hpl] (result=[true])
+2026/06/12 00:11:34 - 02_sub_workflow_load_exported_files_to_staging - Workflow execution finished
+2026/06/12 00:11:34 - 02_sub_workflow_load_exported_files_to_staging - Workflow duration : 6.047 seconds [  6.047" ]
