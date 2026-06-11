@@ -1,0 +1,13 @@
+2026/06/11 20:17:21 - 04_load_exported_genres_to_staging.hpl - Using run configuration [local]
+2026/06/11 20:17:21 - 04_load_exported_genres_to_staging - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/11 20:17:21 - 04_load_exported_genres_to_staging - Execution started for pipeline [04_load_exported_genres_to_staging]
+2026/06/11 20:17:21 - Insert into staging.stg_genres.0 - Connected to database [dw-staging] (commit=100)
+2026/06/11 20:17:21 - Read exported_genres.json (JSON Line format).0 - Opening file: file:///Users/quoctran/Documents/999999_HCMUS_Master_Exercises/HocPhan2/1_Advanced_Business_Inteligence/hcmus-master-is-bi/3_Hop_ETL_Test/staging/exported_genres/exported_genres.json
+2026/06/11 20:17:21 - Read exported_genres.json (JSON Line format).0 - Finished processing (I=3, O=0, R=0, W=3, U=1, E=0)
+2026/06/11 20:17:21 - Parse JSON documents.0 - Finished processing (I=3, O=0, R=3, W=3, U=0, E=0)
+2026/06/11 20:17:21 - Trim string columns.0 - Finished processing (I=0, O=0, R=3, W=3, U=0, E=0)
+2026/06/11 20:17:21 - Cast column types.0 - Finished processing (I=0, O=0, R=3, W=3, U=0, E=0)
+2026/06/11 20:17:21 - Add batch_id.0 - Finished processing (I=0, O=0, R=3, W=3, U=0, E=0)
+2026/06/11 20:17:21 - Insert into staging.stg_genres.0 - Finished processing (I=0, O=3, R=3, W=3, U=0, E=0)
+2026/06/11 20:17:21 - 04_load_exported_genres_to_staging - Pipeline duration : 0.055 seconds [  0.055" ]
+2026/06/11 20:17:21 - 04_load_exported_genres_to_staging - Execution finished on a local pipeline engine with run configuration 'local'

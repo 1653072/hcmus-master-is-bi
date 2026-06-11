@@ -1,0 +1,13 @@
+2026/06/11 20:03:20 - 05_load_exported_persons_to_staging.hpl - Using run configuration [local]
+2026/06/11 20:03:20 - 05_load_exported_persons_to_staging - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/11 20:03:20 - 05_load_exported_persons_to_staging - Execution started for pipeline [05_load_exported_persons_to_staging]
+2026/06/11 20:03:20 - Insert into staging.stg_persons.0 - Connected to database [dw-staging] (commit=100)
+2026/06/11 20:03:20 - Read exported_persons.json (JSON Line format).0 - Opening file: file:///Users/quoctran/Documents/999999_HCMUS_Master_Exercises/HocPhan2/1_Advanced_Business_Inteligence/hcmus-master-is-bi/3_Hop_ETL_Test/staging/exported_persons/exported_persons.json
+2026/06/11 20:03:20 - Read exported_persons.json (JSON Line format).0 - Finished processing (I=4, O=0, R=0, W=4, U=1, E=0)
+2026/06/11 20:03:20 - Parse JSON documents.0 - Finished processing (I=4, O=0, R=4, W=4, U=0, E=0)
+2026/06/11 20:03:20 - Trim string columns.0 - Finished processing (I=0, O=0, R=4, W=4, U=0, E=0)
+2026/06/11 20:03:20 - Cast column types.0 - Finished processing (I=0, O=0, R=4, W=4, U=0, E=0)
+2026/06/11 20:03:20 - Add batch_id.0 - Finished processing (I=0, O=0, R=4, W=4, U=0, E=0)
+2026/06/11 20:03:20 - Insert into staging.stg_persons.0 - Finished processing (I=0, O=4, R=4, W=4, U=0, E=0)
+2026/06/11 20:03:20 - 05_load_exported_persons_to_staging - Pipeline duration : 0.064 seconds [  0.064" ]
+2026/06/11 20:03:20 - 05_load_exported_persons_to_staging - Execution finished on a local pipeline engine with run configuration 'local'

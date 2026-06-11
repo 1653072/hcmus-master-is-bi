@@ -180,7 +180,7 @@
     <fields>
       <field>
         <in_stream_name>name</in_stream_name>
-        <out_stream_name>name</out_stream_name>
+        <out_stream_name/>
         <trim_type>both</trim_type>
         <lower_upper>none</lower_upper>
         <init_cap>no</init_cap>
@@ -255,35 +255,6 @@
     <attributes/>
   </transform>
   <transform>
-    <type>Constant</type>
-    <name>Add batch_id</name>
-    <fields>
-      <field>
-        <currency/>
-        <decimal/>
-        <group/>
-        <nullif>${STAGING_BATCH_ID}</nullif>
-        <name>batch_id</name>
-        <type>String</type>
-        <format/>
-        <length>-1</length>
-        <precision>-1</precision>
-        <set_empty_string>N</set_empty_string>
-      </field>
-    </fields>
-    <distribute>Y</distribute>
-    <copies>1</copies>
-    <GUI>
-      <xloc>208</xloc>
-      <yloc>448</yloc>
-    </GUI>
-    <partitioning>
-      <method>none</method>
-      <schema_name/>
-    </partitioning>
-    <attributes/>
-  </transform>
-  <transform>
     <type>TableOutput</type>
     <name>Insert into staging.stg_genres</name>
     <connection>dw-staging</connection>
@@ -335,6 +306,35 @@
     </partitioning>
     <attributes/>
   </transform>
+  <transform>
+    <type>GetVariable</type>
+    <name>Add batch_id through the existing variable</name>
+    <fields>
+      <field>
+        <name>batch_id</name>
+        <variable>${STAGING_BATCH_ID}</variable>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <trim_type>none</trim_type>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>208</xloc>
+      <yloc>464</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
   <order>
     <hop>
       <from>Read exported_genres.json (JSON Line format)</from>
@@ -353,11 +353,11 @@
     </hop>
     <hop>
       <from>Cast column types</from>
-      <to>Add batch_id</to>
+      <to>Add batch_id through the existing variable</to>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Add batch_id</from>
+      <from>Add batch_id through the existing variable</from>
       <to>Insert into staging.stg_genres</to>
       <enabled>Y</enabled>
     </hop>

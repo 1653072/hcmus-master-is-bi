@@ -185,7 +185,7 @@
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>128</xloc>
+      <xloc>144</xloc>
       <yloc>32</yloc>
     </GUI>
     <description/>
@@ -201,7 +201,7 @@
     <fields>
       <field>
         <in_stream_name>movie_id</in_stream_name>
-        <out_stream_name>movie_id</out_stream_name>
+        <out_stream_name/>
         <trim_type>both</trim_type>
         <lower_upper>none</lower_upper>
         <init_cap>no</init_cap>
@@ -216,7 +216,7 @@
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>128</xloc>
+      <xloc>144</xloc>
       <yloc>144</yloc>
     </GUI>
     <partitioning>
@@ -245,6 +245,8 @@
         <decimal_symbol>.</decimal_symbol>
         <grouping_symbol>,</grouping_symbol>
         <currency_symbol/>
+        <encoding/>
+        <roundingType>half_even</roundingType>
       </meta>
       <meta>
         <name>user_id</name>
@@ -261,6 +263,8 @@
         <decimal_symbol>.</decimal_symbol>
         <grouping_symbol>,</grouping_symbol>
         <currency_symbol/>
+        <encoding/>
+        <roundingType>half_even</roundingType>
       </meta>
       <meta>
         <name>movie_id</name>
@@ -277,6 +281,8 @@
         <decimal_symbol>.</decimal_symbol>
         <grouping_symbol>,</grouping_symbol>
         <currency_symbol/>
+        <encoding/>
+        <roundingType>half_even</roundingType>
       </meta>
       <meta>
         <name>rating</name>
@@ -293,6 +299,8 @@
         <decimal_symbol>.</decimal_symbol>
         <grouping_symbol>,</grouping_symbol>
         <currency_symbol/>
+        <encoding/>
+        <roundingType>half_even</roundingType>
       </meta>
       <meta>
         <name>rated_at</name>
@@ -309,6 +317,8 @@
         <decimal_symbol>.</decimal_symbol>
         <grouping_symbol>,</grouping_symbol>
         <currency_symbol/>
+        <encoding/>
+        <roundingType>half_even</roundingType>
       </meta>
       <meta>
         <name>last_update_timestamp</name>
@@ -325,42 +335,15 @@
         <decimal_symbol>.</decimal_symbol>
         <grouping_symbol>,</grouping_symbol>
         <currency_symbol/>
+        <encoding/>
+        <roundingType>half_even</roundingType>
       </meta>
     </fields>
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>128</xloc>
+      <xloc>144</xloc>
       <yloc>256</yloc>
-    </GUI>
-    <partitioning>
-      <method>none</method>
-      <schema_name/>
-    </partitioning>
-    <attributes/>
-  </transform>
-  <transform>
-    <type>Constant</type>
-    <name>Add batch_id</name>
-    <fields>
-      <field>
-        <currency/>
-        <decimal/>
-        <group/>
-        <nullif>${STAGING_BATCH_ID}</nullif>
-        <name>batch_id</name>
-        <type>String</type>
-        <format/>
-        <length>-1</length>
-        <precision>-1</precision>
-        <set_empty_string>N</set_empty_string>
-      </field>
-    </fields>
-    <distribute>Y</distribute>
-    <copies>1</copies>
-    <GUI>
-      <xloc>128</xloc>
-      <yloc>368</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -427,8 +410,37 @@
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>128</xloc>
+      <xloc>144</xloc>
       <yloc>480</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>GetVariable</type>
+    <name>Add batch_id through the existing variable</name>
+    <fields>
+      <field>
+        <name>batch_id</name>
+        <variable>${STAGING_BATCH_ID}</variable>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <trim_type>none</trim_type>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>144</xloc>
+      <yloc>368</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -449,11 +461,11 @@
     </hop>
     <hop>
       <from>Cast column types</from>
-      <to>Add batch_id</to>
+      <to>Add batch_id through the existing variable</to>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Add batch_id</from>
+      <from>Add batch_id through the existing variable</from>
       <to>Insert into staging.stg_ratings</to>
       <enabled>Y</enabled>
     </hop>
