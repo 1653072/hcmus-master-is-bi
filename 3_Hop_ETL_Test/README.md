@@ -1,17 +1,45 @@
-# Local Fake Data Sources (Docker)
+# 3_Hop_ETL_Test — Local Fake Data Sources (Docker)
 
 Compose project: **hcmus-master-is-bi-db**
 
-Matches `../development_configs.json` ports and credentials.
+Matches `./development_configs.json` ports and credentials.
+
+## Set PROJECT_HOME (run once per machine)
+
+Apache Hop uses `PROJECT_HOME` from `development_configs.json` for paths such as `staging/csv` and `staging/jsonl`. Run this from the **3_Hop_ETL_Test** folder (this directory):
+
+### macOS / Linux
+
+```bash
+cd 3_Hop_ETL_Test
+python3 -c "
+import json, pathlib
+p = pathlib.Path('development_configs.json')
+d = json.load(p.open())
+home = str(pathlib.Path('.').resolve())
+next(v for v in d['variables'] if v['name'] == 'PROJECT_HOME')['value'] = home
+p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + '\n')
+print('Updated PROJECT_HOME →', home)
+"
+```
+
+### Windows (PowerShell)
+
+```powershell
+cd 3_Hop_ETL_Test
+$home = (Get-Location).Path
+$json = Get-Content development_configs.json -Raw | ConvertFrom-Json
+($json.variables | Where-Object { $_.name -eq 'PROJECT_HOME' }).value = $home
+$json | ConvertTo-Json -Depth 10 | Set-Content development_configs.json
+Write-Host "Updated PROJECT_HOME → $home"
+```
 
 ## Images
-
 
 | Project name         | Docker Hub pull      |
 | -------------------- | -------------------- |
 | `postgres@16-alpine` | `postgres:16-alpine` |
 | `mongo@7`            | `mongo:7`            |
-
 
 Docker uses `:` for image tags. This README uses `@` as a readable version label.
 
@@ -47,7 +75,6 @@ If `docker info` fails, wait 30–60 seconds and retry. Use **Docker Desktop →
 
 ## Services
 
-
 | Service            | Container                                    | Image              | Host port | Databases                                 |
 | ------------------ | -------------------------------------------- | ------------------ | --------- | ----------------------------------------- |
 | Ratings & Revenues | `hcmus-master-is-bi-db-src-ratings-revenues` | postgres@16-alpine | 5432      | `ratings_revenues`                        |
@@ -57,8 +84,9 @@ If `docker info` fails, wait 30–60 seconds and retry. Use **Docker Desktop →
 | DW — NDS layer     | `hcmus-master-is-bi-db-dw-nds-postgres`      | postgres@16-alpine | 5435      | `dw_nds`                                  |
 | DW — DDS layer     | `hcmus-master-is-bi-db-dw-dds-postgres`      | postgres@16-alpine | 5436      | `dw_dds` (Power BI reads here)            |
 
-
 ## Commands
+
+From repo root:
 
 ```bash
 cd 3_Hop_ETL_Test/docker
@@ -69,17 +97,26 @@ docker-compose down
 docker-compose down -v   # reset volumes + re-seed on next up
 ```
 
+Or from this folder (`3_Hop_ETL_Test`):
+
+```bash
+cd docker
+docker-compose up -d
+docker-compose ps
+docker-compose logs -f
+docker-compose down
+docker-compose down -v
+```
+
 ## Quick verify
 
 `dw-stg-postgres` runs **3 separate PostgreSQL databases** on port 5434 — not 3 schemas in one DB:
-
 
 | Database      | Schema     | User           |
 | ------------- | ---------- | -------------- |
 | `dw_staging`  | `staging`  | `hop_staging`  |
 | `dw_control`  | `control`  | `hop_control`  |
 | `dw_metadata` | `metadata` | `hop_metadata` |
-
 
 ```bash
 # Ratings & Revenues database (PostgreSQL - Data in CSV format)
@@ -106,7 +143,6 @@ docker exec hcmus-master-is-bi-db-dw-dds-postgres psql -U hop_dds -d dw_dds -c "
 
 ## Connection hints
 
-
 | Role                   | Host      | Port | Database      | User               |
 | ---------------------- | --------- | ---- | ------------- | ------------------ |
 | Hop staging load       | localhost | 5434 | `dw_staging`  | `hop_staging`      |
@@ -116,19 +152,16 @@ docker exec hcmus-master-is-bi-db-dw-dds-postgres psql -U hop_dds -d dw_dds -c "
 | Hop DDS load           | localhost | 5436 | `dw_dds`      | `hop_dds`          |
 | Power BI               | localhost | 5436 | `dw_dds`      | `analytics_reader` |
 
-
 ## MongoDB connection
 
 ```
 mongodb://hop_reader:hop_reader@localhost:27017/movielens_data?authSource=movielens_auth
 ```
 
-
 | Database         | Purpose                                                                         |
 | ---------------- | ------------------------------------------------------------------------------- |
 | `movielens_auth` | Stores `hop_reader` credentials (`authSource` / `--authenticationDatabase`)     |
 | `movielens_data` | Stores collections `movies`, `genres`, `persons` (URI path / mongosh target DB) |
-
 
 ### mongosh example
 

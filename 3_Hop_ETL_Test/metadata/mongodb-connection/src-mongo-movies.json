@@ -1,0 +1,22 @@
+{
+  "authenticationDatabaseName": "${MONGO_AUTH_SOURCE}",
+  "journaled": true,
+  "appName": "src-mongo-movies",
+  "dbName": "${MONGO_DB_NAME}",
+  "authenticationUser": "${MONGO_USER}",
+  "connectTimeoutMs": "10000",
+  "writeConcern": "",
+  "authenticationPassword": "${MONGO_PASSWORD}",
+  "connectionType": "STANDARD",
+  "usingAllReplicaSetMembers": false,
+  "usingSslSocketFactory": false,
+  "replicationTimeoutMs": "",
+  "hostname": "${MONGO_HOST}",
+  "virtualPath": "",
+  "port": "${MONGO_PORT}",
+  "name": "src-mongo-movies",
+  "readPreference": "PRIMARY",
+  "socketTimeoutMs": "10000",
+  "readPrefTagSets": "",
+  "authenticationMechanism": "SCRAM_SHA_256"
+}
