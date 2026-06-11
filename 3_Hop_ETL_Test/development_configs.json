@@ -11,6 +11,12 @@
       "description": "Hop project root directory"
     },
     {
+      "name": "STAGING_DIR",
+      "value": "${PROJECT_HOME}/staging",
+      "description": "Staging directory stores temporary CSV / JSONL data exported from data sources (e.g., PostgreSQL, MongoDB)"
+    },
+
+    {
       "name": "RATINGS_REVENUES_DB_HOST",
       "value": "localhost",
       "description": "PSQL #1 host — Ratings & Revenues source (docker: src-ratings-revenues)"

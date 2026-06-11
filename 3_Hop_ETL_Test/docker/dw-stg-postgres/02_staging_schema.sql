@@ -64,3 +64,11 @@ CREATE TABLE staging.stg_persons (
     batch_id              VARCHAR(50),
     loaded_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Init scripts run as postgres; transfer ownership so hop_staging can read/write via Hop
+ALTER TABLE staging.stg_ratings OWNER TO hop_staging;
+ALTER TABLE staging.stg_revenues OWNER TO hop_staging;
+ALTER TABLE staging.stg_users OWNER TO hop_staging;
+ALTER TABLE staging.stg_movies OWNER TO hop_staging;
+ALTER TABLE staging.stg_genres OWNER TO hop_staging;
+ALTER TABLE staging.stg_persons OWNER TO hop_staging;

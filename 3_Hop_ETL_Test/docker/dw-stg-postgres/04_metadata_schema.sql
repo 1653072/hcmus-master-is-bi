@@ -14,3 +14,6 @@ INSERT INTO metadata.source_registry (source_name, source_type, connection_ref, 
     ('ratings_revenues', 'postgresql', 'RATINGS_REVENUES_DB', 'Daily CSV pull'),
     ('users',            'postgresql', 'USERS_DB',            'MDM push (Backend — later)'),
     ('movielens_mongo',  'mongodb',    'MONGO',               'Daily JSONL pull');
+
+-- Init scripts run as postgres; transfer ownership so hop_metadata can read/write via Hop
+ALTER TABLE metadata.source_registry OWNER TO hop_metadata;
