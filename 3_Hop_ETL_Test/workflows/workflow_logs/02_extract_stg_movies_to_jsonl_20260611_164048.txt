@@ -1,0 +1,21 @@
+2026/06/11 16:40:48 - 02_extract_stg_movies_to_jsonl.hpl - Using run configuration [local]
+2026/06/11 16:40:48 - 02_extract_stg_movies_to_jsonl - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/11 16:40:48 - 02_extract_stg_movies_to_jsonl - Execution started for pipeline [02_extract_stg_movies_to_jsonl]
+2026/06/11 16:40:48 - Query stg_movies data by LSET/CET.0 - Normal authentication for user hop_reader
+2026/06/11 16:40:48 - Count stg_movies rows by LSET/CET.0 - Normal authentication for user hop_reader
+2026/06/11 16:40:48 - Query stg_movies data by LSET/CET.0 - Configuring connection with read preference: primary
+2026/06/11 16:40:48 - Query stg_movies data by LSET/CET.0 - No read preference tag sets defined
+2026/06/11 16:40:48 - Count stg_movies rows by LSET/CET.0 - Configuring connection with read preference: primary
+2026/06/11 16:40:48 - Query stg_movies data by LSET/CET.0 - Configuring connection with write concern - w = 1, wTimeout = 0, journaled = true
+2026/06/11 16:40:48 - Count stg_movies rows by LSET/CET.0 - No read preference tag sets defined
+2026/06/11 16:40:48 - Count stg_movies rows by LSET/CET.0 - Configuring connection with write concern - w = 1, wTimeout = 0, journaled = true
+2026/06/11 16:40:48 - Query stg_movies data by LSET/CET.0 - Query pulled data from: localhost:27017
+2026/06/11 16:40:48 - Set MOVIE_ROWS_EXTRACTED.0 - Setting project variables...
+2026/06/11 16:40:48 - Count stg_movies rows by LSET/CET.0 - Finished processing (I=0, O=0, R=0, W=1, U=0, E=0)
+2026/06/11 16:40:48 - Query stg_movies data by LSET/CET.0 - Finished processing (I=0, O=0, R=0, W=5, U=0, E=0)
+2026/06/11 16:40:48 - Set MOVIE_ROWS_EXTRACTED.0 - Set variable MOVIE_ROWS_EXTRACTED to value [5]
+2026/06/11 16:40:48 - Export to "exported_movies.json" file.0 - Finished processing (I=0, O=5, R=5, W=5, U=0, E=0)
+2026/06/11 16:40:48 - Set MOVIE_ROWS_EXTRACTED.0 - Finished after 1 rows.
+2026/06/11 16:40:48 - Set MOVIE_ROWS_EXTRACTED.0 - Finished processing (I=0, O=0, R=1, W=1, U=0, E=0)
+2026/06/11 16:40:48 - 02_extract_stg_movies_to_jsonl - Pipeline duration : 0.034 seconds [  0.034" ]
+2026/06/11 16:40:48 - 02_extract_stg_movies_to_jsonl - Execution finished on a local pipeline engine with run configuration 'local'

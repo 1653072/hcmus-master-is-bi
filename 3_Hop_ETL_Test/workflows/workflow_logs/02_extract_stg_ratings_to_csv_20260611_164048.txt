@@ -1,0 +1,14 @@
+2026/06/11 16:40:48 - 02_extract_stg_ratings_to_csv.hpl - Using run configuration [local]
+2026/06/11 16:40:48 - 02_extract_stg_ratings_to_csv - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/11 16:40:48 - 02_extract_stg_ratings_to_csv - Execution started for pipeline [02_extract_stg_ratings_to_csv]
+2026/06/11 16:40:48 - Count stg_ratings rows by LSET/CET.0 - Finished reading query, closing connection.
+2026/06/11 16:40:48 - Set RATING_ROWS_EXTRACTED.0 - Setting project variables...
+2026/06/11 16:40:48 - Set RATING_ROWS_EXTRACTED.0 - Set variable RATING_ROWS_EXTRACTED to value [8]
+2026/06/11 16:40:48 - Count stg_ratings rows by LSET/CET.0 - Finished processing (I=1, O=0, R=0, W=1, U=0, E=0)
+2026/06/11 16:40:48 - Query stg_ratings data by LSET/CET.0 - Finished reading query, closing connection.
+2026/06/11 16:40:48 - Set RATING_ROWS_EXTRACTED.0 - Finished after 1 rows.
+2026/06/11 16:40:48 - Set RATING_ROWS_EXTRACTED.0 - Finished processing (I=0, O=0, R=1, W=1, U=0, E=0)
+2026/06/11 16:40:48 - Query stg_ratings data by LSET/CET.0 - Finished processing (I=8, O=0, R=0, W=8, U=0, E=0)
+2026/06/11 16:40:48 - Export to "exported_ratings.csv" file.0 - Finished processing (I=0, O=9, R=8, W=8, U=0, E=0)
+2026/06/11 16:40:48 - 02_extract_stg_ratings_to_csv - Pipeline duration : 0.033 seconds [  0.033" ]
+2026/06/11 16:40:48 - 02_extract_stg_ratings_to_csv - Execution finished on a local pipeline engine with run configuration 'local'

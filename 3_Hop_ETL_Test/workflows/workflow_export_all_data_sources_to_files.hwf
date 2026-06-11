@@ -35,11 +35,6 @@
           <waittime>millisecond</waittime>
         </connection>
         <connection>
-          <name>src-mongo-movies</name>
-          <waitfor>0</waitfor>
-          <waittime>millisecond</waittime>
-        </connection>
-        <connection>
           <name>dw-control</name>
           <waitfor>0</waitfor>
           <waittime>millisecond</waittime>
@@ -65,6 +60,21 @@
       <attributes_hac/>
     </action>
     <action>
+      <mql>{"ping":1}</mql>
+      <connection>src-mongo-movies</connection>
+      <useExternalFile>N</useExternalFile>
+      <commandFile/>
+      <useVariableSubstitution>Y</useVariableSubstitution>
+      <name>Check MongoDB connection</name>
+      <description>Ping movielens_data via src-mongo-movies (CHECK_DB_CONNECTIONS is RDBMS-only)</description>
+      <type>MQL</type>
+      <attributes/>
+      <xloc>432</xloc>
+      <yloc>48</yloc>
+      <parallel>Y</parallel>
+      <attributes_hac/>
+    </action>
+    <action>
       <filename>${PROJECT_HOME}/pipelines/01_Export_Ratings_Source_To_CSV/01_get_stg_ratings_lset_cet.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
@@ -86,7 +96,7 @@
       <name>01_get_stg_ratings_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>240</xloc>
+      <xloc>128</xloc>
       <yloc>240</yloc>
       <parallel>Y</parallel>
       <attributes_hac/>
@@ -113,8 +123,8 @@
       <name>02_extract_stg_ratings_to_csv.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>240</xloc>
-      <yloc>360</yloc>
+      <xloc>128</xloc>
+      <yloc>352</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -140,7 +150,7 @@
       <name>03_update_stg_ratings_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>240</xloc>
+      <xloc>128</xloc>
       <yloc>480</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -167,7 +177,7 @@
       <name>01_get_stg_revenues_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>512</xloc>
+      <xloc>400</xloc>
       <yloc>240</yloc>
       <parallel>Y</parallel>
       <attributes_hac/>
@@ -194,7 +204,7 @@
       <name>02_extract_stg_revenues_to_csv.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>512</xloc>
+      <xloc>400</xloc>
       <yloc>368</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -221,7 +231,7 @@
       <name>03_update_stg_revenues_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>512</xloc>
+      <xloc>400</xloc>
       <yloc>480</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -248,7 +258,7 @@
       <name>01_get_stg_movies_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>800</xloc>
+      <xloc>688</xloc>
       <yloc>240</yloc>
       <parallel>Y</parallel>
       <attributes_hac/>
@@ -275,7 +285,7 @@
       <name>02_extract_stg_movies_to_jsonl.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>800</xloc>
+      <xloc>688</xloc>
       <yloc>352</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -302,7 +312,7 @@
       <name>03_update_stg_movies_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>800</xloc>
+      <xloc>688</xloc>
       <yloc>480</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -329,7 +339,7 @@
       <name>01_get_stg_genres_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>1088</xloc>
+      <xloc>976</xloc>
       <yloc>240</yloc>
       <parallel>Y</parallel>
       <attributes_hac/>
@@ -356,7 +366,7 @@
       <name>02_extract_stg_genres_to_jsonl.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>1088</xloc>
+      <xloc>976</xloc>
       <yloc>352</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -383,7 +393,7 @@
       <name>03_update_stg_genres_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>1088</xloc>
+      <xloc>976</xloc>
       <yloc>480</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -410,7 +420,7 @@
       <name>01_get_stg_persons_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>1360</xloc>
+      <xloc>1248</xloc>
       <yloc>240</yloc>
       <parallel>Y</parallel>
       <attributes_hac/>
@@ -437,7 +447,7 @@
       <name>02_extract_stg_persons_to_jsonl.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>1360</xloc>
+      <xloc>1248</xloc>
       <yloc>368</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -464,7 +474,7 @@
       <name>03_update_stg_persons_lset_cet.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>1360</xloc>
+      <xloc>1248</xloc>
       <yloc>480</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
@@ -480,6 +490,13 @@
     </hop>
     <hop>
       <from>Check DB connections</from>
+      <to>Check MongoDB connection</to>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Check MongoDB connection</from>
       <to>01_get_stg_ratings_lset_cet.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
@@ -500,7 +517,7 @@
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Check DB connections</from>
+      <from>Check MongoDB connection</from>
       <to>01_get_stg_revenues_lset_cet.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
@@ -521,7 +538,7 @@
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Check DB connections</from>
+      <from>Check MongoDB connection</from>
       <to>01_get_stg_movies_lset_cet.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
@@ -542,7 +559,7 @@
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Check DB connections</from>
+      <from>Check MongoDB connection</from>
       <to>01_get_stg_genres_lset_cet.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
@@ -563,7 +580,7 @@
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Check DB connections</from>
+      <from>Check MongoDB connection</from>
       <to>01_get_stg_persons_lset_cet.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
