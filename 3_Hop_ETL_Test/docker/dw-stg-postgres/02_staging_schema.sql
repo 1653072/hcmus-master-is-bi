@@ -27,7 +27,7 @@ CREATE TABLE staging.stg_revenues (
 );
 
 CREATE TABLE staging.stg_users (
-    user_id               INTEGER,
+    user_id               INTEGER NOT NULL UNIQUE,
     username              VARCHAR(100),
     email                 VARCHAR(255),
     age                   INTEGER,
@@ -35,7 +35,8 @@ CREATE TABLE staging.stg_users (
     occupation            VARCHAR(100),
     created_at            TIMESTAMP,
     last_update_timestamp TIMESTAMP,
-    batch_id              VARCHAR(50),
+    operation             VARCHAR(10),
+    batch_id              VARCHAR(80),
     loaded_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

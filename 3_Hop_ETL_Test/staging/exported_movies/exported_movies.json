@@ -1,5 +1,5 @@
-{"_id": {"$oid": "6a2aba88bb9616c763d1a7bc"}, "movie_id": "2", "title": "Jumanji", "release_year": 1995, "genres": "Adventure|Children|Fantasy", "runtime_minutes": 104, "updatedAt": {"$date": "2024-06-02T00:00:00Z"}}
-{"_id": {"$oid": "6a2aba88bb9616c763d1a7bd"}, "movie_id": 3, "title": "Grumpier Old Men", "release_year": 1995, "genres": ["Comedy", "Romance"], "runtime_minutes": null, "updatedAt": {"$date": "2024-06-03T00:00:00Z"}}
-{"_id": {"$oid": "6a2aba88bb9616c763d1a7be"}, "movie_id": 4, "title": "Waiting to Exhale", "release_year": 1995, "genres": ["Comedy", "Drama"], "runtime_minutes": 127, "updatedAt": {"$date": "2024-06-04T00:00:00Z"}}
-{"_id": {"$oid": "6a2aba88bb9616c763d1a7bf"}, "movie_id": 5, "title": "Father of the Bride Part II", "release_year": 1995, "genres": ["Comedy"], "updatedAt": {"$date": "2024-06-05T00:00:00Z"}}
-{"_id": {"$oid": "6a2aba88bb9616c763d1a7c0"}, "movie_id": 1, "title": "Toy Story (1995)", "release_year": "1995", "genres": ["Animation", "Comedy"], "runtime_minutes": 81, "updatedAt": {"$date": "2024-06-06T00:00:00Z"}}
+{"_id": {"$oid": "6a395e75f764acddf3d1a7bc"}, "movie_id": "2", "title": "Jumanji", "release_year": 1995, "genres": "Adventure|Children|Fantasy", "runtime_minutes": 104, "updatedAt": {"$date": "2024-06-02T00:00:00Z"}}
+{"_id": {"$oid": "6a395e75f764acddf3d1a7bd"}, "movie_id": 3, "title": "Grumpier Old Men", "release_year": 1995, "genres": ["Comedy", "Romance"], "runtime_minutes": null, "updatedAt": {"$date": "2024-06-03T00:00:00Z"}}
+{"_id": {"$oid": "6a395e75f764acddf3d1a7be"}, "movie_id": 4, "title": "Waiting to Exhale", "release_year": 1995, "genres": ["Comedy", "Drama"], "runtime_minutes": 127, "updatedAt": {"$date": "2024-06-04T00:00:00Z"}}
+{"_id": {"$oid": "6a395e75f764acddf3d1a7bf"}, "movie_id": 5, "title": "Father of the Bride Part II", "release_year": 1995, "genres": ["Comedy"], "updatedAt": {"$date": "2024-06-05T00:00:00Z"}}
+{"_id": {"$oid": "6a395e75f764acddf3d1a7c0"}, "movie_id": 1, "title": "Toy Story (1995)", "release_year": "1995", "genres": ["Animation", "Comedy"], "runtime_minutes": 81, "updatedAt": {"$date": "2024-06-06T00:00:00Z"}}

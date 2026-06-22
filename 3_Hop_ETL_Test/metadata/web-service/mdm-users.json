@@ -1,0 +1,13 @@
+{
+  "name": "mdm-users",
+  "enabled": true,
+  "filename": "${PROJECT_HOME}/pipelines/09_Push_MDM_Users_To_ETL_Hop/00_mdm_service_redirection.hpl",
+  "transformName": "Build JSON response",
+  "fieldName": "response_json",
+  "statusCode": "http_status",
+  "contentType": "application/json",
+  "listingStatus": true,
+  "bodyContentVariable": "MDM_REQUEST_BODY",
+  "headerContentVariable": "MDM_REQUEST_HEADERS",
+  "runConfigurationName": "local"
+}

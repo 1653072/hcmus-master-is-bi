@@ -1,0 +1,52 @@
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Start of workflow execution
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [Start]
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [Start] (result=[true])
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [Check DB connections]
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [Check DB connections] (result=[true])
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [Check MongoDB connection]
+2026/06/22 23:17:55 - Check MongoDB connection - Configuring connection with read preference: primary
+2026/06/22 23:17:55 - Check MongoDB connection - No read preference tag sets defined
+2026/06/22 23:17:55 - Check MongoDB connection - Configuring connection with write concern - w = 1, wTimeout = 0, journaled = true
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [Check MongoDB connection] (result=[true])
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [01_get_stg_ratings_lset_cet.hpl] in parallel.
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [01_get_stg_ratings_lset_cet.hpl]
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [01_get_stg_revenues_lset_cet.hpl] in parallel.
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [01_get_stg_revenues_lset_cet.hpl]
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [01_get_stg_movies_lset_cet.hpl]
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [01_get_stg_movies_lset_cet.hpl] in parallel.
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [01_get_stg_genres_lset_cet.hpl] in parallel.
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [01_get_stg_genres_lset_cet.hpl]
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [01_get_stg_persons_lset_cet.hpl] in parallel.
+2026/06/22 23:17:55 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [01_get_stg_persons_lset_cet.hpl]
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [01_get_stg_revenues_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [01_get_stg_ratings_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [01_get_stg_movies_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [02_extract_stg_revenues_to_csv.hpl] in parallel.
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [02_extract_stg_revenues_to_csv.hpl]
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [02_extract_stg_ratings_to_csv.hpl]
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [02_extract_stg_ratings_to_csv.hpl] in parallel.
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [01_get_stg_genres_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [02_extract_stg_movies_to_jsonl.hpl]
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [02_extract_stg_movies_to_jsonl.hpl] in parallel.
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [02_extract_stg_genres_to_jsonl.hpl] in parallel.
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [02_extract_stg_genres_to_jsonl.hpl]
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [01_get_stg_persons_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Launched action [02_extract_stg_persons_to_jsonl.hpl] in parallel.
+2026/06/22 23:17:56 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [02_extract_stg_persons_to_jsonl.hpl]
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [02_extract_stg_revenues_to_csv.hpl] (result=[true])
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [03_update_stg_revenues_lset_cet.hpl]
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [02_extract_stg_genres_to_jsonl.hpl] (result=[true])
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [02_extract_stg_movies_to_jsonl.hpl] (result=[true])
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [02_extract_stg_ratings_to_csv.hpl] (result=[true])
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [03_update_stg_genres_lset_cet.hpl]
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [03_update_stg_movies_lset_cet.hpl]
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [03_update_stg_ratings_lset_cet.hpl]
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [02_extract_stg_persons_to_jsonl.hpl] (result=[true])
+2026/06/22 23:17:57 - 01_sub_workflow_export_all_data_sources_to_files - Starting action [03_update_stg_persons_lset_cet.hpl]
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [03_update_stg_revenues_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [03_update_stg_ratings_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [03_update_stg_movies_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [03_update_stg_genres_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Finished action [03_update_stg_persons_lset_cet.hpl] (result=[true])
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Workflow execution finished
+2026/06/22 23:17:58 - 01_sub_workflow_export_all_data_sources_to_files - Workflow duration : 3.166 seconds [  3.166" ]

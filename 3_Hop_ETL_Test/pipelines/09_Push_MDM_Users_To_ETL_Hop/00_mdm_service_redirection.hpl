@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>00_mdm_service_redirection</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <created_user>-</created_user>
+    <modified_user>-</modified_user>
+    <created_date>2026/06/12 10:00:00.000</created_date>
+    <modified_date>2026/06/22 23:00:00.000</modified_date>
+  </info>
+  <transform>
+    <type>RowGenerator</type>
+    <name>Generate 1 row</name>
+    <never_ending>N</never_ending>
+    <interval_in_ms>5000</interval_in_ms>
+    <row_time_field>now</row_time_field>
+    <last_time_field>FiveSecondsAgo</last_time_field>
+    <limit>1</limit>
+    <fields>
+      <field>
+        <name>dummy</name>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif/>
+        <set_empty_string>N</set_empty_string>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>64</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>GetVariable</type>
+    <name>Get ingress variables</name>
+    <fields>
+      <field>
+        <name>mdm_request_body</name>
+        <variable>${MDM_REQUEST_BODY}</variable>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <trim_type>none</trim_type>
+      </field>
+      <field>
+        <name>mdm_request_headers</name>
+        <variable>${MDM_REQUEST_HEADERS}</variable>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <trim_type>none</trim_type>
+      </field>
+      <field>
+        <name>expected_api_key</name>
+        <variable>${HOP_MDM_USERS_API_KEY}</variable>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <trim_type>none</trim_type>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>192</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Validate API key</name>
+    <jsScripts>
+      <jsScript>
+        <jsScript_type>0</jsScript_type>
+        <jsScript_name>process</jsScript_name>
+        <jsScript_script>var api_key_valid = 0;
+var expected = expected_api_key;
+if (expected == null || String(expected).trim().length == 0) {
+  expected = getVariable("HOP_MDM_USERS_API_KEY", "");
+}
+
+function findHeaderKey(headersJson) {
+  if (headersJson == null) {
+    return null;
+  }
+  var raw = String(headersJson).trim();
+  if (raw.length == 0) {
+    return null;
+  }
+  try {
+    var map = JSON.parse(raw);
+    var keys = Object.keys(map);
+    for (var i = 0; i &lt; keys.length; i++) {
+      if (String(keys[i]).toLowerCase() == "x-api-key") {
+        return String(map[keys[i]]);
+      }
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+var incoming = findHeaderKey(mdm_request_headers);
+if (incoming != null &amp;&amp; String(incoming) == String(expected)) {
+  api_key_valid = 1;
+} else if (mdm_request_headers != null &amp;&amp; String(mdm_request_headers).indexOf(String(expected)) >= 0) {
+  api_key_valid = 1;
+}</jsScript_script>
+      </jsScript>
+    </jsScripts>
+    <fields>
+      <field>
+        <name>api_key_valid</name>
+        <rename>api_key_valid</rename>
+        <type>Integer</type>
+        <length>-1</length>
+        <precision>0</precision>
+        <replace>N</replace>
+      </field>
+    </fields>
+    <optimizationLevel>9</optimizationLevel>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>320</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>FilterRows</type>
+    <name>API key valid</name>
+    <compare>
+      <condition>
+        <negated>N</negated>
+        <operator>-</operator>
+        <leftvalue>api_key_valid</leftvalue>
+        <function>=</function>
+        <rightvalue/>
+        <value>
+          <name>constant</name>
+          <type>Integer</type>
+          <text>1</text>
+          <length>-1</length>
+          <precision>0</precision>
+          <isnull>N</isnull>
+          <mask>#</mask>
+        </value>
+        <conditions/>
+      </condition>
+    </compare>
+    <send_true_to>Execute users MDM pipeline</send_true_to>
+    <send_false_to>Set unauthorized response</send_false_to>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>576</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>Constant</type>
+    <name>Set unauthorized response</name>
+    <fields>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>401</nullif>
+        <name>http_status</name>
+        <type>Integer</type>
+        <format/>
+        <length>-1</length>
+        <precision>0</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>{"status":"ERROR","message":"Unauthorized"}</nullif>
+        <name>response_json</name>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>384</xloc>
+      <yloc>704</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>PipelineExecutor</type>
+    <name>Execute users MDM pipeline</name>
+    <run_configuration>local</run_configuration>
+    <filenameInField>N</filenameInField>
+    <group_size>1</group_size>
+    <parameters/>
+    <inherit_all_vars>Y</inherit_all_vars>
+    <result_rows_target_transform>Build JSON response</result_rows_target_transform>
+    <filename>${PROJECT_HOME}/pipelines/09_Push_MDM_Users_To_ETL_Hop/01_store_pushed_mdm_user_from_backend_to_staging.hpl</filename>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>384</xloc>
+      <yloc>576</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>Dummy</type>
+    <name>Build JSON response</name>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>608</xloc>
+      <yloc>576</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <order>
+    <hop>
+      <from>Generate 1 row</from>
+      <to>Get ingress variables</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Get ingress variables</from>
+      <to>Validate API key</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Validate API key</from>
+      <to>API key valid</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>API key valid</from>
+      <to>Execute users MDM pipeline</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>API key valid</from>
+      <to>Set unauthorized response</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Set unauthorized response</from>
+      <to>Build JSON response</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Execute users MDM pipeline</from>
+      <to>Build JSON response</to>
+      <enabled>Y</enabled>
+    </hop>
+  </order>
+  <notepads/>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

@@ -1,0 +1,21 @@
+2026/06/22 23:17:56 - 02_extract_stg_genres_to_jsonl.hpl - Using run configuration [local]
+2026/06/22 23:17:56 - 02_extract_stg_genres_to_jsonl - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/22 23:17:56 - 02_extract_stg_genres_to_jsonl - Execution started for pipeline [02_extract_stg_genres_to_jsonl]
+2026/06/22 23:17:56 - Query stg_genres data by LSET/CET.0 - Normal authentication for user hop_reader
+2026/06/22 23:17:56 - Count stg_genres rows by LSET/CET.0 - Normal authentication for user hop_reader
+2026/06/22 23:17:56 - Query stg_genres data by LSET/CET.0 - Configuring connection with read preference: primary
+2026/06/22 23:17:56 - Count stg_genres rows by LSET/CET.0 - Configuring connection with read preference: primary
+2026/06/22 23:17:56 - Query stg_genres data by LSET/CET.0 - No read preference tag sets defined
+2026/06/22 23:17:56 - Count stg_genres rows by LSET/CET.0 - No read preference tag sets defined
+2026/06/22 23:17:56 - Query stg_genres data by LSET/CET.0 - Configuring connection with write concern - w = 1, wTimeout = 0, journaled = true
+2026/06/22 23:17:56 - Count stg_genres rows by LSET/CET.0 - Configuring connection with write concern - w = 1, wTimeout = 0, journaled = true
+2026/06/22 23:17:56 - Query stg_genres data by LSET/CET.0 - Query pulled data from: localhost:27017
+2026/06/22 23:17:56 - Query stg_genres data by LSET/CET.0 - Finished processing (I=0, O=0, R=0, W=3, U=0, E=0)
+2026/06/22 23:17:56 - Set GENRE_ROWS_EXTRACTED.0 - Setting project variables...
+2026/06/22 23:17:56 - Set GENRE_ROWS_EXTRACTED.0 - Set variable GENRE_ROWS_EXTRACTED to value [3]
+2026/06/22 23:17:56 - Count stg_genres rows by LSET/CET.0 - Finished processing (I=0, O=0, R=0, W=1, U=0, E=0)
+2026/06/22 23:17:56 - Set GENRE_ROWS_EXTRACTED.0 - Finished after 1 rows.
+2026/06/22 23:17:56 - Export to "exported_genres.json" file.0 - Finished processing (I=0, O=3, R=3, W=3, U=0, E=0)
+2026/06/22 23:17:56 - Set GENRE_ROWS_EXTRACTED.0 - Finished processing (I=0, O=0, R=1, W=1, U=0, E=0)
+2026/06/22 23:17:56 - 02_extract_stg_genres_to_jsonl - Pipeline duration : 0.097 seconds [  0.097" ]
+2026/06/22 23:17:56 - 02_extract_stg_genres_to_jsonl - Execution finished on a local pipeline engine with run configuration 'local'

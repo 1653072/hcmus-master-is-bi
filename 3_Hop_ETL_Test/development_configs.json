@@ -187,7 +187,7 @@
     },
     {
       "name": "HOP_MDM_API_HOST",
-      "value": "0.0.0.0",
+      "value": "127.0.0.1",
       "description": "Hop MDM API bind host"
     },
     {
@@ -197,33 +197,28 @@
     },
     {
       "name": "HOP_MDM_API_URL",
-      "value": "http://localhost:8080/api/v1/mdm/users",
-      "description": "MDM push endpoint (used by Backend Server)"
+      "value": "http://localhost:8080/hop/webService/?service=",
+      "description": "Hop Web Service base URL (append HOP_MDM_USERS_SERVICE_ID)"
     },
     {
-      "name": "HOP_MDM_API_KEY",
+      "name": "HOP_MDM_USERS_API_KEY",
       "value": "local-dev-mdm-key",
-      "description": "Shared secret with Backend MDM push (local fake — committed for dev)"
+      "description": "Shared secret for MDM Users push (local fake — committed for dev)"
     },
     {
-      "name": "HOP_MDM_PUSH_RETRY_MAX",
-      "value": "3",
-      "description": "Backend MDM push max retries"
+      "name": "HOP_MDM_USERS_SERVICE_ID",
+      "value": "mdm-users",
+      "description": "MDM Users service ID — matches ?service= and metadata/web-service/mdm-users.json name"
     },
     {
-      "name": "HOP_MDM_PUSH_TIMEOUT_MS",
-      "value": "10000",
-      "description": "Backend MDM push HTTP timeout (ms)"
-    },
-    {
-      "name": "MDM_USERS_STAGING_TABLE",
+      "name": "HOP_MDM_USERS_STAGING_TABLE",
       "value": "stg_users",
       "description": "Staging table for pushed user changes"
     },
     {
-      "name": "MDM_ALLOWED_OPERATIONS",
+      "name": "HOP_MDM_USERS_ALLOWED_OPERATIONS",
       "value": "INSERT,UPDATE,DELETE",
-      "description": "Allowed MDM push operations"
+      "description": "Allowed MDM Users push operations"
     },
     {
       "name": "STAGING_DB_HOST",

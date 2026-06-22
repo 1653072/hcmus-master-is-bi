@@ -1,0 +1,14 @@
+2026/06/22 23:17:55 - 01_get_stg_ratings_lset_cet.hpl - Using run configuration [local]
+2026/06/22 23:17:55 - 01_get_stg_ratings_lset_cet - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/22 23:17:55 - 01_get_stg_ratings_lset_cet - Execution started for pipeline [01_get_stg_ratings_lset_cet]
+2026/06/22 23:17:55 - Get stg_ratings LSET from etl_extraction_control.0 - Finished reading query, closing connection.
+2026/06/22 23:17:55 - Set RATING_CET, RATING_LSET, RATING_CONTROL_ID.0 - Setting project variables...
+2026/06/22 23:17:55 - Get system info (CET).0 - Finished processing (I=0, O=0, R=1, W=1, U=0, E=0)
+2026/06/22 23:17:55 - Get stg_ratings LSET from etl_extraction_control.0 - Finished processing (I=1, O=0, R=0, W=1, U=0, E=0)
+2026/06/22 23:17:55 - Set RATING_CET, RATING_LSET, RATING_CONTROL_ID.0 - Set variable RATING_CET to value [2026/06/22 23:17:55.659]
+2026/06/22 23:17:55 - Set RATING_CET, RATING_LSET, RATING_CONTROL_ID.0 - Set variable RATING_LSET to value [2024/06/01 00:00:00.000000000]
+2026/06/22 23:17:55 - Set RATING_CET, RATING_LSET, RATING_CONTROL_ID.0 - Set variable RATING_CONTROL_ID to value [1]
+2026/06/22 23:17:55 - Set RATING_CET, RATING_LSET, RATING_CONTROL_ID.0 - Finished after 1 rows.
+2026/06/22 23:17:55 - Set RATING_CET, RATING_LSET, RATING_CONTROL_ID.0 - Finished processing (I=0, O=0, R=1, W=1, U=0, E=0)
+2026/06/22 23:17:55 - 01_get_stg_ratings_lset_cet - Pipeline duration : 0.094 seconds [  0.094" ]
+2026/06/22 23:17:55 - 01_get_stg_ratings_lset_cet - Execution finished on a local pipeline engine with run configuration 'local'

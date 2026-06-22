@@ -1,0 +1,12 @@
+2026/06/22 23:18:01 - 02_load_exported_revenues_to_staging.hpl - Using run configuration [local]
+2026/06/22 23:18:01 - 02_load_exported_revenues_to_staging - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/06/22 23:18:01 - 02_load_exported_revenues_to_staging - Execution started for pipeline [02_load_exported_revenues_to_staging]
+2026/06/22 23:18:01 - Insert into staging.stg_revenues.0 - Connected to database [dw-staging] (commit=100)
+2026/06/22 23:18:01 - Read exported_revenues.csv.0 - Opening file: file:///Users/quoctran/Documents/999999_HCMUS_Master_Exercises/HocPhan2/1_Advanced_Business_Inteligence/hcmus-master-is-bi/3_Hop_ETL_Test/staging/exported_revenues/exported_revenues.csv
+2026/06/22 23:18:01 - Read exported_revenues.csv.0 - Finished processing (I=8, O=0, R=0, W=7, U=1, E=0)
+2026/06/22 23:18:01 - Trim string columns.0 - Finished processing (I=0, O=0, R=7, W=7, U=0, E=0)
+2026/06/22 23:18:01 - Cast column types.0 - Finished processing (I=0, O=0, R=7, W=7, U=0, E=0)
+2026/06/22 23:18:01 - Add batch_id through the existing variable.0 - Finished processing (I=0, O=0, R=7, W=7, U=0, E=0)
+2026/06/22 23:18:01 - Insert into staging.stg_revenues.0 - Finished processing (I=0, O=7, R=7, W=7, U=0, E=0)
+2026/06/22 23:18:01 - 02_load_exported_revenues_to_staging - Pipeline duration : 0.044 seconds [  0.044" ]
+2026/06/22 23:18:01 - 02_load_exported_revenues_to_staging - Execution finished on a local pipeline engine with run configuration 'local'
