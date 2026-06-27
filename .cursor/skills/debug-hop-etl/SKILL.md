@@ -48,7 +48,11 @@ Workflow actions use `set_logfile=Y`, `logext=txt`, `add_date=Y`, `add_time=Y`.
 | Type cast errors on load | CSV date format mismatch | SelectValues conversion_mask `yyyy/MM/dd HH:mm:ss.SSS` |
 | TableOutput connection error | Docker down or wrong port | `docker-compose ps`; test `dw-staging` on 5434 |
 | MDM HTML `401 Unauthorized` | Hop Server Basic Auth failed | `cluster`/`cluster`; curl `-u cluster:cluster` |
-| MDM JSON `401 Unauthorized` | Wrong `X-API-Key` | Header must match `HOP_MDM_USERS_API_KEY` in config |
+| MDM JSON `401 Unauthorized` | Wrong or missing `X-API-Key` | Header must match `HOP_MDM_USERS_API_KEY`; entry pipeline accepts case-insensitive `x-api-key` |
+| `connection refused` on `:8080` | Hop Server not running | Start `hop-server.sh -e "Hop_ETL_Test_Configs" -j HCMUS_Master_IS_BI_Hop_ETL_Test 127.0.0.1 8080` |
+| `go run push_mdm_user.go` fails | Single-file run skips `main.go` | `cd 3_Hop_ETL_Test/backend && go run .` |
+| Hop Server up but variables null | Wrong `-e` lifecycle environment | Use `Hop_ETL_Test_Configs`, not `HOP_ENV` from `development_configs.json` |
+| MDM HTTP 200 but no `stg_users` row | Storage pipeline error or NDS lookup | Check Hop Server console; query `staging.stg_users`; verify Docker `dw-staging` on 5434 |
 | MDM `404` on DELETE | User not in `nds.users` | Expected per reconcile rules; or seed NDS first |
 | Web Service returns multiple responses | Row Generator limit > 1 | Set limit to **1** in entry pipeline |
 | Pipeline variable not resolved | Missing `use_formatting=Y` or wrong scope | SetVariable/Constant need formatting; use PARENT_WORKFLOW in workflow context |
@@ -126,6 +130,12 @@ head -1 3_Hop_ETL_Test/staging/exported_movies/exported_movies.json
 ```
 
 ## MDM push smoke test
+
+**Checklist before push:**
+
+1. `docker-compose ps` — `dw-stg-postgres` healthy on 5434
+2. Hop Server running with `-e "Hop_ETL_Test_Configs"` (lifecycle name)
+3. `PROJECT_HOME` in `development_configs.json` points at `3_Hop_ETL_Test`
 
 ```bash
 # Hop Server must be running on 8080

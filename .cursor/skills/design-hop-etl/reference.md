@@ -219,6 +219,25 @@ When generating XML programmatically, pass a **list** of hops to join — never 
 | DELETE | Yes | DELETE |
 | DELETE | No | 404 reject |
 
+## Web Service metadata (mdm-users)
+
+```json
+{
+  "name": "mdm-users",
+  "enabled": true,
+  "filename": "${PROJECT_HOME}/pipelines/09_Push_MDM_Users_To_ETL_Hop/00_mdm_service_redirection.hpl",
+  "transformName": "Build JSON response",
+  "fieldName": "response_json",
+  "statusCode": "http_status",
+  "contentType": "application/json",
+  "bodyContentVariable": "MDM_REQUEST_BODY",
+  "headerContentVariable": "MDM_REQUEST_HEADERS",
+  "runConfigurationName": "local"
+}
+```
+
+Entry pipeline reads `${MDM_REQUEST_BODY}` and `${MDM_REQUEST_HEADERS}` via GetVariable.
+
 ## MDM test curl
 
 ```bash

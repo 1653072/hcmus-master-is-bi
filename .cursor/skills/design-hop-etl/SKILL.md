@@ -188,17 +188,29 @@ Defined in `docker/dw-stg-postgres/02_staging_schema.sql`. No heavy indexes/cons
 
 Reference: `3_Hop_ETL_Test/README.md` section "How to push MDM data".
 
+### Web Service metadata (`metadata/web-service/mdm-users.json`)
+
+| Field | Value | Role |
+|-------|-------|------|
+| `name` | `mdm-users` | Must match `?service=mdm-users` and `HOP_MDM_USERS_SERVICE_ID` |
+| `filename` | `00_mdm_service_redirection.hpl` | Entry pipeline only |
+| `bodyContentVariable` | `MDM_REQUEST_BODY` | POST JSON body injected by Hop servlet |
+| `headerContentVariable` | `MDM_REQUEST_HEADERS` | Request headers as JSON string |
+| `transformName` / `fieldName` | `Build JSON response` / `response_json` | HTTP response from entry pipeline |
+
+Go demo (`backend/push_mdm_user.go`) reads this file to assert `name` matches before POST.
+
 ### Two pipelines
 
-1. `00_mdm_service_redirection.hpl` — Web Service entry (Row Generator limit **1** → Get variables → JSON Input headers → Filter API key → Pipeline Executor or 401)
-2. `01_store_pushed_mdm_user_from_backend_to_staging.hpl` — validate, reconcile vs `nds.users`, upsert `staging.stg_users`
+1. `00_mdm_service_redirection.hpl` — Row Generator limit **1** → GetVariable (`MDM_REQUEST_BODY`, `MDM_REQUEST_HEADERS`, `HOP_MDM_USERS_API_KEY`) → **ScriptValueMod** (case-insensitive `X-API-Key` parse) → FilterRows → Pipeline Executor or 401 JSON
+2. `01_store_pushed_mdm_user_from_backend_to_staging.hpl` — GetVariable `MDM_REQUEST_BODY` → JsonInput → validate → reconcile vs `nds.users` → upsert `staging.stg_users`
 
-Web Service metadata: `metadata/web-service/mdm-users.json` → points at pipeline 00 only.
+`?service=mdm-users` is enforced by the Hop servlet (not inside the pipeline).
 
-### Auth (two layers)
+### Auth (two layers — both required)
 
-1. Hop Server **Basic Auth**: `cluster` / `cluster`
-2. Pipeline **X-API-Key**: `${HOP_MDM_USERS_API_KEY}` (default `local-dev-mdm-key`)
+1. Hop Server **Basic Auth** (servlet): `cluster` / `cluster` — set via `req.SetBasicAuth` in Go or `curl -u cluster:cluster`
+2. Pipeline **X-API-Key** (application): header must match `${HOP_MDM_USERS_API_KEY}` (default `local-dev-mdm-key`)
 
 ### Operation reconcile
 
@@ -215,11 +227,26 @@ Web Service metadata: `metadata/web-service/mdm-users.json` → points at pipeli
 
 ### Hop Server start
 
+Use the **lifecycle environment name** from Hop GUI / `hop-config.json` — **not** the `HOP_ENV` variable inside `development_configs.json`:
+
 ```bash
-./hop-server.sh -e "Hop_ETL_Test_Configs" -j HCMUS_Master_IS_BI_Hop_ETL_Test 127.0.0.1 8080
+./hop-server.sh \
+  -e "Hop_ETL_Test_Configs" \
+  -j HCMUS_Master_IS_BI_Hop_ETL_Test \
+  127.0.0.1 8080
 ```
 
-`-p` is password, not port. Test: `cd 3_Hop_ETL_Test/backend && go run .`
+Host and port are **positional** at the end; `-p` is **password**, not port. Optional: `-u cluster -p cluster`.
+
+**Prerequisites:** Docker up (`dw_staging` on 5434), `PROJECT_HOME` set in `development_configs.json`.
+
+**Test push** (compile whole Go package, not a single file):
+
+```bash
+cd 3_Hop_ETL_Test/backend && go run .
+```
+
+Backend POST URL: `http://127.0.0.1:8080/hop/webService/?service=mdm-users` with Basic Auth + `X-API-Key`.
 
 ## Pattern E — Staging → NDS (`07`, to implement)
 
@@ -276,6 +303,10 @@ Full XML snippets: [reference.md](reference.md).
 | Formula for Mongo ISO dates | NumberFormatException |
 | Mongo in CHECK_DB_CONNECTIONS | False connection failures |
 | Wrong MDM URL param | Use `?service=mdm-users`, not `service_id` |
+| `go run push_mdm_user.go` only | Package has `main.go` + `push_mdm_user.go` | Run `go run .` from `3_Hop_ETL_Test/backend/` |
+| Wrong Hop Server `-e` name | `HOP_ENV=dev` ≠ lifecycle env | Use `-e "Hop_ETL_Test_Configs"` (Hop GUI environment name) |
+| Hop Server not started | Connection refused on 8080 | Start `hop-server.sh` before Go push or curl |
+| Basic Auth only (no API key) | Passes servlet but pipeline 401 | Send **both** `-u cluster:cluster` and `X-API-Key` header |
 
 ## Additional resources
 
