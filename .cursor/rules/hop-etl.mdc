@@ -1,0 +1,18 @@
+---
+description: Guardrails when editing Hop ETL files under 3_Hop_ETL_Test
+globs: 3_Hop_ETL_Test/**/*.hpl,3_Hop_ETL_Test/**/*.hwf,3_Hop_ETL_Test/development_configs.json,.cursor/skills/**/*
+alwaysApply: false
+---
+
+# Hop ETL project guardrails
+
+When creating or editing Hop pipelines/workflows in this repo:
+
+1. Use `/design-hop-etl` for new pipelines; `/debug-hop-etl` for failures.
+2. After design/debug work, follow `/learn-and-upgrade-hop-etl-skills` final step (NOOP if nothing new).
+3. Run `.cursor/skills/design-hop-etl/scripts/validate-hpl.sh` on changed `.hpl` files before finishing.
+3. TextFileInput2: require `<file>` with `<name>` + `<filemask>` and explicit `<fields>` — never empty `<files/>`.
+4. Constant `batch_id`: `<value>${STAGING_BATCH_ID}</value>` and `<use_formatting>Y</use_formatting>`.
+5. Variables and paths: `development_configs.json` — do not hardcode credentials.
+6. Copy patterns from existing numbered pipeline folders (`01`–`09`); match naming conventions.
+7. After Hop GUI saves, diff XML — GUI may strip `<value>`, `<file>`, or `<fields>`.
