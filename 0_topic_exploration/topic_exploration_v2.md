@@ -16,6 +16,8 @@ Transportation-focused topics proposed by the team, with **strict dataset valida
 2. [Category 2 — Shared Bike Fleet Dispatch & Demand Analytics](#category-2--shared-bike-fleet-dispatch--demand-analytics)
 3. [Strict Dataset Validation Summary](#strict-dataset-validation-summary)
 4. [Recommended Priority](#recommended-priority)
+5. [GBFS, MDM & Hybrid ETL (Category 2)](#gbfs-mdm--hybrid-etl-category-2)
+6. [Open Questions](#open-questions)
 
 ---
 
@@ -122,14 +124,30 @@ Bike-share OLTP (operator apps) handles live check-out/check-in. The dispatch ma
 | Trip + weather + calendar | Manual joins per city each week | Unified **`Dim_City`**, **`Dim_Station`**, **`Dim_DateTime`**, **`Dim_Weather`** |
 | Cross-city comparison | Divvy vs Citi different schemas | Conformed **`Fact_BikeTrip`** with city surrogate key; ETL handles column renames |
 | Rebalancing metrics | Not stored in source trips | Derived **`Fact_StationHourBalance`** (starts − ends) aggregated in DDS |
-| OLAP | Slow on millions of trip rows | Star schema + cube: drill city → station → hour |
+| OLAP | Slow on millions of trip rows | Galaxy schema + cube: drill city → station → hour |
 
-**Suggested DDS (Snowflake Schema):**
+**Suggested DDS (Galaxy schema — with optional snowflaked dimensions):**
 
-- **Fact_BikeTrip** — grain: one row per trip — measures: trip count (1), duration (derived)
-- **Fact_StationHourBalance** — grain: `city × station × date_hour` — measures: `trips_started`, `trips_ended`, `net_flow`
-- **Fact_WeatherHour** — grain: `city × date_hour` — measures: temp, precip, wind (from NOAA city station)
-- **Dimensions:** `Dim_City` → snowflake to `Dim_Market`; `Dim_Station`; `Dim_DateTime`; `Dim_Weather`; `Dim_Holiday`
+> **Schema check (2026-06-28):** **Multiple fact tables** that share conformed dimensions = **Galaxy (constellation) schema**, not Snowflake. **Snowflake** only means **normalized dimensions** (e.g. `Dim_City` → `Dim_Market`), and can appear *inside* a Galaxy. Course allows Star, Snowflake, or Galaxy ([`2_Guidelines` §7.2](../2_Guidelines/README.md)).
+
+**Shared conformed dimensions** (used by more than one fact):
+
+- `Dim_City` → snowflake to `Dim_Market` (region / country — **snowflake sub-structure**)
+- `Dim_Station` (from GBFS MDM push + SCD)
+- `Dim_DateTime` (hour, dow, peak flags)
+- `Dim_Holiday`
+
+**Fact tables** (each is its own star “point”; together = Galaxy):
+
+| Fact | Grain | Measures | Primary dimensions |
+|------|-------|----------|-------------------|
+| **Fact_BikeTrip** | one row per trip | trip count (1), duration (derived) | `Dim_City`, `Dim_Station` (start/end role), `Dim_DateTime`, `Dim_Holiday` |
+| **Fact_StationHourBalance** | `city × station × date_hour` | `trips_started`, `trips_ended`, `net_flow` | `Dim_City`, `Dim_Station`, `Dim_DateTime` |
+| **Fact_WeatherHour** | `city × date_hour` | temp, precip, wind | `Dim_City`, `Dim_DateTime`, `Dim_Weather` |
+
+**Galaxy join pattern:** do **not** join fact-to-fact directly in DDS. Analysis joins through **shared dimensions** (e.g. `Dim_City` + `Dim_DateTime`) or builds a **semantic layer / cube** that relates `Fact_StationHourBalance` to `Fact_WeatherHour` on `city_sk` + `datetime_sk`.
+
+**Simpler Star-only alternative** (if team wants one fact only): keep **`Fact_StationHourBalance`** as the single fact (trips aggregated in ETL; weather attributes denormalized into `Dim_DateTime` or a wide `Dim_WeatherSnapshot`) — loses trip-level detail but stays pure Star.
 
 **Join keys:**
 
@@ -189,7 +207,7 @@ Validation date: **2026-06-28**. Methods: HTTP download checks, CSV header inspe
 | Joinable on common keys | **✗** datetime-only join **invalid** (Italy vs Minneapolis) | **✓** `date_hour` + Minneapolis geography |
 | Geographic consistency | **✗** | **✓** Twin Cities / Minnesota |
 | Messy data for ETL | Moderate (Kaggle clean) | **✓** NOAA wide CSV; MnDOT Excel wide format |
-| Star/Snowflake DDS | ✓ | ✓ |
+| Star/Snowflake/Galaxy DDS | Galaxy ✓ (3 facts + conformed dims); Cat 1 = Star | ✓ |
 | Manager role + aggregation | ✓ | ✓ |
 | Course guideline (avoid Kaggle-only) | **⚠** | **✓** (official sources) |
 | **Overall** | **FAIL** | **PASS** |
@@ -203,7 +221,7 @@ Validation date: **2026-06-28**. Methods: HTTP download checks, CSV header inspe
 | Joinable | Trips ↔ weather via `city + date_hour` ✓ | PASS |
 | Cross-system station join | station_id not portable | Expected — use **conformed city dimension** |
 | Multi-dataset aggregation | net station flow × weather × holiday | PASS |
-| Star/Snowflake DDS | ✓ | PASS |
+| Star/Snowflake/Galaxy DDS | **Galaxy** (3 shared-dimension facts) | PASS |
 | Manager role | Trưởng phòng Điều phối | PASS |
 | **Overall** | | **PASS** |
 
@@ -225,11 +243,58 @@ Validation date: **2026-06-28**. Methods: HTTP download checks, CSV header inspe
 
 ---
 
+## GBFS, MDM & Hybrid ETL (Category 2)
+
+*Added from team Q&A (2026-06-28).*
+
+### What is GBFS?
+
+**GBFS (General Bikeshare Feed Specification)** is an open JSON standard for **real-time bike-share system data**. Operators publish feeds such as:
+
+| Feed | Typical content | DW role |
+|------|-----------------|--------|
+| `station_information.json` | Station ID, name, lat/lon, capacity, rental methods | **Master / dimension** (`Dim_Station`) |
+| `station_status.json` | Bikes available, docks empty, station active/closed | **Operational snapshot** (rebalancing KPIs) |
+| `free_bike_status.json` | Dockless bike locations (if applicable) | Optional fact / staging |
+
+**Public URLs (examples):** Divvy and Citi Bike both link GBFS from their [system-data](https://divvybikes.com/system-data) / [system-data](https://citibikenyc.com/system-data) pages.
+
+### Why treat GBFS as MDM + Push (not only periodic Pull)?
+
+Per [`2_Guidelines/README.md`](../2_Guidelines/README.md): **Push for master data**, **Pull for heavy transactions**.
+
+| | **GBFS station master (Push)** | **Monthly trip CSV (Pull)** |
+|--|-------------------------------|----------------------------|
+| **Data type** | Reference / master — stations, capacity, location | Transaction — rides (start/end, time, user type) |
+| **Change pattern** | Stations added, moved, renamed, capacity changed **any day** | Bulk history released **monthly** |
+| **Dispatch need** | Dispatcher needs **current** station list & live availability for rebalancing | Needs **historical** trip patterns for demand forecasting |
+| **Risk if Pull-only** | Trip row references `station_id` **before** monthly master refresh → **late-arriving dimension**, wrong joins, skeleton stations | Less critical on a schedule if grain is historical months |
+
+**Short reasons to use Push for GBFS (MDM):**
+
+1. **Master data freshness** — `Dim_Station` stays aligned with operator’s live catalog (new stations, retirements, coordinate fixes).
+2. **Avoid late-arriving dimensions** — trips in staging can resolve `station_sk` immediately when master was pushed first.
+3. **Matches course hybrid ETL** — GBFS push + trip file pull demonstrates both patterns and supports **ETL bonus** (async master vs transaction timing).
+4. **Operational vs analytic split** — GBFS `station_status` supports “which stations are empty **now**”; trip pull supports “which stations were net exporters **last week**”.
+
+**Practical note:** GBFS is often **polled** every 1–5 minutes in production; for the project, **simulating Push** (scheduled job POSTing JSON snapshot to Hop Web Service / staging) satisfies the same architectural intent as proactive master delivery.
+
+---
+
 ## Open Questions
 
 1. **Single-city vs multi-city bike scope:** Is the manager responsible for **both Chicago and NYC**, or should the team pick **Divvy + NOAA Chicago only** (simpler) and use Citi Bike as a second “source system” for ETL variety only?
 2. **Category 1 depth:** Is one corridor (I-94 ATR 301) enough, or must you include **multiple MnDOT stations** in the fact table from day one?
-3. **Hybrid ETL (course bonus):** Will you simulate **live GBFS station feed push** (Divvy/Citi real-time JSON) into staging while **trip history pulls** incrementally?
+3. **Hybrid ETL (course bonus):** **Recommended:** simulate **GBFS station_information (+ optional station_status) push** into staging/MDM while **monthly trip ZIPs pull** incrementally (LSET/CET). See [GBFS, MDM & Hybrid ETL](#gbfs-mdm--hybrid-etl-category-2) above.
+
+### Decision log (conversation notes)
+
+| Date | Topic | Note |
+|------|-------|------|
+| 2026-06-28 | Dataset validation | Category 1 original trio **FAIL** (UCI Air Quality = Italy; Urban Traffic Flow ≠ Minneapolis). Category 2 Divvy + Citi + NOAA **PASS**. |
+| 2026-06-28 | GBFS / MDM | GBFS = live station **master** feeds; use **Push** for MDM, **Pull** for monthly trip history; reduces late-arriving `Dim_Station` issues and fits course hybrid ETL. |
+| 2026-06-28 | Scope | Traffic: Minneapolis I-94 + NOAA MSP + MnDOT ATR. Bike: multi-city via `Dim_City`; no cross-join on `station_id` between Divvy and Citi. |
+| 2026-06-28 | DDS schema type | Category 2: **3 fact tables** + shared dims = **Galaxy**; `Dim_City` → `Dim_Market` is optional **snowflake** within dims. Category 1 remains **Star**. |
 
 ---
 
