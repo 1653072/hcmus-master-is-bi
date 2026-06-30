@@ -358,88 +358,25 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 | `Dim_Holiday`          | Type 1 (static) | `holiday_sk`, `calendar_date`, `holiday_name`, `is_federal_holiday`, `country_code`                                                                      |
 
 
-**Nguồn `station_status` trong dataset (tách biệt `row_status`):**
+#### `Dim_Station`: SCD Type 2
+
+GBFS có thể đổi tên, tọa độ, capacity hoặc trạng thái vận hành. ETL **không ghi đè** dòng cũ: đánh dấu `row_status = deleted`, insert dòng mới `row_status = active` với `station_sk` mới. Fact đã load giữ `station_sk` cũ; fact mới dùng `station_sk` mới.
+
+Hai cột trạng thái trên `Dim_Station` phục vụ mục đích khác nhau:
 
 
-| Nguồn                           | Có field trạng thái trạm? | Ghi chú ETL                                                                                                                                                    |
-| ------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Divvy / Citi Bike trip CSV      | **Không**                 | Chỉ có `start_station_id`, `end_station_id`, tên trạm; không mô tả open/closed                                                                                 |
-| GBFS `station_information.json` | **Gián tiếp**             | Master: id, tên, lat/lon, capacity; thường **không** có cờ vận hành trực tiếp                                                                                  |
-| GBFS `station_status.json`      | **Có**                    | `is_installed`, `is_renting`, `is_returning`, `last_reported` → map sang `station_status` (ví dụ `open` / `closed` / `maintenance`) khi Push vào `Dim_Station` |
+| Cột | Nguồn | Giá trị (ví dụ) | Mục đích |
+|-----|-------|-----------------|----------|
+| `station_status` | GBFS `station_status.json` (`is_renting`, `is_returning`, …). Trip CSV **không** có field này | `open`, `closed`, `maintenance` | Trạm đang phục vụ hay tạm đóng **trong phiên bản dimension đó** |
+| `row_status` | ETL (SCD2) | `active`, `deleted` | Dòng nào là phiên bản hiện tại; dòng `deleted` giữ cho fact lịch sử |
 
+**Join fact và lưu ý báo cáo:**
 
-`station_status` là **thuộc tính nghiệp vụ** trên từng phiên bản trạm (từ GBFS). 
+- Phân tích lịch sử: `Fact.station_sk = Dim_Station.station_sk` (không lọc `row_status`). Mỗi fact hiển thị đúng tên trạm tại thời điểm load.
+- Tra master hiện tại (load fact mới): chọn dòng `row_status = 'active'` theo `source_station_id` + `city_sk`.
+- Gom **một trạm vật lý** xuyên thời gian (kể cả khi đổi tên): group theo `source_station_id` + `city_sk`, không chỉ theo `station_name`.
 
-`row_status` chỉ đánh dấu **dòng dimension** còn dùng cho master hiện tại (`active`) hay đã thay thế bởi phiên bản mới (`deleted`). Hai cột **không thay thế** nhau.
-
-**Lý do SCD Type 2 cho `Dim_Station`:** GBFS có thể đổi tên trạm, tọa độ, capacity hoặc ngừng phục vụ. Mỗi lần thuộc tính đổi, ETL **không ghi đè** dòng cũ mà tạo dòng mới; đó là bản chất SCD Type 2 (lịch sử qua **nhiều dòng** cùng `source_station_id`).
-
-**Cách triển khai đề tài (đơn giản):** dùng `row_status` thay cho `effective_from` / `effective_to` / `is_current`.
-
-
-| Giá trị `row_status` | Ý nghĩa                                                                                                     |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `active`             | Phiên bản trạm đang dùng khi load fact mới; mỗi `(city_sk, source_station_id)` chỉ có **một** dòng `active` |
-| `deleted`            | Phiên bản cũ, giữ lại để fact lịch sử vẫn trỏ đúng `station_sk`                                             |
-
-
-
-| Giá trị `station_status` (ví dụ) | Ý nghĩa                                                             |
-| -------------------------------- | ------------------------------------------------------------------- |
-| `open`                           | Trạm đang cho thuê / trả xe (từ GBFS `is_renting` + `is_returning`) |
-| `closed`                         | Trạm tạm ngừng phục vụ tại thời điểm snapshot GBFS                  |
-| `maintenance`                    | Tùy chọn; map từ rule nhóm nếu cần                                  |
-
-
-**Luồng khi thuộc tính đổi (ví dụ đổi tên):**
-
-1. Cập nhật dòng hiện tại: `row_status = deleted`.
-2. Insert dòng mới cùng `source_station_id`, tên mới, `station_status` theo GBFS snapshot mới nhất, `row_status = active`, `station_sk` mới.
-3. Fact đã load trước đó giữ nguyên `station_sk` cũ (trỏ tới dòng `deleted`). Fact load sau dùng `station_sk` mới.
-
-**Join fact ↔ `Dim_Station` khi chỉ dùng `row_status` (không có `effective_from` / `effective_to`):**
-
-
-| Cách join                                                           | Đúng?                     | Khi nào dùng                                                                                                      |
-| ------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `Fact.station_sk = Dim_Station.station_sk` (không lọc `row_status`) | **Có**                    | Báo cáo lịch sử: mỗi fact lấy đúng nhãn trạm **tại thời điểm load** (tên cũ trên fact cũ, tên mới trên fact mới)  |
-| `Fact` join `Dim_Station` với `WHERE row_status = 'active'`         | **Chỉ đúng cho fact mới** | Tra cứu master hiện tại; **sai** nếu áp dụng lên toàn bộ fact lịch sử (fact cũ sẽ mất join hoặc gắn nhầm tên mới) |
-
-
-Kết luận **2.1:** Chỉ dùng `row_status` vẫn đảm bảo join đúng, vì fact lưu **surrogate key** (`station_sk`) lúc load, không cần join theo khoảng thời gian. `effective_from` / `effective_to` chỉ cần khi load fact **chưa** có `station_sk` và phải tra dimension theo `started_at`.
-
-**Ảnh hưởng phân tích khi cùng trạm có nhiều dòng `row_status` khác nhau (2.2):**
-
-
-| Tình huống OLAP                                                                       | Ảnh hưởng                                                                 | Cách xử lý                                                                                                                                                    |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Drill-down theo `station_sk` hoặc `station_name` trên một khoảng thời gian có đổi tên | Cùng một trạm vật lý có thể hiện **hai nhóm** (tên cũ vs tên mới)         | **Đúng theo point-in-time**; nếu cần gom một trạm xuyên thời gian, group theo `source_station_id` + `city_sk` (business key), không group theo `station_name` |
-| SUM `trips_started` theo tuần, pivot `station_name`                                   | Tổng vẫn đúng nếu join qua `station_sk`; có thể thấy hai cột cho một trạm | Dùng `source_station_id` làm khóa báo cáo thống nhất; `station_name` chỉ là nhãn hiển thị từng phiên bản                                                      |
-| TOP trạm mất cân bằng **tuần hiện tại**                                               | Không ảnh hưởng                                                           | Chỉ fact mới + dòng `active` (hoặc join qua `station_sk` fact tuần đó)                                                                                        |
-| So sánh lịch sử dài (cả tháng có đổi tên giữa chừng)                                  | Không làm sai tổng measure; có thể **tách slice** theo tên                | Chấp nhận tách slice (SCD2 đúng nghĩa) hoặc rollup theo `source_station_id`                                                                                   |
-
-
-Fact cũ trỏ `station_sk` của dòng `deleted` **không làm sai số liệu**; chỉ cần lưu ý khi **gom theo tên trạm** thay vì theo `source_station_id`. Đó là hành vi mong muốn của SCD Type 2, không phải lỗi dữ liệu.
-
-**Phân biệt SCD Type 2 và Type 3 (tránh nhầm lẫn):**
-
-
-| Kiểu       | Cơ chế                                                   | Ví dụ                                                                   |
-| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Type 2** | Tạo **dòng mới** khi thuộc tính đổi; dòng cũ vẫn tồn tại | `row_status`, hoặc (biến thể Kimball) `effective_from` / `effective_to` |
-| **Type 3** | Giữ giá trị cũ trong **cùng một dòng** bằng cột bổ sung  | `station_name`, `previous_station_name` trên một row                    |
-
-
-`effective_from` / `effective_to` (nếu có) vẫn thuộc **Type 2**, không phải Type 3: Type 3 không tách dòng, chỉ thêm cột lưu giá trị trước đó. Đề tài **không** dùng biến thể đó; chỉ dùng `row_status` để đánh dấu dòng nào còn dùng khi tra cứu master hiện tại (`WHERE row_status = 'active'`).
-
-**Tóm tắt hai cột trên `Dim_Station`:**
-
-
-| Cột              | Lớp           | Nguồn                      | Mục đích                                                             |
-| ---------------- | ------------- | -------------------------- | -------------------------------------------------------------------- |
-| `station_status` | Nghiệp vụ     | GBFS `station_status.json` | Trạm đang mở, đóng hay bảo trì **trong phiên bản dimension đó**      |
-| `row_status`     | Kỹ thuật SCD2 | ETL                        | Dòng nào là phiên bản hiện tại (`active`) vs đã thay thế (`deleted`) |
-
+Các dimension còn lại: `Dim_City`, `Dim_WeatherCondition`, `Dim_Holiday` dùng Type 1 (ghi đè hoặc static). `Dim_DateTime` là bảng thời gian cố định, không SCD.
 
 ### 6.4. Sơ đồ Star
 
