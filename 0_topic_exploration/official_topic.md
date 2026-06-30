@@ -16,7 +16,7 @@
 3. [Sử dụng lược đồ gì?](#3-sử-dụng-lược-đồ-gì)
 4. [Kiến trúc Data Warehouse dự kiến](#4-kiến-trúc-data-warehouse-dự-kiến) (gồm [lịch chạy Staging Pull](#lịch-chạy-staging-etl-pull))
 5. [Dataset sử dụng](#5-dataset-sử-dụng)
-6. [Bảng Fact và Dimension dự kiến](#6-bảng-fact-và-dimension-dự-kiến) (gồm [sơ đồ Star](#64-sơ-đồ-star), [SCD `Dim_Station`](#63-dimension-tables-và-scd))
+6. [Bảng Fact và Dimension dự kiến](#6-bảng-fact-và-dimension-dự-kiến) (gồm [sơ đồ Star](#64-sơ-đồ-star), [SCD `Dim_Station](#63-dimension-tables-và-scd)`)
 7. [Fact và Dimension phục vụ nghiệp vụ](#7-fact-và-dimension-phục-vụ-nghiệp-vụ)
 
 ---
@@ -61,7 +61,7 @@ DDS dùng **Star schema** với **một** bảng fact trung tâm: `Fact_StationH
 | -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Transactional Fact         | Không                   | Grain không phải một dòng một chuyến đi.                                                                                                               |
 | **Periodic Snapshot Fact** | **Có**                  | Mỗi dòng là ảnh chụp tổng hợp **theo giờ** cho một trạm trong một thành phố: số chuyến bắt đầu/kết thúc, net flow, phân rã loại người dùng và loại xe. |
-| Accumulating Snapshot Fact | Không                   | Không theo dõi các mốc của một quy trình đơn lẻ (ví dụ một phiên cân bằng xe từ lúc xuất phát đến khi hoàn tất).                                           |
+| Accumulating Snapshot Fact | Không                   | Không theo dõi các mốc của một quy trình đơn lẻ (ví dụ một phiên cân bằng xe từ lúc xuất phát đến khi hoàn tất).                                       |
 
 
 Trip CSV vẫn là dữ liệu **giao dịch** ở Staging và NDS. DDS chỉ lưu **snapshot định kỳ** phục vụ OLAP.
@@ -101,29 +101,34 @@ flowchart LR
   GBFS -->|MDM_Push| STG
   Divvy -->|LSET_CET_Pull| STG
   Citi -->|LSET_CET_Pull| STG
-  NOAA -->|Pull| STG
+  NOAA -->|LSET_CET_Pull| STG
   Holiday -->|Master| STG
   LSET -.-> Divvy
   LSET -.-> Citi
+  LSET -.-> NOAA
   SRC -.-> STG
   STG --> NDS --> DDS
   LOG -.-> STG
 ```
+
+
 
 #### Lịch chạy Staging ETL (Pull)
 
 Các job **Pull** vào Staging (Divvy, Citi Bike, NOAA) chạy **một lần mỗi ngày**, lúc **00:00 GMT+7** (tương đương **17:00 UTC** ngày liền trước). Mỗi lần chạy:
 
 1. Ghi `cet` = thời điểm job bắt đầu (ví dụ `2024-06-15 00:00:00+07`).
-2. Trích dữ liệu có `started_at` (trip) hoặc quan sát thời tiết (NOAA) trong cửa sổ `(lset, cet]`.
+2. Trích dữ liệu trong cửa sổ `(lset, cet]`: trip theo `started_at`; NOAA theo thời điểm quan sát giờ (`DATE` + `HOUR` trong file LCD).
 3. Sau khi thành công, cập nhật `lset = cet` trong `control.etl_extraction_control`.
 
-| Job | Tần suất | Ghi chú |
-|-----|----------|---------|
-| Pull trip Divvy / Citi Bike | 1 lần/ngày, 00:00 GMT+7 | ZIP tháng trên S3; incremental theo `started_at` |
-| Pull NOAA LCD | 1 lần/ngày, 00:00 GMT+7 | Có thể gộp chung workflow Staging với trip |
-| Push GBFS | Theo sự kiện hoặc nhiều lần/ngày | Không phụ thuộc LSET kiểu trip; cập nhật master trạm trước khi load fact |
-| Staging → NDS → DDS | Sau khi Staging Pull xong | Aggregate sang fact theo grain giờ |
+
+| Job                         | Tần suất                         | Ghi chú                                                                                    |
+| --------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| Pull trip Divvy / Citi Bike | 1 lần/ngày, 00:00 GMT+7          | Sử dụng LSET/CET; ZIP tháng trên S3; incremental theo `started_at`                         |
+| Pull NOAA LCD               | 1 lần/ngày, 00:00 GMT+7          | LSET/CET theo thời điểm quan sát giờ; bản ghi riêng trong `control.etl_extraction_control` |
+| Push GBFS                   | Theo sự kiện hoặc nhiều lần/ngày | Không phụ thuộc LSET kiểu trip; cập nhật master trạm trước khi load fact                   |
+| Staging → NDS → DDS         | Sau khi Staging Pull xong        | Aggregate sang fact theo grain giờ                                                         |
+
 
 Lịch **00:00 GMT+7** quyết định ranh giới “ngày batch”: snapshot giờ của **ngày vừa kết thúc** (theo múi giờ địa phương từng thành phố) được load trong lần chạy sáng hôm sau. Chi tiết xử lý khi dữ liệu tới sau lịch này nằm ở [mục 4.5](#45-xử-lý-dữ-liệu-đến-muộn).
 
@@ -145,7 +150,7 @@ Lịch **00:00 GMT+7** quyết định ranh giới “ngày batch”: snapshot g
 | ------------------- | ------------------------------- | ------------------------------------------------------------------------ |
 | **Push (MDM)**      | GBFS `station_information.json` | Cập nhật master trạm (`Dim_Station`) khi trạm mới, đổi tên, đổi capacity |
 | **Pull (LSET/CET)** | Divvy, Citi Bike ZIP theo tháng | Giao dịch chuyến đi; incremental theo `started_at`                       |
-| **Pull**            | NOAA LCD theo file năm          | Quan trắc thời tiết theo giờ, gắn thành phố                              |
+| **Pull (LSET/CET)** | NOAA LCD theo file năm          | Quan trắc thời tiết theo giờ; incremental theo thời điểm quan sát        |
 | **Master**          | Lịch ngày lễ US                 | `Dim_Holiday`                                                            |
 
 
@@ -203,12 +208,12 @@ Nhật ký từng lần chạy pipeline/workflow.
 #### Ánh xạ nguồn đề tài (seed dự kiến)
 
 
-| source_name      | table_name           | Push/Pull | Ghi chú LSET/CET                                        |
-| ---------------- | -------------------- | --------- | ------------------------------------------------------- |
-| `divvy_trips`    | `stg_divvy_trips`    | Pull      | Theo `started_at` trong ZIP tháng                       |
-| `citibike_trips` | `stg_citibike_trips` | Pull      | Tương tự Divvy                                          |
-| `noaa_lcd`       | `stg_weather_lcd`    | Pull      | Theo file năm/tháng                                     |
-| `gbfs_station`   | `stg_gbfs_station`   | Push      | Snapshot time / `updated_at`, không dùng LSET kiểu trip |
+| source_name      | table_name           | Push/Pull       | Ghi chú LSET/CET                                        |
+| ---------------- | -------------------- | --------------- | ------------------------------------------------------- |
+| `divvy_trips`    | `stg_divvy_trips`    | Pull            | Theo `started_at` trong ZIP tháng                       |
+| `citibike_trips` | `stg_citibike_trips` | Pull            | Tương tự Divvy                                          |
+| `noaa_lcd`       | `stg_weather_lcd`    | Pull (LSET/CET) | `lset`/`cet` theo thời điểm quan sát giờ trong file LCD |
+| `gbfs_station`   | `stg_gbfs_station`   | Push            | Snapshot time / `updated_at`, không dùng LSET kiểu trip |
 
 
 Ba bảng trên giúp nhóm quản lý lịch sử ETL, giá trị LSET/CET, và chứng minh cơ chế hybrid Push/Pull (kể cả kịch bản bonus: master GBFS tới trước hoặc sau batch trip).
@@ -218,14 +223,14 @@ Ba bảng trên giúp nhóm quản lý lịch sử ETL, giá trị LSET/CET, và
 Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ incremental `(lset, cet]`. Mọi tình huống dưới đây giả định dữ liệu có thể tới **sau** khi fact giờ tương ứng đã được load trong batch đêm hôm trước, hoặc sau khi nhà vận hành công bố lại ZIP tháng trên S3.
 
 
-| Tình huống                                    | Cách xử lý                                 | SCD / kỹ thuật                                                                                          |
-| --------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Chuyến đi tới sau batch 00:00 GMT+7 đã load snapshot giờ đó | Tái tổng hợp dòng fact theo grain trong batch kế tiếp hoặc job bù | Upsert measure trên fact; **không** SCD trên fact |
-| ZIP tháng trên S3 được cập nhật, bổ sung trip các ngày trước | Chạy lại Pull với `lset` lùi hoặc re-aggregate theo ngày bị ảnh hưởng | Upsert fact; ghi `control.etl_job_log` |
-| Trạm mới trong trip, chưa có trong GBFS       | Skeleton trạm hoặc giữ staging             | **SCD Type 2** trên `Dim_Station` (hoặc skeleton theo [2_Guidelines](../2_Guidelines/README.md) §3.5.1) |
-| Đổi tên / tọa độ / capacity trạm              | Bản ghi dimension mới                      | **SCD Type 2** `Dim_Station`                                                                            |
-| NOAA đến muộn cho giờ đã load                 | Cập nhật measure thời tiết trên cùng grain | Upsert fact                                                                                             |
-| Sửa rule nhóm thời tiết                       | Ghi đè lookup                              | **SCD Type 1** `Dim_WeatherCondition`                                                                   |
+| Tình huống                                                   | Cách xử lý                                                            | SCD / kỹ thuật                                                                                          |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Chuyến đi tới sau batch 00:00 GMT+7 đã load snapshot giờ đó  | Tái tổng hợp dòng fact theo grain trong batch kế tiếp hoặc job bù     | Upsert measure trên fact; **không** SCD trên fact                                                       |
+| ZIP tháng trên S3 được cập nhật, bổ sung trip các ngày trước | Chạy lại Pull với `lset` lùi hoặc re-aggregate theo ngày bị ảnh hưởng | Upsert fact; ghi `control.etl_job_log`                                                                  |
+| Trạm mới trong trip, chưa có trong GBFS                      | Skeleton trạm hoặc giữ staging                                        | **SCD Type 2** trên `Dim_Station` (hoặc skeleton theo [2_Guidelines](../2_Guidelines/README.md) §3.5.1) |
+| Đổi tên / tọa độ / capacity trạm                             | Dòng cũ `row_status = deleted`, insert dòng mới `active`              | **SCD Type 2** `Dim_Station`                                                                            |
+| NOAA đến muộn cho giờ đã load                                | Cập nhật measure thời tiết trên cùng grain                            | Upsert fact                                                                                             |
+| Sửa rule nhóm thời tiết                                      | Ghi đè lookup                                                         | **SCD Type 1** `Dim_WeatherCondition`                                                                   |
 
 
 **Nguyên tắc:** SCD áp dụng cho **dimension**. Fact periodic snapshot dùng insert/upsert theo grain.
@@ -344,26 +349,97 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 ### 6.3. Dimension tables và SCD
 
 
-| Bảng                   | SCD             | Thuộc tính chính                                                                                                                                               |
-| ---------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dim_City`             | Type 1 (static) | `city_sk`, `city_code` (CHI, NYC), `city_name`, `timezone`, `noaa_station_id`, `gbfs_system_id`                                                                |
-| `Dim_Station`          | **Type 2**      | `station_sk`, `city_sk`, `source_station_id`, `station_name`, `latitude`, `longitude`, `capacity`, `station_status`, `effective_from`, `effective_to`, `is_current` |
-| `Dim_DateTime`         | Không SCD       | `datetime_sk`, `date`, `hour`, `day_of_week`, `is_weekend`, `is_peak_hour`, `month`, `season`                                                                  |
-| `Dim_WeatherCondition` | Type 1          | `weather_condition_sk`, `weather_category` (Clear/Rain/Snow/Fog), `precipitation_band`                                                                         |
-| `Dim_Holiday`          | Type 1 (static) | `holiday_sk`, `calendar_date`, `holiday_name`, `is_federal_holiday`, `country_code`                                                                            |
+| Bảng                   | SCD             | Thuộc tính chính                                                                                                                                         |
+| ---------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Dim_City`             | Type 1 (static) | `city_sk`, `city_code` (CHI, NYC), `city_name`, `timezone`, `noaa_station_id`, `gbfs_system_id`                                                          |
+| `Dim_Station`          | **Type 2**      | `station_sk`, `city_sk`, `source_station_id`, `station_name`, `latitude`, `longitude`, `capacity`, `station_status`, `row_status` (`active` / `deleted`) |
+| `Dim_DateTime`         | Không SCD       | `datetime_sk`, `date`, `hour`, `day_of_week`, `is_weekend`, `is_peak_hour`, `month`, `season`                                                            |
+| `Dim_WeatherCondition` | Type 1          | `weather_condition_sk`, `weather_category` (Clear/Rain/Snow/Fog), `precipitation_band`                                                                   |
+| `Dim_Holiday`          | Type 1 (static) | `holiday_sk`, `calendar_date`, `holiday_name`, `is_federal_holiday`, `country_code`                                                                      |
 
 
-**Lý do SCD Type 2 cho `Dim_Station`:** GBFS có thể đổi tên trạm, tọa độ, capacity hoặc đóng trạm. Lịch sử phân tích cần biết thuộc tính trạm **đúng tại thời điểm** chuyến đi diễn ra.
+**Nguồn `station_status` trong dataset (tách biệt `row_status`):**
 
-**SCD Type 2 khác SCD Type 3:** Type 2 tạo **dòng mới** khi thuộc tính đổi; Type 3 giữ giá trị cũ trong **cùng một dòng** (ví dụ cột `previous_station_name` trên dòng hiện tại). Đề tài chọn Type 2 vì cần lịch sử đầy đủ, không chỉ một giá trị trước đó.
 
-| Cột | Vai trò | Ghi chú |
-|-----|---------|---------|
-| `effective_from`, `effective_to` | Khoảng thời gian phiên bản dimension còn hiệu lực | Cơ chế **SCD2** (Kimball): join fact qua `started_at` để chọn đúng `station_sk`. **Không** phải SCD3 |
-| `is_current` | Cờ kỹ thuật: `TRUE` trên dòng phiên bản mới nhất (`effective_to IS NULL`) | Tiện tra cứu danh mục trạm hiện tại; không thay thế `effective_from` / `effective_to` |
-| `station_status` | Thuộc tính nghiệp vụ từ GBFS: `open` / `closed` | Mô tả trạng thái vận hành **trong phiên bản đó**; có thể khác giữa các dòng lịch sử |
+| Nguồn                           | Có field trạng thái trạm? | Ghi chú ETL                                                                                                                                                    |
+| ------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Divvy / Citi Bike trip CSV      | **Không**                 | Chỉ có `start_station_id`, `end_station_id`, tên trạm; không mô tả open/closed                                                                                 |
+| GBFS `station_information.json` | **Gián tiếp**             | Master: id, tên, lat/lon, capacity; thường **không** có cờ vận hành trực tiếp                                                                                  |
+| GBFS `station_status.json`      | **Có**                    | `is_installed`, `is_renting`, `is_returning`, `last_reported` → map sang `station_status` (ví dụ `open` / `closed` / `maintenance`) khi Push vào `Dim_Station` |
 
-Ví dụ: trạm đổi tên ngày 2024-06-10 thì dòng cũ có `effective_to = 2024-06-09`, dòng mới có `effective_from = 2024-06-10`, `is_current = TRUE`. Nếu trạm đóng ngày 2024-08-01, dòng mới có `station_status = closed` nhưng các dòng cũ vẫn giữ `station_status = open` để phân tích lịch sử đúng ngữ cảnh.
+
+`station_status` là **thuộc tính nghiệp vụ** trên từng phiên bản trạm (từ GBFS). 
+
+`row_status` chỉ đánh dấu **dòng dimension** còn dùng cho master hiện tại (`active`) hay đã thay thế bởi phiên bản mới (`deleted`). Hai cột **không thay thế** nhau.
+
+**Lý do SCD Type 2 cho `Dim_Station`:** GBFS có thể đổi tên trạm, tọa độ, capacity hoặc ngừng phục vụ. Mỗi lần thuộc tính đổi, ETL **không ghi đè** dòng cũ mà tạo dòng mới; đó là bản chất SCD Type 2 (lịch sử qua **nhiều dòng** cùng `source_station_id`).
+
+**Cách triển khai đề tài (đơn giản):** dùng `row_status` thay cho `effective_from` / `effective_to` / `is_current`.
+
+
+| Giá trị `row_status` | Ý nghĩa                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `active`             | Phiên bản trạm đang dùng khi load fact mới; mỗi `(city_sk, source_station_id)` chỉ có **một** dòng `active` |
+| `deleted`            | Phiên bản cũ, giữ lại để fact lịch sử vẫn trỏ đúng `station_sk`                                             |
+
+
+
+| Giá trị `station_status` (ví dụ) | Ý nghĩa                                                             |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `open`                           | Trạm đang cho thuê / trả xe (từ GBFS `is_renting` + `is_returning`) |
+| `closed`                         | Trạm tạm ngừng phục vụ tại thời điểm snapshot GBFS                  |
+| `maintenance`                    | Tùy chọn; map từ rule nhóm nếu cần                                  |
+
+
+**Luồng khi thuộc tính đổi (ví dụ đổi tên):**
+
+1. Cập nhật dòng hiện tại: `row_status = deleted`.
+2. Insert dòng mới cùng `source_station_id`, tên mới, `station_status` theo GBFS snapshot mới nhất, `row_status = active`, `station_sk` mới.
+3. Fact đã load trước đó giữ nguyên `station_sk` cũ (trỏ tới dòng `deleted`). Fact load sau dùng `station_sk` mới.
+
+**Join fact ↔ `Dim_Station` khi chỉ dùng `row_status` (không có `effective_from` / `effective_to`):**
+
+
+| Cách join                                                           | Đúng?                     | Khi nào dùng                                                                                                      |
+| ------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `Fact.station_sk = Dim_Station.station_sk` (không lọc `row_status`) | **Có**                    | Báo cáo lịch sử: mỗi fact lấy đúng nhãn trạm **tại thời điểm load** (tên cũ trên fact cũ, tên mới trên fact mới)  |
+| `Fact` join `Dim_Station` với `WHERE row_status = 'active'`         | **Chỉ đúng cho fact mới** | Tra cứu master hiện tại; **sai** nếu áp dụng lên toàn bộ fact lịch sử (fact cũ sẽ mất join hoặc gắn nhầm tên mới) |
+
+
+Kết luận **2.1:** Chỉ dùng `row_status` vẫn đảm bảo join đúng, vì fact lưu **surrogate key** (`station_sk`) lúc load, không cần join theo khoảng thời gian. `effective_from` / `effective_to` chỉ cần khi load fact **chưa** có `station_sk` và phải tra dimension theo `started_at`.
+
+**Ảnh hưởng phân tích khi cùng trạm có nhiều dòng `row_status` khác nhau (2.2):**
+
+
+| Tình huống OLAP                                                                       | Ảnh hưởng                                                                 | Cách xử lý                                                                                                                                                    |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Drill-down theo `station_sk` hoặc `station_name` trên một khoảng thời gian có đổi tên | Cùng một trạm vật lý có thể hiện **hai nhóm** (tên cũ vs tên mới)         | **Đúng theo point-in-time**; nếu cần gom một trạm xuyên thời gian, group theo `source_station_id` + `city_sk` (business key), không group theo `station_name` |
+| SUM `trips_started` theo tuần, pivot `station_name`                                   | Tổng vẫn đúng nếu join qua `station_sk`; có thể thấy hai cột cho một trạm | Dùng `source_station_id` làm khóa báo cáo thống nhất; `station_name` chỉ là nhãn hiển thị từng phiên bản                                                      |
+| TOP trạm mất cân bằng **tuần hiện tại**                                               | Không ảnh hưởng                                                           | Chỉ fact mới + dòng `active` (hoặc join qua `station_sk` fact tuần đó)                                                                                        |
+| So sánh lịch sử dài (cả tháng có đổi tên giữa chừng)                                  | Không làm sai tổng measure; có thể **tách slice** theo tên                | Chấp nhận tách slice (SCD2 đúng nghĩa) hoặc rollup theo `source_station_id`                                                                                   |
+
+
+Fact cũ trỏ `station_sk` của dòng `deleted` **không làm sai số liệu**; chỉ cần lưu ý khi **gom theo tên trạm** thay vì theo `source_station_id`. Đó là hành vi mong muốn của SCD Type 2, không phải lỗi dữ liệu.
+
+**Phân biệt SCD Type 2 và Type 3 (tránh nhầm lẫn):**
+
+
+| Kiểu       | Cơ chế                                                   | Ví dụ                                                                   |
+| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Type 2** | Tạo **dòng mới** khi thuộc tính đổi; dòng cũ vẫn tồn tại | `row_status`, hoặc (biến thể Kimball) `effective_from` / `effective_to` |
+| **Type 3** | Giữ giá trị cũ trong **cùng một dòng** bằng cột bổ sung  | `station_name`, `previous_station_name` trên một row                    |
+
+
+`effective_from` / `effective_to` (nếu có) vẫn thuộc **Type 2**, không phải Type 3: Type 3 không tách dòng, chỉ thêm cột lưu giá trị trước đó. Đề tài **không** dùng biến thể đó; chỉ dùng `row_status` để đánh dấu dòng nào còn dùng khi tra cứu master hiện tại (`WHERE row_status = 'active'`).
+
+**Tóm tắt hai cột trên `Dim_Station`:**
+
+
+| Cột              | Lớp           | Nguồn                      | Mục đích                                                             |
+| ---------------- | ------------- | -------------------------- | -------------------------------------------------------------------- |
+| `station_status` | Nghiệp vụ     | GBFS `station_status.json` | Trạm đang mở, đóng hay bảo trì **trong phiên bản dimension đó**      |
+| `row_status`     | Kỹ thuật SCD2 | ETL                        | Dòng nào là phiên bản hiện tại (`active`) vs đã thay thế (`deleted`) |
+
 
 ### 6.4. Sơ đồ Star
 
@@ -375,6 +451,8 @@ erDiagram
   Fact_StationHourBalance ||--o{ Dim_Holiday : holiday_sk
   Fact_StationHourBalance ||--o{ Dim_WeatherCondition : weather_condition_sk
 ```
+
+
 
 ### 6.5. NDS logic (tham chiếu, chưa DDL đầy đủ)
 
@@ -393,7 +471,7 @@ Bảng master NDS dự kiến: `city`, `station`, `calendar_day`, `holiday`, `we
 | Ngày lễ / giờ cao điểm   | toàn bộ measure chuyến                      | `Dim_Holiday`, `Dim_DateTime`     | So sánh ngày lễ vs ngày thường cùng `hour`              |
 | Member vs casual         | `member_trip_count`, `casual_trip_count`    | `Dim_City`, `season`              | Tỷ lệ member theo tháng                                 |
 | Xe điện vs cơ            | `electric_trip_count`, `classic_trip_count` | `Dim_Station`                     | Cơ cấu nhu cầu theo trạm                                |
-| Lập kế hoạch mùa         | `trips_started` xu hướng                    | `Dim_DateTime.season`, `Dim_City` | Drill-down năm → quý → tháng theo thành phố                  |
+| Lập kế hoạch mùa         | `trips_started` xu hướng                    | `Dim_DateTime.season`, `Dim_City` | Drill-down năm → quý → tháng theo thành phố             |
 | Đối chiếu Chicago vs NYC | các measure                                 | `Dim_City`                        | Pivot hai thành phố cùng `datetime_sk` (cùng tháng mẫu) |
 
 
@@ -404,15 +482,15 @@ Trưởng phòng Điều phối không cần join fact với fact: mọi KPI tr�
 ## Phụ lục: Quyết định chính thức
 
 
-| Hạng mục          | Quyết định                                         |
-| ----------------- | -------------------------------------------------- |
-| Đề tài            | Category 2: Điều phối xe đạp chia sẻ đa thành phố  |
-| Lược đồ DDS       | Star schema, một fact                              |
-| Fact              | `Fact_StationHourBalance`, Periodic Snapshot       |
-| Phạm vi địa lý    | Chicago (Divvy) + NYC (Citi Bike)                  |
+| Hạng mục          | Quyết định                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| Đề tài            | Category 2: Điều phối xe đạp chia sẻ đa thành phố                                     |
+| Lược đồ DDS       | Star schema, một fact                                                                 |
+| Fact              | `Fact_StationHourBalance`, Periodic Snapshot                                          |
+| Phạm vi địa lý    | Chicago (Divvy) + NYC (Citi Bike)                                                     |
 | ETL               | GBFS Push (MDM) + trip/NOAA Pull (LSET/CET); Pull Staging **00:00 GMT+7** (17:00 UTC) |
-| Tháng mẫu đề xuất | `2024-06` (cả hai thành phố)                       |
-| Khám phá trước đó | [topic_exploration_v2.md](topic_exploration_v2.md) |
+| Tháng mẫu đề xuất | `2024-06` (cả hai thành phố)                                                          |
+| Khám phá trước đó | [topic_exploration_v2.md](topic_exploration_v2.md)                                    |
 
 
 ---
