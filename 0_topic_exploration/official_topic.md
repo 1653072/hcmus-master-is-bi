@@ -374,7 +374,7 @@ Hai cột trạng thái trên `Dim_Station` phục vụ mục đích khác nhau:
 
 - Phân tích lịch sử: `Fact.station_sk = Dim_Station.station_sk` (không lọc `row_status`). Mỗi fact hiển thị đúng tên trạm tại thời điểm load.
 - Tra master hiện tại (load fact mới): chọn dòng `row_status = 'active'` theo `source_station_id` + `city_sk`.
-- Gom **một trạm vật lý** xuyên thời gian (kể cả khi đổi tên): group theo `source_station_id` + `city_sk`, không chỉ theo `station_name`.
+- Muốn thống kê **cùng một trạm** qua nhiều kỳ dù trạm đó đã đổi tên, nhóm theo `source_station_id` + `city_sk`; không nhóm riêng theo `station_name` vì tên có thể đổi theo từng phiên bản dimension.
 
 Các dimension còn lại: `Dim_City`, `Dim_WeatherCondition`, `Dim_Holiday` dùng Type 1 (ghi đè hoặc static). `Dim_DateTime` là bảng thời gian cố định, không SCD.
 
