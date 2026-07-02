@@ -34,15 +34,18 @@
 Mỗi tuần, Trưởng phòng Điều phối cần trả lời các câu hỏi sau:
 
 
-| Câu hỏi nghiệp vụ                                                         | Hướng phân tích                                                   |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Trạm nào đang thiếu xe, trạm nào đang thừa?                               | `net_flow`, `abs_imbalance` theo `Dim_Station` × `Dim_DateTime`   |
-| Khu vực / thành phố nào quá tải vào giờ cao điểm?                         | `trips_started`, `trips_ended` theo `Dim_City`, cờ `is_peak_hour` |
-| Thời tiết, ngày lễ, giờ trong ngày ảnh hưởng nhu cầu ra sao?              | So sánh measure chuyến đi khi mưa / nắng, ngày lễ / ngày thường   |
-| Mùa đông / mùa hè cần ưu tiên cân bằng ở trạm nào?                        | Xu hướng `abs_imbalance` theo `season` trên `Dim_DateTime`        |
-| Thành viên (member) và khách vãng lai (casual) dùng xe khác nhau thế nào? | `member_trip_count` so với `casual_trip_count`                    |
-| Xe điện và xe cơ chiếm tỷ trọng bao nhiêu từng trạm?                      | `electric_trip_count`, `classic_trip_count`                       |
+| Câu hỏi nghiệp vụ                                                                                    | Hướng phân tích                                                                                      |
+| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Trạm nào có xu hướng bị rút cạn xe (dòng ra > dòng vào) hay dồn ứ xe (dòng vào > dòng ra) theo giờ? | `net_flow`, `abs_imbalance` theo `Dim_Station` × `Dim_DateTime`                                      |
+| Khu vực / thành phố nào quá tải vào giờ cao điểm?                                                    | `trips_started`, `trips_ended` theo `Dim_City`, cờ `is_peak_hour`                                  |
+| Thời tiết, ngày lễ, giờ trong ngày ảnh hưởng nhu cầu ra sao?                                         | So sánh measure chuyến đi khi mưa / nắng, ngày lễ / ngày thường                                     |
+| Mùa đông / mùa hè cần ưu tiên cân bằng ở trạm nào?                                                   | Xu hướng `abs_imbalance` theo `season` trên `Dim_DateTime`                                           |
+| Thành viên (member) và khách vãng lai (casual) dùng xe khác nhau thế nào?                            | `member_trip_count` so với `casual_trip_count`                                                       |
+| Xe điện có được ưa chuộng hơn xe cơ theo giờ, trạm và thời tiết (ví dụ khi trời lạnh) không?        | `electric_trip_count`, `classic_trip_count` theo `Dim_Station` × `Dim_DateTime` × `Dim_WeatherCondition` |
+| Chicago và NYC khác nhau thế nào về nhu cầu, mức mất cân bằng và độ nhạy với thời tiết?              | `trips_started`, `abs_imbalance` theo `Dim_City` × `Dim_WeatherCondition`                           |
 
+
+`net_flow` và `abs_imbalance` phản ánh **chênh lệch dòng chuyến** (bắt đầu so với kết thúc tại trạm), không phải số xe đang có tại trạm. Tồn kho thời gian thực (`num_bikes_available` từ GBFS `station_status`) chưa nằm trong fact; do đó không dùng ngữ cảnh "thiếu/thừa xe" theo nghĩa tồn kho.
 
 Các nghiệp vụ trên đòi hỏi gom dữ liệu từ nhiều nguồn (trip CSV hai hệ thống, thời tiết NOAA, danh mục trạm GBFS) và cho phép drill-down từ thành phố xuống trạm, từ tuần xuống giờ. OLTP của nhà vận hành chỉ phục vụ giao dịch từng chuyến; không đủ cho báo cáo lịch sử đa nguồn như vậy.
 
@@ -400,16 +403,16 @@ Bảng master NDS dự kiến: `city`, `station`, `calendar_day`, `holiday`, `we
 ## 7. Fact và Dimension phục vụ nghiệp vụ
 
 
-| Nghiệp vụ (mục 2)        | Measure trên fact                           | Dimension                         | Ví dụ OLAP                                              |
-| ------------------------ | ------------------------------------------- | --------------------------------- | ------------------------------------------------------- |
-| Trạm thiếu xe            | `net_flow < 0`, `abs_imbalance`             | `Dim_Station`, `Dim_DateTime`     | TOP 10 trạm theo `abs_imbalance` tuần trước             |
-| Khu vực quá tải          | `trips_started`, `net_flow`                 | `Dim_City`, `is_peak_hour`        | SUM theo thành phố × giờ cao điểm                       |
-| Ảnh hưởng thời tiết      | `temperature`, `precipitation`, trip counts | `Dim_WeatherCondition`            | AVG `trips_started` giờ mưa vs nắng                     |
-| Ngày lễ / giờ cao điểm   | toàn bộ measure chuyến                      | `Dim_Holiday`, `Dim_DateTime`     | So sánh ngày lễ vs ngày thường cùng `hour`              |
-| Member vs casual         | `member_trip_count`, `casual_trip_count`    | `Dim_City`, `season`              | Tỷ lệ member theo tháng                                 |
-| Xe điện vs cơ            | `electric_trip_count`, `classic_trip_count` | `Dim_Station`                     | Cơ cấu nhu cầu theo trạm                                |
-| Lập kế hoạch mùa         | `trips_started` xu hướng                    | `Dim_DateTime.season`, `Dim_City` | Drill-down năm → quý → tháng theo thành phố             |
-| Đối chiếu Chicago vs NYC | các measure                                 | `Dim_City`                        | Pivot hai thành phố cùng `datetime_sk` (cùng tháng mẫu) |
+| Nghiệp vụ (mục 2)              | Measure trên fact                                              | Dimension                                              | Ví dụ OLAP                                                                 |
+| ------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Rút cạn / dồn ứ theo dòng chuyến | `net_flow`, `abs_imbalance`                                    | `Dim_Station`, `Dim_DateTime`                          | TOP 10 trạm theo `abs_imbalance` tuần trước; `net_flow < 0` = rút cạn     |
+| Khu vực quá tải                | `trips_started`, `net_flow`                                    | `Dim_City`, `is_peak_hour`                             | SUM theo thành phố × giờ cao điểm                                          |
+| Ảnh hưởng thời tiết            | `temperature`, `precipitation`, trip counts                    | `Dim_WeatherCondition`                                 | AVG `trips_started` giờ mưa vs nắng                                          |
+| Ngày lễ / giờ cao điểm         | toàn bộ measure chuyến                                         | `Dim_Holiday`, `Dim_DateTime`                          | So sánh ngày lễ vs ngày thường cùng `hour`                                  |
+| Member vs casual               | `member_trip_count`, `casual_trip_count`                       | `Dim_City`, `season`                                   | Tỷ lệ member theo tháng                                                    |
+| Xe điện vs cơ theo thời tiết   | `electric_trip_count`, `classic_trip_count`                    | `Dim_Station`, `Dim_DateTime`, `Dim_WeatherCondition`  | Tỷ lệ electric khi `temperature` thấp vs cao, theo trạm và giờ           |
+| Lập kế hoạch mùa               | `trips_started`, `abs_imbalance` xu hướng                      | `Dim_DateTime.season`, `Dim_City`                      | Drill-down năm → quý → tháng theo thành phố                                |
+| So sánh Chicago vs NYC         | `trips_started`, `abs_imbalance`                                 | `Dim_City`, `Dim_WeatherCondition`                     | Pivot hai thành phố: nhu cầu và mất cân bằng khi Clear vs Rain (cùng tháng mẫu) |
 
 
 Trưởng phòng Điều phối không cần join fact với fact: mọi KPI trên một bảng `Fact_StationHourBalance` đã gom trip, thời tiết số và khóa tới dimension ngày lễ / nhóm thời tiết.
