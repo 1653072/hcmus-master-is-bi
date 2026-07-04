@@ -93,7 +93,17 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 ## 3. Bắt đầu nhanh — tải dữ liệu
 
-**Windows:** cài [Git for Windows](https://git-scm.com/download/win), mở **Git Bash** trong `4_Official_Hop_Project/`. Cần trong PATH: `bash`, `curl`, `python` (hoặc `python3`), `unzip`. Makefile **không** dùng `chmod` — script luôn chạy qua `bash A_datasets/download_datasets.sh`.
+**Windows (CMD / PowerShell / Git Bash):**
+
+1. Cài [Git for Windows](https://git-scm.com/download/win) (có `bash`, `curl`, thường kèm `unzip`).
+2. Cài **Python** và thêm vào PATH.
+3. Cài **make** (Chocolatey: `choco install make`) nếu dùng `make datasets-full`.
+
+**Lỗi thường gặp trên CMD:** `WSL execvpe(/bin/bash) failed` — Windows đang gọi `bash.exe` stub của WSL thay vì Git Bash.
+
+- **Cách 1 (khuyên dùng):** mở terminal **Git Bash** (không dùng CMD), rồi `make datasets-full`.
+- **Cách 2:** Settings → Apps → **App execution aliases** → tắt `bash.exe` và `wsl.exe`.
+- **Cách 3:** Makefile đã ưu tiên `C:\Program Files\Git\bin\bash.exe` — pull bản mới và chạy lại trong CMD.
 
 **Makefile** (chạy từ `4_Official_Hop_Project/`):
 

@@ -3,8 +3,9 @@
 #   make datasets-check
 #   make datasets-full
 #
-# Windows: cần Git for Windows (Git Bash) — bash, curl, python, unzip trong PATH.
-#   Không dùng chmod; script luôn gọi qua bash.
+# Windows (CMD / PowerShell): cần Git for Windows.
+#   Makefile ưu tiên "C:\Program Files\Git\bin\bash.exe" — tránh WSL stub (lỗi execvpe).
+#   Hoặc tắt App execution aliases: bash.exe, wsl.exe (Settings → Apps).
 
 SAMPLE_YEAR ?= 2026
 FROM        ?= 202601
@@ -13,11 +14,17 @@ TO          ?= 202605
 A_DATASETS      := A_datasets
 DOWNLOAD_SCRIPT := $(A_DATASETS)/download_datasets.sh
 
-# Git Bash trên Windows; bash trên macOS/Linux
+# Windows: dùng Git Bash thật, không dùng bash.exe stub của WSL
 ifeq ($(OS),Windows_NT)
-  BASH ?= bash
+  ifneq (,$(wildcard C:/Program Files/Git/bin/bash.exe))
+    BASH := C:/Program Files/Git/bin/bash.exe
+  else ifneq (,$(wildcard C:/Program Files (x86)/Git/bin/bash.exe))
+    BASH := C:/Program Files (x86)/Git/bin/bash.exe
+  else
+    BASH := bash
+  endif
 else
-  BASH ?= bash
+  BASH := bash
 endif
 
 RUN_DOWNLOAD = "$(BASH)" "$(DOWNLOAD_SCRIPT)"
@@ -38,8 +45,10 @@ help:
 	@echo "  make datasets-noaa       Chi NOAA LCD v2 (+ loc 01-05)"
 	@echo "  make datasets-status     manifest.json + dung luong A*"
 	@echo ""
-	@echo "Windows: Git Bash + curl + python + unzip (Git for Windows)"
-	@echo "Biến: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
+	@echo "Windows (CMD/PowerShell): Git for Windows + make"
+	@echo "  Neu loi WSL execvpe: cai Git, hoac tat alias bash.exe trong Settings"
+	@echo "  Hoac mo Git Bash thay vi CMD"
+	@echo "Bien: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
 
 datasets-check:
 	$(RUN_DOWNLOAD) --urls-only --from $(FROM) --to $(TO)
