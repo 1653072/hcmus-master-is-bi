@@ -12,7 +12,7 @@
 #   bash download_datasets.sh --extract
 #   bash download_datasets.sh --gbfs
 #   bash download_datasets.sh --urls-only
-#   bash download_datasets.sh --from 202603 --to 202604
+#   bash download_datasets.sh --extract --gbfs --force   # ghi de zip/csv/json
 #
 # Biến môi trường:
 #   SAMPLE_YEAR=2026
@@ -45,6 +45,7 @@ EXTRACT=false
 GBFS=false
 URLS_ONLY=false
 NOAA_ONLY=false
+FORCE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -52,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     --gbfs) GBFS=true; shift ;;
     --urls-only) URLS_ONLY=true; shift ;;
     --noaa-only) NOAA_ONLY=true; shift ;;
+    --force) FORCE=true; shift ;;
     --from) FROM_YM="$(strip_cr "$2")"; shift 2 ;;
     --to) TO_YM="$(strip_cr "$2")"; shift 2 ;;
     -h|--help)
@@ -185,9 +187,43 @@ PY
 }
 
 require_cmd curl
-if $EXTRACT && ! $URLS_ONLY; then
-  require_cmd unzip
-fi
+
+zip_valid() {
+  local f="$1"
+  [[ -f "$f" ]] || return 1
+  run_python - "$f" <<'PY'
+import sys, zipfile
+try:
+    sys.exit(0 if zipfile.is_zipfile(sys.argv[1]) else 1)
+except OSError:
+    sys.exit(1)
+PY
+}
+
+extract_zip() {
+  local zip_path="$1" out_dir="$2" label="$3"
+  zip_path="$(strip_cr "$zip_path")"
+  out_dir="$(strip_cr "$out_dir")"
+  if ! zip_valid "$zip_path"; then
+    printf '[error] ZIP khong hop le (co the tai do): %s\n' "$zip_path" >&2
+    printf '        Xoa file va chay lai: make datasets-full\n' >&2
+    exit 1
+  fi
+  if $FORCE && [[ -d "$out_dir" ]]; then
+    rm -rf "$out_dir"
+  fi
+  mkdir -p "$out_dir"
+  printf '[unzip] %s -> %s\n' "$label" "$out_dir"
+  run_python - "$zip_path" "$out_dir" <<'PY'
+import sys, zipfile
+from pathlib import Path
+zp = Path(sys.argv[1])
+out = Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(zp) as zf:
+    zf.extractall(out)
+PY
+}
 
 NOAA_BASE="https://www.ncei.noaa.gov/oa/local-climatological-data/v2/access/${SAMPLE_YEAR}"
 NOAA_CHI_ID="USW00014819"
@@ -236,12 +272,22 @@ download() {
     return 0
   fi
   if [[ -f "$dest" ]]; then
-    printf '[skip] Da co: %s\n' "$dest"
-    return 0
+    if $FORCE; then
+      printf '[overwrite] %s\n' "$dest"
+      rm -f "$dest" "${dest}.part"
+    elif [[ "$dest" == *.zip ]] && ! zip_valid "$dest"; then
+      printf '[warn] ZIP hong/thieu, tai lai: %s\n' "$dest"
+      rm -f "$dest" "${dest}.part"
+    else
+      printf '[skip] Da co: %s\n' "$dest"
+      return 0
+    fi
   fi
   printf '[get]  %s\n' "$url"
   printf '       -> %s\n' "$dest"
-  curl -fL --retry 3 --continue-at - -o "$dest" "$url"
+  mkdir -p "$(dirname "$dest")"
+  rm -f "${dest}.part"
+  curl -fL --retry 3 -o "$dest" "$url"
 }
 
 filter_noaa_jan_may() {
@@ -255,6 +301,13 @@ filter_noaa_jan_may() {
   if [[ ! -f "$src" ]]; then
     echo "[error] Thieu file NOAA bulk: $src" >&2
     exit 1
+  fi
+  if [[ -f "$dest" ]] && ! $FORCE; then
+    printf '[skip] Da co: %s\n' "$dest"
+    return 0
+  fi
+  if [[ -f "$dest" ]] && $FORCE; then
+    printf '[overwrite] %s\n' "$dest"
   fi
   echo "[filter] ${year}-01 .. ${year}-05 -> $dest"
   SRC="$src" DEST="$dest" YEAR="$year" run_python - <<'PY'
@@ -296,13 +349,8 @@ while IFS= read -r ym || [[ -n "${ym:-}" ]]; do
   TRIP_FILES+=("$ym")
 
   if $EXTRACT && ! $URLS_ONLY; then
-    divvy_out="${DIVVY_DIR}/extracted/${ym}"
-    citi_out="${CITI_DIR}/extracted/${ym}"
-    mkdir -p "$divvy_out" "$citi_out"
-    echo "[unzip] Divvy $ym"
-    unzip -o -q "$divvy_zip" -d "$divvy_out"
-    echo "[unzip] Citi Bike $ym"
-    unzip -o -q "$citi_zip" -d "$citi_out"
+    extract_zip "$divvy_zip" "${DIVVY_DIR}/extracted/${ym}" "Divvy ${ym}"
+    extract_zip "$citi_zip" "${CITI_DIR}/extracted/${ym}" "Citi Bike ${ym}"
   fi
 done < <(month_range "$FROM_YM" "$TO_YM")
 fi

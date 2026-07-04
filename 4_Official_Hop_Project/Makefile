@@ -39,7 +39,7 @@ help:
 	@echo ""
 	@echo "  make datasets-check      Kiem tra HTTP URL (khong tai)"
 	@echo "  make datasets-download   Trip + NOAA v2 (01-05/2026)"
-	@echo "  make datasets-full       Full pack: trip + NOAA + --extract + --gbfs"
+	@echo "  make datasets-full       Full pack: trip + NOAA + --extract + --gbfs + --force"
 	@echo "  make datasets-extract    Trip + NOAA + giai nen ZIP"
 	@echo "  make datasets-gbfs       Trip + NOAA + GBFS station_information"
 	@echo "  make datasets-noaa       Chi NOAA LCD v2 (+ loc 01-05)"
@@ -57,7 +57,7 @@ datasets-download:
 	$(RUN_DOWNLOAD) --from $(FROM) --to $(TO)
 
 datasets-full:
-	$(RUN_DOWNLOAD) --from $(FROM) --to $(TO) --extract --gbfs
+	$(RUN_DOWNLOAD) --from $(FROM) --to $(TO) --extract --gbfs --force
 
 datasets-extract:
 	$(RUN_DOWNLOAD) --from $(FROM) --to $(TO) --extract

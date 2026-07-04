@@ -95,7 +95,7 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 **Windows (CMD / PowerShell / Git Bash):**
 
-1. Cài [Git for Windows](https://git-scm.com/download/win) (có `bash`, `curl`, thường kèm `unzip`).
+1. Cài [Git for Windows](https://git-scm.com/download/win) (có `bash`, `curl`).
 2. Cài **Python 3.8+** từ [python.org](https://www.python.org/downloads/) — tick **Add python.exe to PATH**. Kiểm tra: `py -3 --version` hoặc `python --version`.
 3. Cài **make** (Chocolatey: `choco install make`) nếu dùng `make datasets-full`.
 
@@ -105,7 +105,8 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 |-----|------------|
 | `WSL execvpe(/bin/bash) failed` | Cài Git for Windows; tắt alias `bash.exe` trong Settings → App execution aliases; hoặc mở **Git Bash** |
 | `syntax error near unexpected token 'from'` | Pull bản mới (script tự sửa CRLF); hoặc `sed -i 's/\r$//' A_datasets/download_datasets.sh` |
-| `Python was not found` / `Microsoft Store` | Cài [Python 3](https://www.python.org/downloads/) (tick **Add to PATH**); tắt alias `python.exe` / `python3.exe` trong App execution aliases; thử `py -3 --version` |
+| `Python was not found` / `Microsoft Store` | Cài [Python 3](https://www.python.org/downloads/) (tick **Add to PATH**); tắt alias `python.exe` / `python3.exe`; thử `py -3 --version` |
+| `End-of-central-directory signature not found` / ZIP hỏng | Pull bản mới; `make datasets-full` tự `--force` tải lại ZIP; hoặc xóa file `.zip` lỗi rồi chạy lại |
 
 **Makefile** (chạy từ `4_Official_Hop_Project/`):
 
@@ -114,7 +115,7 @@ cd 4_Official_Hop_Project
 
 make help                 # danh sách target
 make datasets-check       # validate HTTP URL
-make datasets-full        # full pack 01–05/2026: trip + NOAA + extract + GBFS
+make datasets-full        # full pack + ghi đè zip/csv/json + giải nén (Python)
 make datasets-status      # manifest + dung lượng từng folder
 ```
 
