@@ -42,3 +42,9 @@ hop-check.txt
 # Ignore OS specific files
 .DS_Store
 Thumbs.db
+
+# Official Hop Project — raw datasets (tải lại bằng datasets/download_datasets.sh)
+4_Official_Hop_Project/datasets/raw/**
+!4_Official_Hop_Project/datasets/raw/**/
+!4_Official_Hop_Project/datasets/raw/**/.gitkeep
+4_Official_Hop_Project/datasets/manifest.json

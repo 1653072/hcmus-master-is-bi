@@ -1,53 +1,74 @@
-# Đề tài chính thức: Phân tích điều phối và nhu cầu hệ thống xe đạp chia sẻ
+# Đề tài chính thức: Xây dựng Data Warehouse phân tích dữ liệu để lập kế hoạch điều phối hệ thống xe đạp công cộng tại thành phố Chicago và New York
 
-**Trạng thái:** Chính thức  
+**Trạng thái:** Chính thức (đã gửi giảng viên review)  
 **Lược đồ DDS:** Star schema (một fact)  
 **Phạm vi:** Chicago (Divvy) + New York (Citi Bike)  
-**Cập nhật:** 2026-06-30  
+**Nhóm:** 8 — 25C12001 Đào Thị Xuân Hiếu, 25C12009 Trương Kim Nguyên, 25C12010 Trần Kiến Quốc, 25C12025 Nguyễn Thiên Huy  
+**Bản PDF đăng ký:** [official_topic_for_report.pdf](official_topic_for_report.pdf)  
+**Cập nhật:** 2026-07-04  
 
 **Tài liệu liên quan:** [topic_exploration_v2.md](topic_exploration_v2.md) (khám phá và validate dataset), [2_Guidelines/README.md](../2_Guidelines/README.md) (yêu cầu môn học).
+
+> File markdown này đồng bộ nội dung với bản PDF đã nộp. Các mục 3–4 bổ sung chi tiết kỹ thuật triển khai (Fact Type, kiến trúc ETL, GBFS, control/metadata) không có trong PDF.
 
 ---
 
 ## Mục lục
 
-1. [Vai trò quản lý là gì?](#1-vai-trò-quản-lý-là-gì)
-2. [Chức năng nghiệp vụ của vai trò](#2-chức-năng-nghiệp-vụ-của-vai-trò)
+1. [Người dùng cuối và vai trò quản lý](#1-người-dùng-cuối-và-vai-trò-quản-lý)
+2. [Vấn đề chính và câu hỏi nghiệp vụ](#2-vấn-đề-chính-và-câu-hỏi-nghiệp-vụ)
 3. [Sử dụng lược đồ gì?](#3-sử-dụng-lược-đồ-gì)
 4. [Kiến trúc Data Warehouse dự kiến](#4-kiến-trúc-data-warehouse-dự-kiến) (gồm [lịch chạy Staging Pull](#lịch-chạy-staging-etl-pull))
 5. [Dataset sử dụng](#5-dataset-sử-dụng)
-6. [Bảng Fact và Dimension dự kiến](#6-bảng-fact-và-dimension-dự-kiến) (gồm [sơ đồ Star](#64-sơ-đồ-star), [SCD `Dim_Station](#63-dimension-tables-và-scd)`)
+6. [Bảng Fact và Dimension dự kiến](#6-bảng-fact-và-dimension-dự-kiến) (gồm [sơ đồ Star](#64-sơ-đồ-star), [SCD `Dim_Station`](#63-dimension-tables-và-scd))
 7. [Fact và Dimension phục vụ nghiệp vụ](#7-fact-và-dimension-phục-vụ-nghiệp-vụ)
 
 ---
 
-## 1. Vai trò quản lý là gì?
+## 1. Người dùng cuối và vai trò quản lý
 
-**Trưởng phòng Điều phối Xe đạp công cộng** (Head of Shared Bike Fleet Dispatch).
+**Người dùng cuối:** Trưởng phòng lập kế hoạch điều phối xe đạp công cộng.
 
-Đây là vai trò quản lý cấp cao duy nhất sử dụng kho dữ liệu hàng ngày để ra quyết định cân bằng đội xe giữa các trạm và so sánh hai thị trường Chicago và New York. Người này không vận hành trực tiếp từng chuyến đi trên app, mà cần bức tranh tổng hợp theo giờ, theo trạm và theo thành phố để lập kế hoạch tuần, xác định trạm cần bổ sung hoặc thu hồi xe, và dự báo nhu cầu theo mùa.
+**Vấn đề chính:** giải quyết câu chuyện điều phối xe giữa các trạm.
+
+Hằng ngày, Trưởng phòng điều phối xe đạp công cộng chịu trách nhiệm đảm bảo lượng xe được phân bổ hợp lý giữa các trạm tại Chicago và New York nhằm đáp ứng nhu cầu sử dụng của người dân. Người quản lý không theo dõi từng chuyến đi riêng lẻ mà cần quan sát bức tranh tổng thể về tình trạng khai thác hệ thống để đưa ra quyết định điều phối.
+
+Vào đầu mỗi ngày làm việc, người quản lý xem các báo cáo tổng hợp về số lượt thuê và trả xe theo giờ, theo trạm và theo thành phố nhằm xác định các trạm thường xuyên hết xe hoặc đầy xe trong ngày hôm trước. Từ đó, người quản lý lập kế hoạch điều chuyển xe giữa các trạm và bố trí nhân viên vận chuyển phù hợp.
+
+Trong quá trình lập kế hoạch tuần, người quản lý thường xuyên phân tích xu hướng sử dụng xe theo ngày trong tuần, theo mùa và theo khu vực để dự báo nhu cầu sắp tới. Ví dụ, nếu một số trạm thường thiếu xe vào giờ cao điểm buổi sáng hoặc các trạm thường có nhu cầu tăng mạnh vào cuối tuần, người quản lý sẽ chủ động điều chỉnh lượng xe được phân bổ trước khi tình trạng quá tải xảy ra.
+
+Bên cạnh việc tối ưu hoạt động trong từng thành phố, người quản lý còn cần so sánh hiệu quả vận hành giữa Chicago và New York, chẳng hạn như tổng số chuyến đi, tỷ lệ sử dụng xe, mức độ mất cân bằng giữa các trạm và xu hướng tăng trưởng theo từng giai đoạn. Các kết quả này được sử dụng để đánh giá hiệu quả vận hành và xây dựng kế hoạch phát triển hệ thống.
 
 ---
 
-## 2. Chức năng nghiệp vụ của vai trò
+## 2. Vấn đề chính và câu hỏi nghiệp vụ
 
-Mỗi tuần, Trưởng phòng Điều phối cần trả lời các câu hỏi sau:
-
-
-| Câu hỏi nghiệp vụ                                                                                    | Hướng phân tích                                                                                      |
-| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Trạm nào có xu hướng bị rút cạn xe (dòng ra > dòng vào) hay dồn ứ xe (dòng vào > dòng ra) theo giờ? | `net_flow`, `abs_imbalance` theo `Dim_Station` × `Dim_DateTime`                                      |
-| Khu vực / thành phố nào quá tải vào giờ cao điểm?                                                    | `trips_started`, `trips_ended` theo `Dim_City`, cờ `is_peak_hour`                                  |
-| Thời tiết, ngày lễ, giờ trong ngày ảnh hưởng nhu cầu ra sao?                                         | So sánh measure chuyến đi khi mưa / nắng, ngày lễ / ngày thường                                     |
-| Mùa đông / mùa hè cần ưu tiên cân bằng ở trạm nào?                                                   | Xu hướng `abs_imbalance` theo `season` trên `Dim_DateTime`                                           |
-| Thành viên (member) và khách vãng lai (casual) dùng xe khác nhau thế nào?                            | `member_trip_count` so với `casual_trip_count`                                                       |
-| Xe điện có được ưa chuộng hơn xe cơ theo giờ, trạm và thời tiết (ví dụ khi trời lạnh) không?        | `electric_trip_count`, `classic_trip_count` theo `Dim_Station` × `Dim_DateTime` × `Dim_WeatherCondition` |
-| Chicago và NYC khác nhau thế nào về nhu cầu, mức mất cân bằng và độ nhạy với thời tiết?              | `trips_started`, `abs_imbalance` theo `Dim_City` × `Dim_WeatherCondition`                           |
+Bảng dưới đây khớp với bản đăng ký đề tài ([official_topic_for_report.pdf](official_topic_for_report.pdf)).
 
 
-`net_flow` và `abs_imbalance` phản ánh **chênh lệch dòng chuyến** (bắt đầu so với kết thúc tại trạm), không phải số xe đang có tại trạm. Tồn kho thời gian thực (`num_bikes_available` từ GBFS `station_status`) chưa nằm trong fact; do đó không dùng ngữ cảnh "thiếu/thừa xe" theo nghĩa tồn kho.
+| Câu hỏi nghiệp vụ | Hướng phân tích |
+| ----------------- | --------------- |
+| Trạm nào có xu hướng bị rút cạn xe (dòng ra > dòng vào) hay bị dồn ứ xe (dòng vào > dòng ra) theo khung giờ? Và có sự khác biệt giữa Chicago và NYC không? | `net_flow`, `abs_imbalance` theo `Dim_Station` × `Dim_DateTime`, `is_peak_hour`, `trips_started`, `trips_ended` |
+| Tại mỗi thành phố, thời tiết, giờ trong ngày ảnh hưởng nhu cầu ra sao? | So sánh measure chuyến đi khi mưa / nắng, cuối tuần / ngày thường |
+| Mùa đông / mùa hè cần ưu tiên cân bằng ở trạm nào? Xu hướng này có giống nhau giữa 2 thành phố không? | Xu hướng `abs_imbalance` theo `season` trên `Dim_DateTime` |
+| Thành viên (member) và khách vãng lai (casual) dùng xe khác nhau thế nào? | `member_trip_count` so với `casual_trip_count` |
+| Xe điện và xe cơ chiếm tỷ trọng bao nhiêu từng trạm? Có khác biệt giữa Chicago và NYC không? | `electric_trip_count`, `classic_trip_count` |
+| Nhìn tổng thể, thành phố nào (Chicago hay NYC) có mức độ mất cân bằng vận hành nghiêm trọng hơn, và nhạy cảm với thời tiết hơn? | Xem [KPI so sánh thành phố](#kpi-so-sánh-thành-phố) bên dưới |
 
-Các nghiệp vụ trên đòi hỏi gom dữ liệu từ nhiều nguồn (trip CSV hai hệ thống, thời tiết NOAA, danh mục trạm GBFS) và cho phép drill-down từ thành phố xuống trạm, từ tuần xuống giờ. OLTP của nhà vận hành chỉ phục vụ giao dịch từng chuyến; không đủ cho báo cáo lịch sử đa nguồn như vậy.
+`net_flow` và `abs_imbalance` phản ánh **chênh lệch dòng chuyến** (bắt đầu so với kết thúc tại trạm), không phải số xe đang có tại trạm. Trong báo cáo hàng ngày, người quản lý dùng các chỉ số này để suy ra trạm có xu hướng hết xe hoặc đầy xe; tồn kho thời gian thực (`num_bikes_available` từ GBFS) chưa nằm trong fact.
+
+#### KPI so sánh thành phố
+
+Hai chỉ số derived tính từ `Fact_StationHourBalance` (không lưu thêm cột trên fact):
+
+| KPI | Công thức |
+| --- | --------- |
+| `City_Imbalance_Score` | `AVG(abs_imbalance) GROUP BY city_sk` |
+| `Weather_Sensitivity_Score(city)` | `[AVG(trips_started \| Nắng) − AVG(trips_started \| Mưa/Tuyết)] ÷ AVG(trips_started \| Nắng) × 100%` |
+
+Nắng / Mưa/Tuyết map qua `Dim_WeatherCondition.weather_category` (Clear vs Rain/Snow).
+
+Các nghiệp vụ trên đòi hỏi gom dữ liệu từ nhiều nguồn (trip CSV hai hệ thống, thời tiết NOAA) và cho phép drill-down từ thành phố xuống trạm, từ tuần xuống giờ. OLTP của nhà vận hành chỉ phục vụ giao dịch từng chuyến; không đủ cho báo cáo lịch sử đa nguồn như vậy.
 
 ---
 
@@ -55,7 +76,7 @@ Các nghiệp vụ trên đòi hỏi gom dữ liệu từ nhiều nguồn (trip 
 
 ### 3.1. Lựa chọn: Star schema
 
-DDS dùng **Star schema** với **một** bảng fact trung tâm: `Fact_StationHourBalance`, bao quanh bởi năm bảng dimension. Trip chi tiết được gom trong ETL/NDS; DDS chỉ giữ snapshot theo giờ tại trạm phục vụ OLAP.
+DDS dùng **Star schema** với **một** bảng fact trung tâm: `Fact_StationHourBalance`, bao quanh bởi năm bảng dimension. Trip chi tiết được gom trong ETL/NDS; DDS chỉ giữ snapshot theo giờ tại trạm phục vụ OLAP và Power BI Dashboard.
 
 ### 3.2. Fact Type
 
@@ -113,8 +134,6 @@ flowchart LR
   STG --> NDS --> DDS
   LOG -.-> STG
 ```
-
-
 
 #### Lịch chạy Staging ETL (Pull)
 
@@ -242,7 +261,14 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 
 ## 5. Dataset sử dụng
 
-Đề tài dùng **ba nguồn dữ liệu chính** (đủ điều kiện môn học) cộng **GBFS** làm master Push. Cả ba nguồn chính đã được kiểm tra tải xuống (2026-06-28).
+Bản đăng ký PDF liệt kê **ba nguồn chính** (đủ điều kiện môn học). GBFS bổ sung cho master trạm khi triển khai ETL (mục 4.3, 5.4).
+
+
+| STT | Tên bộ dữ liệu | Mô tả |
+| --- | -------------- | ----- |
+| 1 | Divvy Trip Data | Giao dịch chuyến đi tại Chicago gồm các field: `ride_id`, `started_at`, `ended_at`, `start_station_id`, `end_station_id`, `member_casual`, `rideable_type` |
+| 2 | Citi Bike Trip Histories | Giao dịch chuyến đi tại New York gồm các field: Ride ID, Rideable type, Started at, Ended at, Start station name, Start station ID, End station name, End station ID, Start latitude, Start longitude, End latitude, End Longitude, Member or casual ride |
+| 3 | NOAA NCEI Local Climatological Data (LCD) | Dữ liệu thời tiết (pull theo giờ): `HourlyDryBulbTemperature`, `HourlyPrecipitation`, `HourlyWindSpeed` |
 
 ### 5.1. Divvy Trip Data (Chicago)
 
@@ -252,7 +278,6 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 | Vai trò      | Giao dịch chuyến đi (Pull)                                                                                                                        |
 | Định dạng    | CSV trong ZIP theo tháng                                                                                                                          |
 | Tải về       | [divvybikes.com/system-data](https://divvybikes.com/system-data) → `https://divvy-tripdata.s3.amazonaws.com/` (ví dụ `202406-divvy-tripdata.zip`) |
-| Trường chính | `ride_id`, `started_at`, `ended_at`, `start_station_id`, `end_station_id`, `member_casual`, `rideable_type`, lat/lng                              |
 | Grain nguồn  | Một dòng một chuyến đi                                                                                                                            |
 | Độ bẩn / ETL | Một số dòng dockless để trống tên trạm; schema đổi theo năm; cần chuẩn hóa timezone Chicago                                                       |
 
@@ -265,7 +290,6 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 | Vai trò      | Giao dịch chuyến đi (Pull), hệ thống thứ hai cho đa thành phố                                                                                    |
 | Định dạng    | CSV trong ZIP theo tháng (file lớn, có thể tách nhiều CSV trong một ZIP)                                                                         |
 | Tải về       | [citibikenyc.com/system-data](https://citibikenyc.com/system-data) → `https://s3.amazonaws.com/tripdata/` (ví dụ `202406-citibike-tripdata.zip`) |
-| Trường chính | Tương tự Divvy; tên cột có thể khác theo năm                                                                                                     |
 | Grain nguồn  | Một dòng một chuyến đi                                                                                                                           |
 | Độ bẩn / ETL | `station_id` **không** dùng chung với Divvy; join xuyên thành phố chỉ qua `Dim_City`, không qua `station_id`                                     |
 
@@ -280,16 +304,15 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 | Tải về         | [ncei.noaa.gov/data/local-climatological-data/access/](https://www.ncei.noaa.gov/data/local-climatological-data/access/) |
 | Trạm Chicago   | File `72534014819.csv` (CHICAGO MIDWAY AIRPORT, IL US)                                                                   |
 | Trạm New York  | File `72505394728.csv` (NY CITY CENTRAL PARK, NY US)                                                                     |
-| Trường map ETL | `HourlyDryBulbTemperature`, `HourlyPrecipitation`, `HourlyWindSpeed` (tên cột trong file LCD)                            |
 | Khóa join      | `city_code` + `date_hour` (cắt `started_at`/`ended_at` về giờ, timezone theo thành phố)                                  |
 
 
-### 5.4. GBFS (master, Push)
+### 5.4. GBFS (master, Push — bổ sung triển khai)
 
 
 | Hạng mục   | Chi tiết                                                                    |
 | ---------- | --------------------------------------------------------------------------- |
-| Vai trò    | Master trạm (`Dim_Station`), không tính là nguồn giao dịch thứ tư           |
+| Vai trò    | Master trạm (`Dim_Station`); không liệt kê trong bảng dataset PDF đăng ký   |
 | Feed chính | `station_information.json`; tùy chọn `station_status.json` cho KPI vận hành |
 | Liên kết   | Trang system-data của Divvy và Citi Bike                                    |
 | Khóa join  | `city_sk` + `source_station_id` (mã trạm trong từng hệ thống)               |
@@ -312,9 +335,11 @@ Lịch Pull hàng ngày lúc **00:00 GMT+7** (mục 4.1) tạo cửa sổ increm
 
 ## 6. Bảng Fact và Dimension dự kiến
 
+Bảng `Fact_StationHourBalance` lưu trữ dữ liệu tổng hợp theo **City × Station × Hour**, phản ánh trạng thái cân bằng xe tại từng trạm trong từng giờ. Bảng chứa các measure phục vụ phân tích nhu cầu sử dụng, cân bằng đội xe, hành vi người dùng và tác động của thời tiết, đồng thời là bảng fact chính cho OLAP và Power BI Dashboard.
+
 ### 6.1. Fact grain
 
-**Fact grain:** Mỗi dòng trong `Fact_StationHourBalance` đại diện cho đúng một tổ hợp **một thành phố × một trạm × một giờ lịch** (calendar hour, timezone theo thành phố), và chứa các measure tổng hợp mọi chuyến đi có `started_at` hoặc `ended_at` rơi vào giờ đó tại trạm tương ứng.
+**Fact grain:** City × Station × Hour (một thành phố × một trạm × một giờ lịch, timezone theo thành phố). Mỗi dòng chứa các measure tổng hợp mọi chuyến đi có `started_at` hoặc `ended_at` rơi vào giờ đó tại trạm tương ứng.
 
 
 | Khóa         | Mô tả                                                                        |
@@ -392,8 +417,6 @@ erDiagram
   Fact_StationHourBalance ||--o{ Dim_WeatherCondition : weather_condition_sk
 ```
 
-
-
 ### 6.5. NDS logic (tham chiếu, chưa DDL đầy đủ)
 
 Bảng master NDS dự kiến: `city`, `station`, `calendar_day`, `holiday`, `weather_observation`. Bảng transaction: `trip` (chi tiết chuyến). ETL aggregate từ `trip` + `weather_observation` sang fact DDS.
@@ -402,18 +425,17 @@ Bảng master NDS dự kiến: `city`, `station`, `calendar_day`, `holiday`, `we
 
 ## 7. Fact và Dimension phục vụ nghiệp vụ
 
+Ma trận dưới đây ánh xạ [6 câu hỏi nghiệp vụ mục 2](#2-vấn-đề-chính-và-câu-hỏi-nghiệp-vụ) sang fact/dimension.
 
-| Nghiệp vụ (mục 2)              | Measure trên fact                                              | Dimension                                              | Ví dụ OLAP                                                                 |
-| ------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Rút cạn / dồn ứ theo dòng chuyến | `net_flow`, `abs_imbalance`                                    | `Dim_Station`, `Dim_DateTime`                          | TOP 10 trạm theo `abs_imbalance` tuần trước; `net_flow < 0` = rút cạn     |
-| Khu vực quá tải                | `trips_started`, `net_flow`                                    | `Dim_City`, `is_peak_hour`                             | SUM theo thành phố × giờ cao điểm                                          |
-| Ảnh hưởng thời tiết            | `temperature`, `precipitation`, trip counts                    | `Dim_WeatherCondition`                                 | AVG `trips_started` giờ mưa vs nắng                                          |
-| Ngày lễ / giờ cao điểm         | toàn bộ measure chuyến                                         | `Dim_Holiday`, `Dim_DateTime`                          | So sánh ngày lễ vs ngày thường cùng `hour`                                  |
-| Member vs casual               | `member_trip_count`, `casual_trip_count`                       | `Dim_City`, `season`                                   | Tỷ lệ member theo tháng                                                    |
-| Xe điện vs cơ theo thời tiết   | `electric_trip_count`, `classic_trip_count`                    | `Dim_Station`, `Dim_DateTime`, `Dim_WeatherCondition`  | Tỷ lệ electric khi `temperature` thấp vs cao, theo trạm và giờ           |
-| Lập kế hoạch mùa               | `trips_started`, `abs_imbalance` xu hướng                      | `Dim_DateTime.season`, `Dim_City`                      | Drill-down năm → quý → tháng theo thành phố                                |
-| So sánh Chicago vs NYC         | `trips_started`, `abs_imbalance`                                 | `Dim_City`, `Dim_WeatherCondition`                     | Pivot hai thành phố: nhu cầu và mất cân bằng khi Clear vs Rain (cùng tháng mẫu) |
 
+| Nghiệp vụ (mục 2) | Measure / KPI | Dimension | Ví dụ OLAP |
+| ----------------- | ------------- | --------- | ---------- |
+| Rút cạn / dồn ứ theo khung giờ; so sánh Chicago vs NYC | `net_flow`, `abs_imbalance`, `trips_started`, `trips_ended` | `Dim_Station`, `Dim_DateTime`, `Dim_City`, `is_peak_hour` | TOP trạm theo `abs_imbalance`; pivot hai thành phố cùng giờ cao điểm |
+| Thời tiết và giờ trong ngày (theo từng thành phố) | `trips_started`, trip counts | `Dim_City`, `Dim_WeatherCondition`, `Dim_DateTime` (`is_weekend`) | AVG `trips_started` giờ mưa vs nắng; cuối tuần vs ngày thường |
+| Cân bằng theo mùa; so sánh 2 thành phố | `abs_imbalance` xu hướng | `Dim_DateTime.season`, `Dim_City`, `Dim_Station` | Drill-down mùa → trạm; so Chicago vs NYC cùng `season` |
+| Member vs casual | `member_trip_count`, `casual_trip_count` | `Dim_City`, `Dim_DateTime` | Tỷ lệ member theo tháng, theo thành phố |
+| Xe điện vs cơ; khác biệt Chicago vs NYC | `electric_trip_count`, `classic_trip_count` | `Dim_Station`, `Dim_City` | Tỷ lệ electric theo trạm; pivot hai thành phố |
+| Mất cân bằng và nhạy thời tiết giữa hai thành phố | `City_Imbalance_Score`, `Weather_Sensitivity_Score` | `Dim_City`, `Dim_WeatherCondition` | Bảng xếp hạng thành phố theo `AVG(abs_imbalance)` và % chênh lệch nhu cầu mưa vs nắng |
 
 Trưởng phòng Điều phối không cần join fact với fact: mọi KPI trên một bảng `Fact_StationHourBalance` đã gom trip, thời tiết số và khóa tới dimension ngày lễ / nhóm thời tiết.
 
@@ -424,10 +446,11 @@ Trưởng phòng Điều phối không cần join fact với fact: mọi KPI tr�
 
 | Hạng mục          | Quyết định                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------- |
-| Đề tài            | Category 2: Điều phối xe đạp chia sẻ đa thành phố                                     |
+| Đề tài            | Xây dựng DW lập kế hoạch điều phối xe đạp công cộng Chicago + NYC                     |
 | Lược đồ DDS       | Star schema, một fact                                                                 |
-| Fact              | `Fact_StationHourBalance`, Periodic Snapshot                                          |
+| Fact              | `Fact_StationHourBalance`, Periodic Snapshot, grain City × Station × Hour             |
 | Phạm vi địa lý    | Chicago (Divvy) + NYC (Citi Bike)                                                     |
+| Dataset đăng ký   | Divvy, Citi Bike, NOAA LCD ([PDF](official_topic_for_report.pdf))                     |
 | ETL               | GBFS Push (MDM) + trip/NOAA Pull (LSET/CET); Pull Staging **00:00 GMT+7** (17:00 UTC) |
 | Tháng mẫu đề xuất | `2024-06` (cả hai thành phố)                                                          |
 | Khám phá trước đó | [topic_exploration_v2.md](topic_exploration_v2.md)                                    |
@@ -435,4 +458,4 @@ Trưởng phòng Điều phối không cần join fact với fact: mọi KPI tr�
 
 ---
 
-*HCMUS Master IS, Advanced Business Intelligence. Tài liệu đề tài chính thức.*
+*HCMUS Master IS, Advanced Business Intelligence — Nhóm 8. Tài liệu đề tài chính thức.*
