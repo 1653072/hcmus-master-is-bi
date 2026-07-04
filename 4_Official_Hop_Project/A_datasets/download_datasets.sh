@@ -2,7 +2,10 @@
 # Tải raw datasets: Divvy, Citi Bike, NOAA LCD v2 (Chicago + NYC).
 # Mặc định: 202601–202605 (01–05/2026) theo official_topic.md
 #
-# Hỗ trợ: macOS, Linux, Windows (Git Bash / WSL — cần curl, python, unzip trong PATH)
+# Hỗ trợ: macOS, Linux, Windows (Git Bash — cần curl, Python 3.8+, unzip khi --extract)
+#
+# Windows: cài Python từ https://www.python.org/downloads/ (tick "Add to PATH").
+#   Hoặc dùng launcher: py -3. Tắt alias python.exe trong App execution aliases nếu chỉ thấy Microsoft Store stub.
 #
 # Usage:
 #   bash download_datasets.sh                    # hoặc ./download_datasets.sh (Unix)
@@ -56,18 +59,70 @@ done
 
 # --- Portable helpers (macOS / Linux / Git Bash on Windows) ---
 
-resolve_python() {
-  if command -v python3 >/dev/null 2>&1; then
-    echo python3
-  elif command -v python >/dev/null 2>&1; then
-    echo python
-  else
-    echo "[error] Cần python3 hoặc python trong PATH." >&2
-    exit 1
-  fi
+# Mảng lệnh Python đã xác minh, vd: (python3) hoặc (py -3)
+RUN_PYTHON=()
+
+python_works() {
+  local out
+  out=$("$@" -c "import sys; print(sys.version_info[0])" 2>&1) || return 1
+  case "$out" in
+    *Microsoft*Store*|*install from the Microsoft*|*App execution aliases*)
+      return 1
+      ;;
+  esac
+  [[ "$out" == "3" ]]
 }
 
-PYTHON="$(resolve_python)"
+init_python() {
+  local -a candidates=()
+  if [[ -n "${PYTHON:-}" ]]; then
+    if [[ "$PYTHON" == *" "* ]]; then
+      candidates+=("$PYTHON")
+    else
+      candidates+=("$PYTHON")
+    fi
+  fi
+  if [[ "${OS:-}" == "Windows_NT" ]] || uname -s 2>/dev/null | grep -qiE 'MINGW|MSYS|CYGWIN'; then
+    candidates+=("py -3" python3 python)
+  else
+    candidates+=(python3 "py -3" python)
+  fi
+
+  local c args
+  for c in "${candidates[@]}"; do
+    if [[ "$c" == *" "* ]]; then
+      # shellcheck disable=SC2206
+      args=($c)
+    else
+      args=("$c")
+    fi
+    command -v "${args[0]}" >/dev/null 2>&1 || continue
+    if python_works "${args[@]}"; then
+      RUN_PYTHON=("${args[@]}")
+      return 0
+    fi
+  done
+
+  cat >&2 <<'EOF'
+[error] Khong tim thay Python 3.8+.
+
+  macOS/Linux:  python3 --version
+  Windows:      cai tu https://www.python.org/downloads/ (tick "Add python.exe to PATH")
+                hoac chay: py -3 --version
+                tat alias python.exe / python3.exe trong:
+                  Settings → Apps → Advanced app settings → App execution aliases
+
+  Sau khi cai, thu lai: make datasets-full
+EOF
+  exit 49
+}
+
+run_python() {
+  "${RUN_PYTHON[@]}" "$@"
+}
+
+init_python
+printf '[info] Python: %s\n' "${RUN_PYTHON[*]}"
 
 require_cmd() {
   local missing=()
@@ -87,7 +142,7 @@ file_size() {
     echo 0
     return 0
   fi
-  "$PYTHON" - "$f" <<'PY'
+  run_python - "$f" <<'PY'
 import os, sys
 print(os.path.getsize(sys.argv[1]))
 PY
@@ -97,7 +152,7 @@ utc_now_iso() {
   if date -u +"%Y-%m-%dT%H:%M:%SZ" >/dev/null 2>&1; then
     date -u +"%Y-%m-%dT%H:%M:%SZ"
   else
-    "$PYTHON" - <<'PY'
+    run_python - <<'PY'
 from datetime import datetime, timezone
 print(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
 PY
@@ -105,7 +160,7 @@ PY
 }
 
 summarize_a_dirs() {
-  "$PYTHON" - "$ROOT" <<'PY'
+  run_python - "$ROOT" <<'PY'
 import glob, os, sys
 
 root = sys.argv[1]
@@ -124,7 +179,7 @@ for path in sorted(glob.glob(os.path.join(root, "A*"))):
 PY
 }
 
-require_cmd curl "$PYTHON"
+require_cmd curl
 if $EXTRACT && ! $URLS_ONLY; then
   require_cmd unzip
 fi
@@ -147,7 +202,7 @@ mkdir -p "${DIVVY_DIR}" "${CITI_DIR}" "${NOAA_DIR}" "${GBFS_DIR}"
 
 month_range() {
   local from="$1" to="$2"
-  FROM_YM="$(strip_cr "$from")" TO_YM="$(strip_cr "$to")" "$PYTHON" - <<'PY'
+  FROM_YM="$(strip_cr "$from")" TO_YM="$(strip_cr "$to")" run_python - <<'PY'
 import os, sys
 from datetime import date
 
@@ -197,7 +252,7 @@ filter_noaa_jan_may() {
     exit 1
   fi
   echo "[filter] ${year}-01 .. ${year}-05 -> $dest"
-  SRC="$src" DEST="$dest" YEAR="$year" "$PYTHON" - <<'PY'
+  SRC="$src" DEST="$dest" YEAR="$year" run_python - <<'PY'
 import csv, os
 
 src = os.environ["SRC"]

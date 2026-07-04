@@ -96,7 +96,7 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 **Windows (CMD / PowerShell / Git Bash):**
 
 1. Cài [Git for Windows](https://git-scm.com/download/win) (có `bash`, `curl`, thường kèm `unzip`).
-2. Cài **Python** và thêm vào PATH.
+2. Cài **Python 3.8+** từ [python.org](https://www.python.org/downloads/) — tick **Add python.exe to PATH**. Kiểm tra: `py -3 --version` hoặc `python --version`.
 3. Cài **make** (Chocolatey: `choco install make`) nếu dùng `make datasets-full`.
 
 **Lỗi thường gặp trên CMD:**
@@ -105,6 +105,7 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 |-----|------------|
 | `WSL execvpe(/bin/bash) failed` | Cài Git for Windows; tắt alias `bash.exe` trong Settings → App execution aliases; hoặc mở **Git Bash** |
 | `curl: (3) URL rejected: Malformed input` | Pull bản mới (script đã strip `\r`); hoặc trong Git Bash: `sed -i 's/\r$//' A_datasets/download_datasets.sh` rồi chạy lại |
+| `Python was not found` / `Microsoft Store` | Cài [Python 3](https://www.python.org/downloads/) (tick **Add to PATH**); tắt alias `python.exe` / `python3.exe` trong App execution aliases; thử `py -3 --version` |
 
 **Makefile** (chạy từ `4_Official_Hop_Project/`):
 
