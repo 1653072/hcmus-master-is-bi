@@ -93,6 +93,8 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 ## 3. Bắt đầu nhanh — tải dữ liệu
 
+**Windows:** cài [Git for Windows](https://git-scm.com/download/win), mở **Git Bash** trong `4_Official_Hop_Project/`. Cần trong PATH: `bash`, `curl`, `python` (hoặc `python3`), `unzip`. Makefile **không** dùng `chmod` — script luôn chạy qua `bash A_datasets/download_datasets.sh`.
+
 **Makefile** (chạy từ `4_Official_Hop_Project/`):
 
 ```bash
@@ -104,20 +106,26 @@ make datasets-full        # full pack 01–05/2026: trip + NOAA + extract + GBFS
 make datasets-status      # manifest + dung lượng từng folder
 ```
 
+**Windows (không có `make`):** mở **Git Bash** trong thư mục project:
+
+```bash
+bash A_datasets/download_datasets.sh --urls-only
+bash A_datasets/download_datasets.sh --extract --gbfs
+```
+
 Một tháng demo (nhẹ hơn ~2.3 GB):
 
 ```bash
 make datasets-download FROM=202601 TO=202601
 ```
 
-**Hoặc script trực tiếp:**
+**Hoặc script trực tiếp** (macOS/Linux/Git Bash — luôn gọi qua `bash`, không cần `chmod`):
 
 ```bash
 cd A_datasets
-chmod +x download_datasets.sh
 
-./download_datasets.sh --urls-only          # validate HTTP
-./download_datasets.sh --extract --gbfs     # tải đủ 01–05/2026 (~2.3 GB ZIP; + disk nếu extract)
+bash download_datasets.sh --urls-only          # validate HTTP
+bash download_datasets.sh --extract --gbfs     # tải đủ 01–05/2026 (~2.3 GB ZIP; + disk nếu extract)
 ```
 
 Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Hop: [mục 7.8](#78-tải-và-lưu-file).
@@ -434,14 +442,13 @@ make datasets-download FROM=202603 TO=202604
 
 ```bash
 cd 4_Official_Hop_Project/A_datasets
-chmod +x download_datasets.sh
 
-./download_datasets.sh --urls-only          # validate HTTP
-./download_datasets.sh                        # tải trip 202601–202605 + NOAA v2 + lọc 01–05
-./download_datasets.sh --extract              # thêm giải nén trip CSV
-./download_datasets.sh --gbfs                 # thêm GBFS station_information
-./download_datasets.sh --noaa-only            # chỉ NOAA
-./download_datasets.sh --from 202603 --to 202604
+bash download_datasets.sh --urls-only          # validate HTTP
+bash download_datasets.sh                        # tải trip 202601–202605 + NOAA v2 + lọc 01–05
+bash download_datasets.sh --extract              # thêm giải nén trip CSV
+bash download_datasets.sh --gbfs                 # thêm GBFS station_information
+bash download_datasets.sh --noaa-only            # chỉ NOAA
+bash download_datasets.sh --from 202603 --to 202604
 ```
 
 **Biến Hop** (`development_configs.json` — bổ sung khi có pipeline):
