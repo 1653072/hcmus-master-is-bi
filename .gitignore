@@ -43,8 +43,12 @@ hop-check.txt
 .DS_Store
 Thumbs.db
 
-# Official Hop Project — raw datasets (tải lại bằng datasets/download_datasets.sh)
-4_Official_Hop_Project/datasets/raw/**
-!4_Official_Hop_Project/datasets/raw/**/
-!4_Official_Hop_Project/datasets/raw/**/.gitkeep
-4_Official_Hop_Project/datasets/manifest.json
+# Official Hop Project — raw datasets (tải lại bằng A_datasets/download_datasets.sh)
+4_Official_Hop_Project/A_datasets/A1_citibike/*.zip
+4_Official_Hop_Project/A_datasets/A1_citibike/extracted/
+4_Official_Hop_Project/A_datasets/A2_divvy/*.zip
+4_Official_Hop_Project/A_datasets/A2_divvy/extracted/
+4_Official_Hop_Project/A_datasets/A3_noaa_lcd_v2/raw/
+4_Official_Hop_Project/A_datasets/A3_noaa_lcd_v2/*.csv
+4_Official_Hop_Project/A_datasets/A4_mdm_station_info/*.json
+4_Official_Hop_Project/A_datasets/manifest.json
