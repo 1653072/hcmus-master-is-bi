@@ -38,6 +38,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
 ```text
 4_Official_Hop_Project/
 ├── README.md                      # Tài liệu này (master doc — bổ sung dần)
+├── Makefile                       # Lệnh nhanh: make datasets-full, make help, …
 ├── development_configs.json       # Biến môi trường Hop
 ├── project-config.json            # Hop project config
 │
@@ -92,12 +93,31 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 ## 3. Bắt đầu nhanh — tải dữ liệu
 
+**Makefile** (chạy từ `4_Official_Hop_Project/`):
+
 ```bash
-cd 4_Official_Hop_Project/A_datasets
+cd 4_Official_Hop_Project
+
+make help                 # danh sách target
+make datasets-check       # validate HTTP URL
+make datasets-full        # full pack 01–05/2026: trip + NOAA + extract + GBFS
+make datasets-status      # manifest + dung lượng từng folder
+```
+
+Một tháng demo (nhẹ hơn ~2.3 GB):
+
+```bash
+make datasets-download FROM=202601 TO=202601
+```
+
+**Hoặc script trực tiếp:**
+
+```bash
+cd A_datasets
 chmod +x download_datasets.sh
 
 ./download_datasets.sh --urls-only          # validate HTTP
-./download_datasets.sh --extract --gbfs     # tải đủ 01–05/2026 (~2.3 GB)
+./download_datasets.sh --extract --gbfs     # tải đủ 01–05/2026 (~2.3 GB ZIP; + disk nếu extract)
 ```
 
 Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Hop: [mục 7.8](#78-tải-và-lưu-file).
@@ -398,6 +418,17 @@ Tải bằng `./download_datasets.sh --gbfs`.
 
 
 ### 7.8. Tải và lưu file
+
+**Makefile** (từ `4_Official_Hop_Project/`):
+
+```bash
+make datasets-check
+make datasets-download              # trip + NOAA, không extract
+make datasets-full                  # trip + NOAA + --extract + --gbfs
+make datasets-noaa
+make datasets-status
+make datasets-download FROM=202603 TO=202604
+```
 
 **Script (**`A_datasets/download_datasets.sh`**):**
 
