@@ -104,7 +104,7 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 | Lỗi | Cách xử lý |
 |-----|------------|
 | `WSL execvpe(/bin/bash) failed` | Cài Git for Windows; tắt alias `bash.exe` trong Settings → App execution aliases; hoặc mở **Git Bash** |
-| `curl: (3) URL rejected: Malformed input` | Pull bản mới (script đã strip `\r`); hoặc trong Git Bash: `sed -i 's/\r$//' A_datasets/download_datasets.sh` rồi chạy lại |
+| `syntax error near unexpected token 'from'` | Pull bản mới (script tự sửa CRLF); hoặc `sed -i 's/\r$//' A_datasets/download_datasets.sh` |
 | `Python was not found` / `Microsoft Store` | Cài [Python 3](https://www.python.org/downloads/) (tick **Add to PATH**); tắt alias `python.exe` / `python3.exe` trong App execution aliases; thử `py -3 --version` |
 
 **Makefile** (chạy từ `4_Official_Hop_Project/`):

@@ -19,6 +19,11 @@
 
 set -euo pipefail
 
+# Windows/Git: file checkout CRLF làm bash lỗi cú pháp (vd. "unexpected token from" ở case)
+if grep -q $'\r' "$0" 2>/dev/null; then
+  exec bash <(tr -d '\r' < "$0") "$@"
+fi
+
 # Windows/Git: loại bỏ CR (\r) — tránh curl "(3) URL rejected: Malformed input"
 strip_cr() {
   printf '%s' "$1" | tr -d '\r'
@@ -65,11 +70,11 @@ RUN_PYTHON=()
 python_works() {
   local out
   out=$("$@" -c "import sys; print(sys.version_info[0])" 2>&1) || return 1
-  case "$out" in
-    *Microsoft*Store*|*install from the Microsoft*|*App execution aliases*)
-      return 1
-      ;;
-  esac
+  if [[ "$out" == *Microsoft*Store* ]] \
+    || [[ "$out" == *Microsoft* ]] \
+    || [[ "$out" == *App*execution*aliases* ]]; then
+    return 1
+  fi
   [[ "$out" == "3" ]]
 }
 
