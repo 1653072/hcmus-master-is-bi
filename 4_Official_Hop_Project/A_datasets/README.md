@@ -1,4 +1,4 @@
-# A_datasets — Phân tích và hướng dẫn tải raw
+# A_datasets — Phân tích và hướng dẫn tải
 
 Tài liệu bổ sung [official_topic.md](../../0_topic_exploration/official_topic.md) mục 5: ba nguồn đăng ký (Divvy, Citi Bike, NOAA LCD) + GBFS master (triển khai).
 
@@ -47,20 +47,20 @@ A_datasets/
 │   ├── 202601-divvy-tripdata.zip
 │   └── extracted/202601/
 ├── A3_noaa_lcd_v2/
-│   ├── raw/LCD_USW00014819_2026.csv      # Bulk năm (giữ audit)
-│   ├── raw/LCD_USW00094728_2026.csv
-│   ├── LCD_USW00014819_2026_01-05.csv    # Dùng cho ETL (01–05/2026)
+│   ├── LCD_USW00014819_2026.csv           # Bulk năm (audit)
+│   ├── LCD_USW00014819_2026_01-05.csv     # Dùng cho ETL
+│   ├── LCD_USW00094728_2026.csv
 │   └── LCD_USW00094728_2026_01-05.csv
 └── A4_mdm_station_info/
-    ├── divvy_station_information.json    # Tùy chọn (--gbfs)
+    ├── divvy_station_information.json     # Tùy chọn (--gbfs)
     └── citibike_station_information.json
 ```
 
-Nguyên tắc lưu raw:
+Nguyên tắc lưu file:
 
 - Giữ **đúng tên file** từ nguồn (ZIP/CSV/JSON).
-- **Không** sửa nội dung trip ZIP; NOAA bulk năm giữ trong `raw/`, bản **lọc 01–05** do script sinh (chỉ cắt dòng theo `DATE`, không đổi giá trị quan sát).
-- Hop ETL đọc file **filtered** NOAA và trip tháng `202601`–`202605`.
+- **Không** có thư mục `raw/` — mỗi dataset nằm trực tiếp trong `A1_*` … `A4_*`.
+- NOAA bulk năm và bản lọc 01–05 cùng thư mục `A3_noaa_lcd_v2/`; Hop ETL đọc file `*_01-05.csv`.
 
 ---
 
@@ -176,7 +176,7 @@ Pattern: `LCD_{STATION_ID}_{YEAR}.csv`
 
 File bulk năm 2026 có thể chứa tháng 6+ (NCEI cập nhật dần). Script:
 
-1. Tải bulk → `A3_noaa_lcd_v2/raw/`.
+1. Tải bulk → `A3_noaa_lcd_v2/LCD_*_2026.csv`.
 2. Sinh `*_01-05.csv`: giữ mọi dòng có `DATE` từ `2026-01-01` đến `2026-05-31`.
 
 Hop Pull / staging đọc file **filtered** để đồng bộ với trip `202601`–`202605`.

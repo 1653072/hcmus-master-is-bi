@@ -53,15 +53,15 @@ NOAA_NYC_ID="USW00094728"
 NOAA_CHI_URL="${NOAA_BASE}/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}.csv"
 NOAA_NYC_URL="${NOAA_BASE}/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}.csv"
 
-NOAA_CHI_RAW="${NOAA_DIR}/raw/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}.csv"
-NOAA_NYC_RAW="${NOAA_DIR}/raw/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}.csv"
+NOAA_CHI_RAW="${NOAA_DIR}/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}.csv"
+NOAA_NYC_RAW="${NOAA_DIR}/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}.csv"
 NOAA_CHI_FILTERED="${NOAA_DIR}/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}_01-05.csv"
 NOAA_NYC_FILTERED="${NOAA_DIR}/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}_01-05.csv"
 
 GBFS_CHI_URL="https://gbfs.lyft.com/gbfs/2.3/chi/en/station_information.json"
 GBFS_NYC_URL="https://gbfs.citibikenyc.com/gbfs/en/station_information.json"
 
-mkdir -p "${DIVVY_DIR}" "${CITI_DIR}" "${NOAA_DIR}/raw" "${GBFS_DIR}"
+mkdir -p "${DIVVY_DIR}" "${CITI_DIR}" "${NOAA_DIR}" "${GBFS_DIR}"
 
 month_range() {
   local from="$1" to="$2"
@@ -214,7 +214,7 @@ cat > "$MANIFEST" <<EOF
       "station_id_v2": "${NOAA_CHI_ID}",
       "station_id_v1_legacy": "72534014819",
       "name": "CHICAGO MIDWAY AP, IL US",
-      "raw_path": "A3_noaa_lcd_v2/raw/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}.csv",
+      "bulk_path": "A3_noaa_lcd_v2/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}.csv",
       "filtered_path": "A3_noaa_lcd_v2/LCD_${NOAA_CHI_ID}_${SAMPLE_YEAR}_01-05.csv",
       "url": "${NOAA_CHI_URL}",
       "raw_bytes": ${chi_raw_bytes},
@@ -225,7 +225,7 @@ cat > "$MANIFEST" <<EOF
       "station_id_v2": "${NOAA_NYC_ID}",
       "station_id_v1_legacy": "72505394728",
       "name": "NY CITY CENTRAL PARK, NY US",
-      "raw_path": "A3_noaa_lcd_v2/raw/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}.csv",
+      "bulk_path": "A3_noaa_lcd_v2/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}.csv",
       "filtered_path": "A3_noaa_lcd_v2/LCD_${NOAA_NYC_ID}_${SAMPLE_YEAR}_01-05.csv",
       "url": "${NOAA_NYC_URL}",
       "raw_bytes": ${nyc_raw_bytes},

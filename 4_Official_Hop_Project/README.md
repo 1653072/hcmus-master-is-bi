@@ -4,7 +4,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
 
 **Đối chiếu đề bài:** [official_topic.md](../0_topic_exploration/official_topic.md) · [PDF đăng ký](../0_topic_exploration/official_topic_for_report.pdf)
 
-**Kỳ dữ liệu triển khai:** **01–05/2026** (Divvy, Citi Bike, NOAA LCD **v2**).
+**Kỳ dữ liệu triển khai:** **01–05/2026** (Divvy, Citi Bike, NOAA LCD V2).
 
 ---
 
@@ -27,13 +27,13 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
 ├── development_configs.json       # Biến môi trường Hop
 ├── project-config.json            # Hop project config
 │
-├── A_datasets/                    # Raw + script tải (xem A_datasets/README.md)
+├── A_datasets/                    # Trip + NOAA + GBFS (xem A_datasets/README.md)
 │   ├── README.md
 │   ├── download_datasets.sh
-│   ├── A1_citibike/               # Citi Bike trip ZIP / extracted CSV
-│   ├── A2_divvy/                  # Divvy trip ZIP / extracted CSV
-│   ├── A3_noaa_lcd_v2/            # NOAA LCD v2 CSV (filtered 01–05/2026)
-│   └── A4_mdm_station_info/       # GBFS station_information JSON
+│   ├── A1_citibike/
+│   ├── A2_divvy/
+│   ├── A3_noaa_lcd_v2/
+│   └── A4_mdm_station_info/
 │
 ├── B_databases/                   # Docker PostgreSQL (STG / NDS / DDS)
 │   ├── docker-compose.yml
@@ -91,24 +91,28 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`.
 
 ## 4. Thành phần theo thư mục
 
-| Thư mục | Trạng thái | Mô tả |
-|---------|------------|--------|
+
+| Thư mục         | Trạng thái        | Mô tả                                        |
+| --------------- | ----------------- | -------------------------------------------- |
 | **A_datasets** | **Sẵn sàng** | Script + tài liệu LCD v2, trip 202601–202605 |
-| **B_databases** | Khung placeholder | Docker Compose + init SQL (TODO) |
-| **C_backend** | Khung placeholder | Go MDM push GBFS → Hop API (TODO) |
-| **D_pipelines** | TODO | Pull staging, NDS, DDS load |
-| **E_workflows** | TODO | Orchestration hàng ngày |
-| **metadata** | TODO | Connection STG / NDS / DDS |
+| **B_databases** | Khung placeholder | Docker Compose + init SQL (TODO)             |
+| **C_backend**   | Khung placeholder | Go MDM push GBFS → Hop API (TODO)            |
+| **D_pipelines** | TODO              | Pull staging, NDS, DDS load                  |
+| **E_workflows** | TODO              | Orchestration hàng ngày                      |
+| **metadata**    | TODO              | Connection STG / NDS / DDS                   |
+
 
 ---
 
 ## 5. Cấu hình Hop
 
-| File | Vai trò |
-|------|---------|
-| `project-config.json` | `dataSetsCsvFolder` → `${PROJECT_HOME}/A_datasets` |
+
+| File                       | Vai trò                                                   |
+| -------------------------- | --------------------------------------------------------- |
+| `project-config.json`      | `dataSetsCsvFolder` → `${PROJECT_HOME}/A_datasets`          |
 | `development_configs.json` | Biến DB / API (template từ demo — cập nhật khi có Docker) |
-| `metadata/` | File `.json` kết nối Hop tới PostgreSQL |
+| `metadata/`                | File `.json` kết nối Hop tới PostgreSQL                   |
+
 
 Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_Hop_Project`.
 
@@ -116,12 +120,14 @@ Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_
 
 ## 6. Trạng thái triển khai
 
-| Hạng mục | Ghi chú |
-|----------|---------|
+
+| Hạng mục                               | Ghi chú                                                   |
+| -------------------------------------- | --------------------------------------------------------- |
 | Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01..05** qua `download_datasets.sh` |
-| NOAA LCD v1 → v2 | v1 deprecated; v2 giữ cùng cột hourly cho fact |
-| GBFS | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push |
-| Hop ETL end-to-end | Chưa implement — `D_pipelines/`, `E_workflows/` |
+| NOAA LCD v1 → v2                       | v1 deprecated; v2 giữ cùng cột hourly cho fact            |
+| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push             |
+| Hop ETL end-to-end                     | Chưa implement — `D_pipelines/`, `E_workflows/`           |
+
 
 ---
 
