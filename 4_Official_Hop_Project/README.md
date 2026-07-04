@@ -99,11 +99,12 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 2. Cài **Python** và thêm vào PATH.
 3. Cài **make** (Chocolatey: `choco install make`) nếu dùng `make datasets-full`.
 
-**Lỗi thường gặp trên CMD:** `WSL execvpe(/bin/bash) failed` — Windows đang gọi `bash.exe` stub của WSL thay vì Git Bash.
+**Lỗi thường gặp trên CMD:**
 
-- **Cách 1 (khuyên dùng):** mở terminal **Git Bash** (không dùng CMD), rồi `make datasets-full`.
-- **Cách 2:** Settings → Apps → **App execution aliases** → tắt `bash.exe` và `wsl.exe`.
-- **Cách 3:** Makefile đã ưu tiên `C:\Program Files\Git\bin\bash.exe` — pull bản mới và chạy lại trong CMD.
+| Lỗi | Cách xử lý |
+|-----|------------|
+| `WSL execvpe(/bin/bash) failed` | Cài Git for Windows; tắt alias `bash.exe` trong Settings → App execution aliases; hoặc mở **Git Bash** |
+| `curl: (3) URL rejected: Malformed input` | Pull bản mới (script đã strip `\r`); hoặc trong Git Bash: `sed -i 's/\r$//' A_datasets/download_datasets.sh` rồi chạy lại |
 
 **Makefile** (chạy từ `4_Official_Hop_Project/`):
 

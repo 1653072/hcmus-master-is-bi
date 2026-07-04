@@ -16,6 +16,11 @@
 
 set -euo pipefail
 
+# Windows/Git: loại bỏ CR (\r) — tránh curl "(3) URL rejected: Malformed input"
+strip_cr() {
+  printf '%s' "$1" | tr -d '\r'
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${SCRIPT_DIR}"
 
@@ -39,8 +44,8 @@ while [[ $# -gt 0 ]]; do
     --gbfs) GBFS=true; shift ;;
     --urls-only) URLS_ONLY=true; shift ;;
     --noaa-only) NOAA_ONLY=true; shift ;;
-    --from) FROM_YM="$2"; shift 2 ;;
-    --to) TO_YM="$2"; shift 2 ;;
+    --from) FROM_YM="$(strip_cr "$2")"; shift 2 ;;
+    --to) TO_YM="$(strip_cr "$2")"; shift 2 ;;
     -h|--help)
       sed -n '2,16p' "$0"
       exit 0
@@ -142,18 +147,18 @@ mkdir -p "${DIVVY_DIR}" "${CITI_DIR}" "${NOAA_DIR}" "${GBFS_DIR}"
 
 month_range() {
   local from="$1" to="$2"
-  FROM_YM="$from" TO_YM="$to" "$PYTHON" - <<'PY'
-import os
+  FROM_YM="$(strip_cr "$from")" TO_YM="$(strip_cr "$to")" "$PYTHON" - <<'PY'
+import os, sys
 from datetime import date
 
-from_ = os.environ["FROM_YM"]
-to_ = os.environ["TO_YM"]
+from_ = os.environ["FROM_YM"].strip("\r\n")
+to_ = os.environ["TO_YM"].strip("\r\n")
 y, m = int(from_[:4]), int(from_[4:6])
 y2, m2 = int(to_[:4]), int(to_[4:6])
 d = date(y, m, 1)
 end = date(y2, m2, 1)
 while d <= end:
-    print(f"{d.year}{d.month:02d}")
+    sys.stdout.write(f"{d.year}{d.month:02d}\n")
     if d.month == 12:
         d = date(d.year + 1, 1, 1)
     else:
@@ -162,19 +167,20 @@ PY
 }
 
 download() {
-  local url="$1"
-  local dest="$2"
+  local url dest
+  url="$(strip_cr "$1")"
+  dest="$(strip_cr "$2")"
   if $URLS_ONLY; then
-    echo -n "[check] $url -> "
+    printf '[check] %s -> ' "$url"
     curl -sfI "$url" | head -1
     return 0
   fi
   if [[ -f "$dest" ]]; then
-    echo "[skip] Da co: $dest"
+    printf '[skip] Da co: %s\n' "$dest"
     return 0
   fi
-  echo "[get]  $url"
-  echo "       -> $dest"
+  printf '[get]  %s\n' "$url"
+  printf '       -> %s\n' "$dest"
   curl -fL --retry 3 --continue-at - -o "$dest" "$url"
 }
 
@@ -217,7 +223,9 @@ echo "=== Bike-share raw download (trip ${FROM_YM}-${TO_YM}, NOAA LCD v2 year=${
 
 TRIP_FILES=()
 if ! $NOAA_ONLY; then
-while IFS= read -r ym; do
+while IFS= read -r ym || [[ -n "${ym:-}" ]]; do
+  ym="$(strip_cr "$ym")"
+  [[ -z "$ym" ]] && continue
   divvy_url="https://divvy-tripdata.s3.amazonaws.com/${ym}-divvy-tripdata.zip"
   citi_url="https://s3.amazonaws.com/tripdata/${ym}-citibike-tripdata.zip"
   divvy_zip="${DIVVY_DIR}/${ym}-divvy-tripdata.zip"
