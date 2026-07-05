@@ -1,4 +1,58 @@
-# TODO: Docker Compose — dw_stg, dw_nds, dw_dds PostgreSQL
-# Tham khảo: 3_Hop_ETL_Test/docker/
+name: hcmus-bi-official-db
 
-services: {}
+services:
+  dw-stg-postgres:
+    image: postgres:16-alpine
+    container_name: hcmus-bi-official-db-dw-stg-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - dw_stg_postgres_data:/var/lib/postgresql/data
+      - ./B1_dw_stg_postgresql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dw-nds-postgres:
+    image: postgres:16-alpine
+    container_name: hcmus-bi-official-db-dw-nds-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - dw_nds_postgres_data:/var/lib/postgresql/data
+      - ./B2_dw_nds_postgresql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dw-dds-postgres:
+    image: postgres:16-alpine
+    container_name: hcmus-bi-official-db-dw-dds-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - dw_dds_postgres_data:/var/lib/postgresql/data
+      - ./B3_dw_dds_postgresql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dw_stg_postgres_data:
+  dw_nds_postgres_data:
+  dw_dds_postgres_data:

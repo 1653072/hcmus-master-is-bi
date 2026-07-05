@@ -31,8 +31,11 @@ RUN_DOWNLOAD = "$(BASH)" "$(DOWNLOAD_SCRIPT)"
 
 export SAMPLE_YEAR
 
+B_DATABASES := B_databases
+
 .PHONY: help datasets-check datasets-download datasets-full \
-        datasets-extract datasets-gbfs datasets-noaa datasets-status
+        datasets-extract datasets-gbfs datasets-noaa datasets-status \
+        db-up db-down db-status
 
 help:
 	@echo "4_Official_Hop_Project — Makefile"
@@ -44,6 +47,9 @@ help:
 	@echo "  make datasets-gbfs       Trip + NOAA + GBFS station_information"
 	@echo "  make datasets-noaa       Chi NOAA LCD v2 (+ loc 01-05)"
 	@echo "  make datasets-status     manifest.json + dung luong A*"
+	@echo "  make db-up               Docker: dw_stg (5434) + dw_nds (5435) + dw_dds (5436)"
+	@echo "  make db-down             Stop DW PostgreSQL containers"
+	@echo "  make db-status           docker compose ps (B_databases)"
 	@echo ""
 	@echo "Windows (CMD/PowerShell): Git for Windows + make"
 	@echo "  Neu loi WSL execvpe: cai Git, hoac tat alias bash.exe trong Settings"
@@ -73,3 +79,12 @@ datasets-status:
 	@echo ""
 	@echo "=== Dung luong ==="
 	@$(BASH) -c 'for d in $(A_DATASETS)/A*; do test -d "$$d" && du -sh "$$d" 2>/dev/null || true; done'
+
+db-up:
+	cd $(B_DATABASES) && docker-compose up -d
+
+db-down:
+	cd $(B_DATABASES) && docker-compose down -v
+
+db-status:
+	cd $(B_DATABASES) && docker-compose ps
