@@ -34,7 +34,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
   - [8.2 Staging ER](#82-staging-er-4-bảng)
   - [8.3 Control + Metadata](#83-control--metadata)
   - [8.4 NDS 3NF](#84-nds-3nf-5-bảng)
-  - [8.5 DDS Star](#85-dds-star-4-dim--1-fact)
+  - [8.5 DDS Snowflake](#85-dds-snowflake-4-dim--1-fact)
   - [8.6 Seed data](#86-seed-data-ddl)
   - [8.7 Khởi chạy PostgreSQL](#87-khởi-chạy-postgresql-local)
   - [8.8 Hop metadata & biến môi trường](#88-hop-metadata--biến-môi-trường)
@@ -116,12 +116,14 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 **Lỗi thường gặp trên CMD:**
 
-| Lỗi | Cách xử lý |
-|-----|------------|
-| `WSL execvpe(/bin/bash) failed` | Cài Git for Windows; tắt alias `bash.exe` trong Settings → App execution aliases; hoặc mở **Git Bash** |
-| `syntax error near unexpected token 'from'` | Pull bản mới (script tự sửa CRLF); hoặc `sed -i 's/\r$//' A_datasets/download_datasets.sh` |
-| `Python was not found` / `Microsoft Store` | Cài [Python 3](https://www.python.org/downloads/) (tick **Add to PATH**); tắt alias `python.exe` / `python3.exe`; thử `py -3 --version` |
-| `End-of-central-directory signature not found` / ZIP hỏng | Pull bản mới; `make datasets-full` tự `--force` tải lại ZIP; hoặc xóa file `.zip` lỗi rồi chạy lại |
+
+| Lỗi                                                       | Cách xử lý                                                                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `WSL execvpe(/bin/bash) failed`                           | Cài Git for Windows; tắt alias `bash.exe` trong Settings → App execution aliases; hoặc mở **Git Bash**                                  |
+| `syntax error near unexpected token 'from'`               | Pull bản mới (script tự sửa CRLF); hoặc `sed -i 's/\r$//' A_datasets/download_datasets.sh`                                              |
+| `Python was not found` / `Microsoft Store`                | Cài [Python 3](https://www.python.org/downloads/) (tick **Add to PATH**); tắt alias `python.exe` / `python3.exe`; thử `py -3 --version` |
+| `End-of-central-directory signature not found` / ZIP hỏng | Pull bản mới; `make datasets-full` tự `--force` tải lại ZIP; hoặc xóa file `.zip` lỗi rồi chạy lại                                      |
+
 
 **Makefile** (chạy từ `4_Official_Hop_Project/`):
 
@@ -138,7 +140,7 @@ make db-status            # kiểm tra container healthy
 
 Chi tiết schema DW: [mục 8](#8-schema-dw--staging-nds-dds).
 
-**Windows (không có `make`):** mở **Git Bash** trong thư mục project:
+**Windows (không có** `make`**):** mở **Git Bash** trong thư mục project:
 
 ```bash
 bash A_datasets/download_datasets.sh --urls-only
@@ -169,14 +171,14 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Ho
 ## 4. Thành phần theo thư mục
 
 
-| Thư mục         | Trạng thái   | Mô tả                                                                                             |
-| --------------- | ------------ | ------------------------------------------------------------------------------------------------- |
-| **A_datasets**  | Sẵn sàng     | Script + tài liệu LCD V2, trip 202601–202605 ([mục 7](#7-a_datasets--phân-tích-và-hướng-dẫn-tải)) |
-| **B_databases** | Sẵn sàng     | `docker-compose.yml` + init SQL B1/B2/B3; `make db-up` ([mục 8.7](#87-khởi-chạy-postgresql-local)) |
-| **C_backend**   | Khung        | Go MDM push GBFS → Hop Web Service (TODO)                                                         |
-| **D_pipelines** | TODO         | Pull staging, NDS, DDS load                                                                       |
-| **E_workflows** | TODO         | Orchestration hàng ngày                                                                           |
-| **metadata**    | Sẵn sàng     | RDBMS connections + `mdm-station` web service ([mục 8.8](#88-hop-metadata--biến-môi-trường))      |
+| Thư mục         | Trạng thái | Mô tả                                                                                              |
+| --------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| **A_datasets**  | Sẵn sàng   | Script + tài liệu LCD V2, trip 202601–202605 ([mục 7](#7-a_datasets--phân-tích-và-hướng-dẫn-tải))  |
+| **B_databases** | Sẵn sàng   | `docker-compose.yml` + init SQL B1/B2/B3; `make db-up` ([mục 8.7](#87-khởi-chạy-postgresql-local)) |
+| **C_backend**   | Khung      | Go MDM push GBFS → Hop Web Service (TODO)                                                          |
+| **D_pipelines** | TODO       | Pull staging, NDS, DDS load                                                                        |
+| **E_workflows** | TODO       | Orchestration hàng ngày                                                                            |
+| **metadata**    | Sẵn sàng   | RDBMS connections + `mdm-station` web service ([mục 8.8](#88-hop-metadata--biến-môi-trường))       |
 
 
 ---
@@ -186,12 +188,12 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Ho
 ## 5. Cấu hình Hop
 
 
-| File                       | Vai trò                                                                 |
-| -------------------------- | ----------------------------------------------------------------------- |
-| `project-config.json`      | `dataSetsCsvFolder` → `${PROJECT_HOME}/A_datasets`                      |
+| File                       | Vai trò                                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| `project-config.json`      | `dataSetsCsvFolder` → `${PROJECT_HOME}/A_datasets`                                                  |
 | `development_configs.json` | Biến DB (5434/5435/5436), dataset paths, MDM Station — [mục 8.8](#88-hop-metadata--biến-môi-trường) |
-| `metadata/rdbms/`          | `dw-staging`, `dw-control`, `dw-metadata`, `dw-nds`, `dw-dds`           |
-| `metadata/web-service/`    | `mdm-station.json` — Hop Web Service nhận GBFS push                     |
+| `metadata/rdbms/`          | `dw-staging`, `dw-control`, `dw-metadata`, `dw-nds`, `dw-dds`                                       |
+| `metadata/web-service/`    | `mdm-station.json` — Hop Web Service nhận GBFS push                                                 |
 
 
 Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_Hop_Project`.
@@ -203,14 +205,14 @@ Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_
 ## 6. Trạng thái triển khai
 
 
-| Hạng mục                               | Ghi chú                                                         |
-| -------------------------------------- | --------------------------------------------------------------- |
-| Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01–2026-05** qua `download_datasets.sh`   |
-| NOAA LCD v1 → v2                       | V1 deprecated; V2 giữ cùng cột hourly cho Fact table            |
-| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                   |
+| Hạng mục                               | Ghi chú                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01–2026-05** qua `download_datasets.sh`             |
+| NOAA LCD v1 → v2                       | V1 deprecated; V2 giữ cùng cột hourly cho Fact table                      |
+| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                             |
 | Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds) |
-| Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                     |
-| Hop ETL end-to-end                     | Chưa implement — `D_pipelines/`, `E_workflows/`                 |
+| Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                               |
+| Hop ETL end-to-end                     | Chưa implement — `D_pipelines/`, `E_workflows/`                           |
 
 
 ---
@@ -361,7 +363,7 @@ Pattern: `LCD_{STATION_ID}_{YEAR}.csv`
 
 - Format: CSV quoted; header giống v1 về **tên cột** chính.
 - `DATE`: ISO local `2026-01-01T08:51:00` (giờ quan sát trạm; LST — **không** UTC).
-- Một file **cả năm**; mỗi dòng có thể mix cột `Hourly`*, `Daily`*, `Monthly*` (chỉ dùng hourly cho fact grain giờ).
+- Một file **cả năm**; mỗi dòng có thể mix cột `Hourly`*,* `Daily`, `Monthly`* (chỉ dùng hourly cho fact grain giờ).
 
 `**REPORT_TYPE` (lọc staging):**
 
@@ -437,21 +439,25 @@ Tải bằng `./download_datasets.sh --gbfs`.
 
 **Khóa trạm thống nhất (Staging → NDS → DDS):** `(city_sk, source_station_id)` — `source_station_id` = GBFS `short_name` = trip `start/end_station_id` (cast **TEXT**).
 
-| Cặp | Khóa join | Ghi chú |
-| --- | --- | --- |
-| Divvy ↔ Citi Bike | `city_sk` only | Union fact; **không** join `station_id` cross-city |
+
+| Cặp                         | Khóa join                       | Ghi chú                                                               |
+| --------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| Divvy ↔ Citi Bike           | `city_sk` only                  | Union fact; **không** join `station_id` cross-city                    |
 | Trip ↔ GBFS / `Dim_Station` | `city_sk` + `source_station_id` | `source_station_id` ← GBFS `short_name` = trip `start/end_station_id` |
-| Trip ↔ NOAA v2 | `city_code` + `date_hour` local | CHI ↔ `USW00014819`; NYC ↔ `USW00094728` |
-| NYC trip ↔ GBFS | trip `6602.05` = `short_name` | Không dùng GBFS `station_id` (UUID/số dài) |
-| CHI trip ↔ GBFS | trip `CHI02042` = `short_name` | Cùng rule, format khác NYC |
+| Trip ↔ NOAA v2              | `city_code` + `date_hour` local | CHI ↔ `USW00014819`; NYC ↔ `USW00094728`                              |
+| NYC trip ↔ GBFS             | trip `6602.05` = `short_name`   | Không dùng GBFS `station_id` (UUID/số dài)                            |
+| CHI trip ↔ GBFS             | trip `CHI02042` = `short_name`  | Cùng rule, format khác NYC                                            |
 
-**Staging upsert (không `batch_id`):** audit qua `loaded_at` + `control.etl_extraction_control` (LSET/CET) + `control.etl_job_log`.
 
-| Bảng staging | Business key upsert |
-| --- | --- |
-| `stg_divvy_trips` / `stg_citibike_trips` | `(source_city_code, ride_id)` |
-| `stg_weather` | `(source_city_code, observation_ts)` |
-| `stg_gbfs_station` | `(source_city_code, short_name)` |
+**Staging upsert (không** `batch_id`**):** audit qua `loaded_at` + `control.etl_extraction_control` (LSET/CET) + `control.etl_job_log`.
+
+
+| Bảng staging                             | Business key upsert                  |
+| ---------------------------------------- | ------------------------------------ |
+| `stg_divvy_trips` / `stg_citibike_trips` | `(source_city_code, ride_id)`        |
+| `stg_weather`                            | `(source_city_code, observation_ts)` |
+| `stg_gbfs_station`                       | `(source_city_code, short_name)`     |
+
 
 **Phân tích lịch:** không dùng `Dim_Holiday` — weekday/weekend qua `Dim_DateTime.is_weekend` (và `nds.calendar_day`).
 
@@ -505,20 +511,19 @@ bash download_datasets.sh --from 202603 --to 202604
 
 **Biến Hop** (`development_configs.json`):
 
-| Nhóm | Biến chính | Ghi chú |
-| --- | --- | --- |
-| Dataset | `RAW_DATASET_ROOT`, `DATASETS_CSV_FOLDER`, `SAMPLE_PERIOD` | Root `A_datasets` |
-| Trip | `DIVVY_TRIPS_DIR`, `CITIBIKE_TRIPS_DIR` | Thư mục `extracted/{YYYYMM}/` |
-| NOAA | `NOAA_LCD_DIR`, `NOAA_LCD_CHICAGO`, `NOAA_LCD_NYC` | File `*_01-05.csv` |
-| GBFS / MDM | `GBFS_STATION_DIR`, `HOP_MDM_STATION_STAGING_TABLE` | Push → `stg_gbfs_station` |
-| DB STG | `STAGING_DB_*`, `CONTROL_DB_*`, `METADATA_DB_*` | Port **5434** |
-| DB NDS / DDS | `NDS_DB_*` (5435), `DDS_DB_*` (5436) | User `*_user`, password `*@123` |
-| Power BI | `POWERBI_DDS_*` | `analytics_reader_user` / `analytics_reader@123` |
+
+| Nhóm         | Biến chính                                                 | Ghi chú                                          |
+| ------------ | ---------------------------------------------------------- | ------------------------------------------------ |
+| Dataset      | `RAW_DATASET_ROOT`, `DATASETS_CSV_FOLDER`, `SAMPLE_PERIOD` | Root `A_datasets`                                |
+| Trip         | `DIVVY_TRIPS_DIR`, `CITIBIKE_TRIPS_DIR`                    | Thư mục `extracted/{YYYYMM}/`                    |
+| NOAA         | `NOAA_LCD_DIR`, `NOAA_LCD_CHICAGO`, `NOAA_LCD_NYC`         | File `*_01-05.csv`                               |
+| GBFS / MDM   | `GBFS_STATION_DIR`, `HOP_MDM_STATION_STAGING_TABLE`        | Push → `stg_gbfs_station`                        |
+| DB STG       | `STAGING_DB_*`, `CONTROL_DB_*`, `METADATA_DB_*`            | Port **5434**                                    |
+| DB NDS / DDS | `NDS_DB_*` (5435), `DDS_DB_*` (5436)                       | User `*_user`, password `*@123`                  |
+| Power BI     | `POWERBI_DDS_*`                                            | `analytics_reader_user` / `analytics_reader@123` |
+
 
 Chi tiết MDM + metadata: [mục 8.8](#88-hop-metadata--biến-môi-trường).
-
-
-
 
 ### 7.9. Lưu ý Git và dung lượng
 
@@ -535,6 +540,8 @@ File lớn **gitignore**; mỗi thành viên chạy `download_datasets.sh` local
 
 ---
 
+
+
 ## 8. Schema DW — Staging, NDS, DDS
 
 Thiết kế schema cho bike-share DW (Chicago Divvy + NYC Citi Bike, kỳ mẫu **202601–202605**). SQL init: `B_databases/`; Docker: `make db-up` (ports **5434** STG+Control+Metadata, **5435** NDS, **5436** DDS).
@@ -543,16 +550,19 @@ Thiết kế schema cho bike-share DW (Chicago Divvy + NYC Citi Bike, kỳ mẫu
 
 - **4 dimensions** (không `Dim_Holiday`): `Dim_City`, `Dim_Station`, `Dim_DateTime`, `Dim_WeatherCondition`.
 - **1 fact:** `Fact_StationHourBalance` — Periodic Snapshot, grain **City × Station × Hour**.
-- **Không `batch_id`** trên staging — chỉ `loaded_at`; upsert theo business key.
+- **DDS layout:** **Snowflake schema** — `dim_station.city_sk` → `dim_city` (hierarchy City → Station); fact FK trực tiếp tới cả `city_sk` và `station_sk`.
+- **Không** `batch_id` trên staging — chỉ `loaded_at`; upsert theo business key.
 
 **Source mapping:**
 
-| A_datasets path | Staging | NDS | DDS |
-| --- | --- | --- | --- |
-| `A2_divvy/extracted/{YYYYMM}/*.csv` | `stg_divvy_trips` | `nds.trip` | aggregate → `Fact_StationHourBalance` |
-| `A1_citibike/extracted/{YYYYMM}/*.csv` | `stg_citibike_trips` | `nds.trip` | same |
-| `A3_noaa_lcd_v2/LCD_*_01-05.csv` | `stg_weather` | `nds.weather` | measures + `Dim_WeatherCondition` |
-| `A4_mdm_station_info/*.json` | `stg_gbfs_station` | `nds.station` | `Dim_Station` (SCD2) |
+
+| A_datasets path                        | Staging              | NDS           | DDS                                   |
+| -------------------------------------- | -------------------- | ------------- | ------------------------------------- |
+| `A2_divvy/extracted/{YYYYMM}/*.csv`    | `stg_divvy_trips`    | `nds.trip`    | aggregate → `Fact_StationHourBalance` |
+| `A1_citibike/extracted/{YYYYMM}/*.csv` | `stg_citibike_trips` | `nds.trip`    | same                                  |
+| `A3_noaa_lcd_v2/LCD_*_01-05.csv`       | `stg_weather`        | `nds.weather` | measures + `Dim_WeatherCondition`     |
+| `A4_mdm_station_info/*.json`           | `stg_gbfs_station`   | `nds.station` | `Dim_Station` (SCD2)                  |
+
 
 ```mermaid
 flowchart LR
@@ -571,12 +581,14 @@ flowchart LR
     NDS3[nds.* 3NF]
   end
   subgraph dds [dw_dds :5436]
-    STAR["dds.Fact + 4 Dim_*"]
+    SNOWFLAKE["dds Snowflake: Fact + 4 Dim"]
   end
   sources --> STG
-  STG --> NDS3 --> STAR
+  STG --> NDS3 --> SNOWFLAKE
   A4 -->|MDM Push| STG
 ```
+
+
 
 **Ghi chú thiết kế:**
 
@@ -585,15 +597,19 @@ flowchart LR
 - **Station join:** `(city_sk, source_station_id)`; trip id = GBFS `short_name`; không cross-city; cast TEXT.
 - NOAA: `city_code` + `date_hour_local`; ưu tiên `REPORT_TYPE = 'FM-15'`; đơn vị v2 **°C, mm, m/s**.
 
+
+
 ### 8.1b. Khóa join & GBFS mapping
 
-| Cặp | Khóa join | Ghi chú |
-| --- | --- | --- |
-| Divvy ↔ Citi Bike | `city_sk` only | Union fact; **không** join `station_id` cross-city |
+
+| Cặp                         | Khóa join                       | Ghi chú                                                               |
+| --------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| Divvy ↔ Citi Bike           | `city_sk` only                  | Union fact; **không** join `station_id` cross-city                    |
 | Trip ↔ GBFS / `Dim_Station` | `city_sk` + `source_station_id` | `source_station_id` ← GBFS `short_name` = trip `start/end_station_id` |
-| Trip ↔ NOAA | `city_code` + `date_hour` local | CHI ↔ `USW00014819`; NYC ↔ `USW00094728` |
-| NYC trip ↔ GBFS | trip `6602.05` = `short_name` | Không dùng GBFS `station_id` (UUID/số dài) |
-| CHI trip ↔ GBFS | trip `CHI02042` = `short_name` | Cùng rule, format khác NYC |
+| Trip ↔ NOAA                 | `city_code` + `date_hour` local | CHI ↔ `USW00014819`; NYC ↔ `USW00094728`                              |
+| NYC trip ↔ GBFS             | trip `6602.05` = `short_name`   | Không dùng GBFS `station_id` (UUID/số dài)                            |
+| CHI trip ↔ GBFS             | trip `CHI02042` = `short_name`  | Cùng rule, format khác NYC                                            |
+
 
 ```mermaid
 flowchart LR
@@ -611,188 +627,332 @@ flowchart LR
   T2 --> G2 --> DS2
 ```
 
-### 8.2. Staging ER (4 bảng)
 
-Audit tối thiểu: **`loaded_at`** (DEFAULT `CURRENT_TIMESTAMP`) — không `batch_id`. ~~`stg_holiday_calendar`~~ — **loại bỏ**.
 
-**`staging.stg_divvy_trips`** / **`staging.stg_citibike_trips`:**
 
-- 14 cột CSV + `trip_month`, `source_file`, `loaded_at`
-- `start_station_id`, `end_station_id` → **TEXT**
-- Upsert key: `(source_city_code, ride_id)`
 
-**`staging.stg_weather`:**
+### 8.2. Staging ER (`staging.*` — 4 bảng)
 
-- `source_city_code`, `noaa_station_id`, `observation_ts`, `report_type`
-- `hourly_dry_bulb_temperature`, `hourly_precipitation`, `hourly_wind_speed`, `hourly_present_weather_type`
-- Upsert key: `(source_city_code, observation_ts)`
+Port **5434** · SQL: `B1_dw_stg_postgresql/02_staging_schema.sql`
 
-**`staging.stg_gbfs_station`:**
+Audit: `loaded_at` only — không `batch_id`. Enum values: [§8.9](#89-enum--coded-fields).
 
-- `source_city_code`, `gbfs_station_id` (UUID/số dài — tham khảo), `short_name`, `station_name`, `latitude`, `longitude`, `capacity`
-- `station_type`, `region_id`, `station_status`, `operation`, `loaded_at`
-- ETL map `short_name` → `source_station_id` khi load NDS/DDS
+`stg_divvy_trips` và `stg_citibike_trips` cùng cấu trúc (14 cột CSV + audit); khác `DEFAULT source_city_code` (`CHI` vs `NYC`).
 
 ```mermaid
 erDiagram
   stg_divvy_trips {
-    varchar source_city_code PK
     varchar ride_id PK
+    varchar rideable_type
+    timestamp started_at
+    timestamp ended_at
+    varchar start_station_name
     text start_station_id
+    varchar end_station_name
     text end_station_id
+    numeric start_lat
+    numeric start_lng
+    numeric end_lat
+    numeric end_lng
+    varchar member_casual
+    varchar source_city_code PK
+    char trip_month
+    varchar source_file
     timestamp loaded_at
   }
   stg_citibike_trips {
-    varchar source_city_code PK
     varchar ride_id PK
+    varchar rideable_type
+    timestamp started_at
+    timestamp ended_at
+    varchar start_station_name
     text start_station_id
+    varchar end_station_name
     text end_station_id
+    numeric start_lat
+    numeric start_lng
+    numeric end_lat
+    numeric end_lng
+    varchar member_casual
+    varchar source_city_code PK
+    char trip_month
+    varchar source_file
     timestamp loaded_at
   }
   stg_weather {
     varchar source_city_code PK
+    varchar noaa_station_id
     timestamp observation_ts PK
+    varchar report_type
     numeric hourly_dry_bulb_temperature
+    numeric hourly_precipitation
+    numeric hourly_wind_speed
+    varchar hourly_present_weather_type
     timestamp loaded_at
   }
   stg_gbfs_station {
     varchar source_city_code PK
-    text short_name PK
     text gbfs_station_id
+    text short_name PK
+    varchar station_name
+    numeric latitude
+    numeric longitude
+    int capacity
+    varchar station_type
+    varchar region_id
+    varchar station_status
+    varchar operation
     timestamp loaded_at
   }
 ```
 
-| Bảng | PK / upsert key | Ghi chú |
-| --- | --- | --- |
-| `staging.stg_divvy_trips` | `(source_city_code, ride_id)` | 14 cột CSV + `trip_month`, `source_file`, `loaded_at` |
-| `staging.stg_citibike_trips` | `(source_city_code, ride_id)` | Union multi-part CSV |
-| `staging.stg_weather` | `(source_city_code, observation_ts)` | NOAA LCD v2 hourly, metric |
-| `staging.stg_gbfs_station` | `(source_city_code, short_name)` | `short_name` → `source_station_id` khi load NDS/DDS |
 
-### 8.3. Control + Metadata
 
-| Schema | Bảng | Vai trò |
-| --- | --- | --- |
-| `control` | `etl_extraction_control` | LSET/CET cho 4 nguồn: `divvy_trips`, `citibike_trips`, `noaa_lcd`→`stg_weather`, `gbfs_station` |
-| `control` | `etl_job_log` | Audit từng lần chạy ETL |
-| `metadata` | `source_registry` | Đăng ký nguồn + connection ref |
 
-### 8.4. NDS 3NF (5 bảng)
+| Bảng                         | PK / upsert key                      | Ghi chú                                               |
+| ---------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| `staging.stg_divvy_trips`    | `(source_city_code, ride_id)`        | 14 cột CSV + `trip_month`, `source_file`, `loaded_at` |
+| `staging.stg_citibike_trips` | `(source_city_code, ride_id)`        | Union multi-part CSV                                  |
+| `staging.stg_weather`        | `(source_city_code, observation_ts)` | NOAA LCD v2 hourly, metric                            |
+| `staging.stg_gbfs_station`   | `(source_city_code, short_name)`     | `short_name` → `source_station_id` khi load NDS/DDS   |
+
+
+
+
+### 8.3. Control + Metadata (`control.*`, `metadata.*`)
+
+Port **5434** · SQL: `B1_dw_stg_postgresql/03_control_schema.sql`, `04_metadata_schema.sql`
 
 ```mermaid
 erDiagram
-  city ||--o{ station : city_sk
-  city ||--o{ trip : city_sk
-  city ||--o{ weather : city_sk
-  station ||--o{ trip : start_station_sk
-  station ||--o{ trip : end_station_sk
-  city {
-    int city_sk PK
-    varchar city_code
-    varchar noaa_station_id
+  etl_extraction_control {
+    int control_id PK
+    varchar source_name UK
+    varchar table_name UK
+    timestamp lset
+    timestamp cet
+    varchar last_run_status
+    int rows_extracted
+    timestamp updated_at
   }
-  station {
-    bigint station_sk PK
-    int city_sk FK
-    text source_station_id
-    varchar row_status
-    boolean is_current
+  etl_job_log {
+    int log_id PK
+    varchar job_name
+    varchar source_name
+    timestamp started_at
+    timestamp finished_at
+    varchar status
+    int rows_processed
+    text error_message
   }
-  calendar_day {
-    int calendar_day_sk PK
-    date calendar_date
-    boolean is_weekend
-  }
-  weather {
-    bigint weather_sk PK
-    int city_sk FK
-    timestamp observation_hour
-  }
-  trip {
-    bigint trip_sk PK
-    int city_sk FK
-    varchar ride_id
-    bigint start_station_sk FK
-    bigint end_station_sk FK
+  source_registry {
+    varchar source_name PK
+    varchar source_type
+    varchar connection_ref
+    text notes
   }
 ```
 
-| Bảng | PK | Ghi chú |
-| --- | --- | --- |
-| `nds.city` | `city_sk` | CHI, NYC; timezone, NOAA v2 id |
-| `nds.station` | `station_sk` | UNIQUE `(city_sk, source_station_id)` per SCD2 row; `source_station_id` = GBFS `short_name` |
-| `nds.calendar_day` | `calendar_day_sk` | `is_weekend`, `season` — thay vai trò phân tích calendar |
-| `nds.weather` | `weather_sk` | UNIQUE `(city_sk, observation_hour)` |
-| `nds.trip` | `trip_sk` | UNIQUE `(city_sk, ride_id)`; FK `start/end_station_sk` |
 
-### 8.5. DDS Star (4 Dim + 1 Fact)
 
-**Fact type:** Periodic Snapshot  
-**Grain:** City × Station × Hour  
-**Business key:** `(city_code, source_station_id, date_hour_local)` → FK grain `(city_sk, station_sk, datetime_sk)`
+
+| Schema     | Bảng                     | PK / UK                                      | Ghi chú                                                               |
+| ---------- | ------------------------ | -------------------------------------------- | --------------------------------------------------------------------- |
+| `control`  | `etl_extraction_control` | `control_id`; UK `(source_name, table_name)` | LSET/CET: `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
+| `control`  | `etl_job_log`            | `log_id`                                     | Audit từng lần chạy workflow/pipeline                                 |
+| `metadata` | `source_registry`        | `source_name`                                | `source_type`, `connection_ref`, `notes`                              |
+
+
+
+
+### 8.4. NDS 3NF (`nds.*` — 5 bảng)
+
+Port **5435** · SQL: `B2_dw_nds_postgresql/02_nds_schema.sql`
 
 ```mermaid
 erDiagram
-  Fact_StationHourBalance {
+  nds_city ||--o{ nds_station : city_sk
+  nds_city ||--o{ nds_trip : city_sk
+  nds_city ||--o{ nds_weather : city_sk
+  nds_station ||--o{ nds_trip : start_station_sk
+  nds_station ||--o{ nds_trip : end_station_sk
+  nds_city {
+    int city_sk PK
+    varchar city_code UK
+    varchar city_name
+    varchar timezone
+    varchar noaa_station_id
+    varchar gbfs_system_id
+  }
+  nds_station {
+    bigint station_sk PK
+    int city_sk FK
+    text source_station_id
+    varchar station_name
+    numeric latitude
+    numeric longitude
+    int capacity
+    varchar station_status
+    timestamp effective_from
+    timestamp effective_to
+    varchar row_status
+    boolean is_current
+    timestamp loaded_at
+  }
+  nds_calendar_day {
+    int calendar_day_sk PK
+    date calendar_date UK
+    smallint day_of_week
+    boolean is_weekend
+    smallint month
+    varchar season
+  }
+  nds_weather {
+    bigint weather_sk PK
+    int city_sk FK
+    timestamp observation_hour UK
+    varchar report_type
+    numeric temperature_c
+    numeric precipitation_mm
+    numeric wind_speed_ms
+    varchar present_weather
+    varchar weather_category
+    timestamp loaded_at
+  }
+  nds_trip {
+    bigint trip_sk PK
+    int city_sk FK
+    varchar ride_id UK
+    varchar rideable_type
+    timestamp started_at
+    timestamp ended_at
+    text start_station_id
+    text end_station_id
+    bigint start_station_sk FK
+    bigint end_station_sk FK
+    numeric start_lat
+    numeric start_lng
+    numeric end_lat
+    numeric end_lng
+    varchar member_casual
+    numeric duration_minutes
+    char trip_month
+    timestamp loaded_at
+  }
+```
+
+
+
+
+| Bảng               | PK                                 | Ghi chú                                                                                     |
+| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| `nds.city`         | `city_sk`                          | CHI, NYC; timezone, NOAA v2 id                                                              |
+| `nds.station`      | `station_sk`                       | UNIQUE `(city_sk, source_station_id)` per SCD2 row; `source_station_id` = GBFS `short_name` |
+| `nds.calendar_day` | `calendar_day_sk`                  | `is_weekend`, `season` — thay vai trò phân tích calendar                                    |
+| `nds.weather`      | `weather_sk`                       | UNIQUE `(city_sk, observation_hour)`                                                        |
+| `nds.trip`         | `trip_sk`; UK `(city_sk, ride_id)` | FK `start_station_sk`, `end_station_sk` → `nds.station`                                     |
+
+
+`nds.calendar_day` độc lập (không FK sang `trip`/`weather`); join phân tích qua `calendar_date` ↔ `started_at` / `observation_hour`.
+
+### 8.5. DDS Snowflake (`dds.*` — 4 Dim + 1 Fact)
+
+- Port **5436** · SQL: `B3_dw_dds_postgresql/02_dds_schema.sql`
+- **Schema type:** **Snowflake** (không phải Star thuần) — dimension có hierarchy: `dim_station` FK `city_sk` → `dim_city` (City → Station). Các dimension còn lại (`dim_datetime`, `dim_weather_condition`) nối trực tiếp fact; không có hierarchy bổ sung.
+- **Fact type:** Periodic Snapshot
+- **Fact Grain:** City × Station × Hour
+- **Unique Key in Fact table:** `(city_sk, station_sk, datetime_sk)`
+
+```mermaid
+erDiagram
+  dim_city {
+    int city_sk PK
+    varchar city_code UK
+    varchar city_name
+    varchar timezone
+    varchar noaa_station_id
+    varchar gbfs_system_id
+  }
+  dim_station {
+    bigint station_sk PK
+    int city_sk FK
+    text source_station_id
+    varchar station_name
+    numeric latitude
+    numeric longitude
+    int capacity
+    varchar station_status
+    timestamp effective_from
+    timestamp effective_to
+    varchar row_status
+    boolean is_current
+  }
+  dim_datetime {
+    int datetime_sk PK
+    date date UK
+    smallint hour UK
+    smallint day_of_week
+    boolean is_weekend
+    boolean is_peak_hour
+    smallint month
+    varchar season
+  }
+  dim_weather_condition {
+    int weather_condition_sk PK
+    varchar weather_category UK
+    varchar precipitation_band
+  }
+  fact_station_hour_balance {
     bigint station_hour_balance_sk PK
     int city_sk FK
-    int station_sk FK
+    bigint station_sk FK
     int datetime_sk FK
     int weather_condition_sk FK
     int trips_started
     int trips_ended
     int net_flow
     int abs_imbalance
+    int member_trip_count
+    int casual_trip_count
+    int electric_trip_count
+    int classic_trip_count
     numeric avg_duration_minutes
     numeric temperature
     numeric precipitation
     numeric wind_speed
+    timestamp loaded_at
   }
-  Dim_City {
-    int city_sk PK
-    varchar city_code
-  }
-  Dim_Station {
-    bigint station_sk PK
-    text source_station_id
-    varchar row_status
-  }
-  Dim_DateTime {
-    int datetime_sk PK
-    date date
-    int hour
-    boolean is_weekend
-    boolean is_peak_hour
-  }
-  Dim_WeatherCondition {
-    int weather_condition_sk PK
-    varchar weather_category
-  }
-  Fact_StationHourBalance }o--|| Dim_City : city_sk
-  Fact_StationHourBalance }o--|| Dim_Station : station_sk
-  Fact_StationHourBalance }o--|| Dim_DateTime : datetime_sk
-  Fact_StationHourBalance }o--|| Dim_WeatherCondition : weather_condition_sk
+  dim_city ||--o{ fact_station_hour_balance : city_sk
+  dim_station ||--o{ fact_station_hour_balance : station_sk
+  dim_datetime ||--o{ fact_station_hour_balance : datetime_sk
+  dim_weather_condition ||--o{ fact_station_hour_balance : weather_condition_sk
+  dim_city ||--o{ dim_station : city_sk
 ```
 
-| Dimension | SCD | Ghi chú |
-| --- | --- | --- |
-| `dds.dim_city` | Type 1 | CHI + NYC |
-| `dds.dim_station` | **Type 2** | `source_station_id` TEXT; active row per `(city_sk, source_station_id)` |
-| `dds.dim_datetime` | None | `is_weekend`, `is_peak_hour`, `season` |
-| `dds.dim_weather_condition` | Type 1 | Clear / Rain / Snow / Fog |
 
-**Measures trên `dds.fact_station_hour_balance`:** `trips_started`, `trips_ended`, `net_flow`, `abs_imbalance`, `member_trip_count`, `casual_trip_count`, `electric_trip_count`, `classic_trip_count`, `avg_duration_minutes`, `temperature`, `precipitation`, `wind_speed`.
+
+
+| Dimension                   | SCD        | Hierarchy / ghi chú                                 |
+| --------------------------- | ---------- | --------------------------------------------------- |
+| `dds.dim_city`              | Type 1     | Cấp trên của `dim_station` (snowflake arm)          |
+| `dds.dim_station`           | **Type 2** | FK `city_sk` → `dim_city`; `source_station_id` TEXT |
+| `dds.dim_datetime`          | None       | Phẳng — nối trực tiếp fact                          |
+| `dds.dim_weather_condition` | Type 1     | Phẳng — nối trực tiếp fact                          |
+
+
+**Không có** `holiday_sk` trên fact (quyết định nhóm — dùng `dim_datetime.is_weekend`).
 
 ### 8.6. Seed data (DDL)
 
-| Đối tượng | Nội dung seed |
-| --- | --- |
-| `dds.dim_city` | CHI + NYC |
-| `dds.dim_weather_condition` | Clear, Rain, Snow, Fog |
-| `dds.dim_datetime` | Mọi giờ **2026-01-01 → 2026-05-31** + `is_weekend` + `is_peak_hour` |
-| `nds.city` | CHI + NYC (mirror) — `B2_dw_nds_postgresql/03_seed_nds.sql` |
-| `nds.calendar_day` | Mọi ngày 2026-01-01 → 2026-05-31 |
+
+| Đối tượng                   | Nội dung seed                                                       |
+| --------------------------- | ------------------------------------------------------------------- |
+| `dds.dim_city`              | CHI + NYC                                                           |
+| `dds.dim_weather_condition` | Clear, Rain, Snow, Fog                                              |
+| `dds.dim_datetime`          | Mọi giờ **2026-01-01 → 2026-05-31** + `is_weekend` + `is_peak_hour` |
+| `nds.city`                  | CHI + NYC (mirror) — `B2_dw_nds_postgresql/03_seed_nds.sql`         |
+| `nds.calendar_day`          | Mọi ngày 2026-01-01 → 2026-05-31                                    |
+
 
 **Không seed** US federal holidays.
 
@@ -805,11 +965,15 @@ make db-status      # kiểm tra 3 container healthy
 make db-down        # dừng containers
 ```
 
-| Service | Port | Databases |
-| --- | --- | --- |
+
+| Service           | Port | Databases                                 |
+| ----------------- | ---- | ----------------------------------------- |
 | `dw-stg-postgres` | 5434 | `dw_staging`, `dw_control`, `dw_metadata` |
-| `dw-nds-postgres` | 5435 | `dw_nds` |
-| `dw-dds-postgres` | 5436 | `dw_dds` |
+| `dw-nds-postgres` | 5435 | `dw_nds`                                  |
+| `dw-dds-postgres` | 5436 | `dw_dds`                                  |
+
+
+
 
 ### 8.8. Hop metadata & biến môi trường
 
@@ -825,26 +989,32 @@ metadata/
 
 **MDM Station** (theo pattern `3_Hop_ETL_Test` — retry/timeout do Backend quản lý, không khai báo trong Hop):
 
-| Biến | Giá trị dev | Ghi chú |
-| --- | --- | --- |
-| `HOP_MDM_API_HOST` | `127.0.0.1` | Bind host Hop Server |
-| `HOP_MDM_API_PORT` | `8080` | |
-| `HOP_MDM_API_URL` | `http://localhost:8080/hop/webService/?service=` | Nối `HOP_MDM_STATION_SERVICE_ID` |
-| `HOP_MDM_STATION_API_KEY` | `local-dev-mdm-key` | Header `X-API-Key` |
-| `HOP_MDM_STATION_SERVICE_ID` | `mdm-station` | Khớp `metadata/web-service/mdm-station.json` |
-| `HOP_MDM_STATION_STAGING_TABLE` | `stg_gbfs_station` | Bảng staging sau push |
-| `HOP_MDM_ALLOWED_OPERATIONS` | `INSERT,UPDATE,DELETE` | |
+
+| Biến                            | Giá trị dev                                      | Ghi chú                                      |
+| ------------------------------- | ------------------------------------------------ | -------------------------------------------- |
+| `HOP_MDM_API_HOST`              | `127.0.0.1`                                      | Bind host Hop Server                         |
+| `HOP_MDM_API_PORT`              | `8080`                                           |                                              |
+| `HOP_MDM_API_URL`               | `http://localhost:8080/hop/webService/?service=` | Nối `HOP_MDM_STATION_SERVICE_ID`             |
+| `HOP_MDM_STATION_API_KEY`       | `local-dev-mdm-key`                              | Header `X-API-Key`                           |
+| `HOP_MDM_STATION_SERVICE_ID`    | `mdm-station`                                    | Khớp `metadata/web-service/mdm-station.json` |
+| `HOP_MDM_STATION_STAGING_TABLE` | `stg_gbfs_station`                               | Bảng staging sau push                        |
+| `HOP_MDM_ALLOWED_OPERATIONS`    | `INSERT,UPDATE,DELETE`                           |                                              |
+
 
 **DB credentials** (local dev — khớp SQL init `B_databases/`):
 
-| Layer | User | Password |
-| --- | --- | --- |
-| Staging | `hop_staging_user` | `hop_staging@123` |
-| Control | `hop_control_user` | `hop_control@123` |
-| Metadata | `hop_metadata_user` | `hop_metadata@123` |
-| NDS | `hop_nds_user` | `hop_nds@123` |
-| DDS | `hop_dds_user` | `hop_dds@123` |
+
+| Layer    | User                    | Password               |
+| -------- | ----------------------- | ---------------------- |
+| Staging  | `hop_staging_user`      | `hop_staging@123`      |
+| Control  | `hop_control_user`      | `hop_control@123`      |
+| Metadata | `hop_metadata_user`     | `hop_metadata@123`     |
+| NDS      | `hop_nds_user`          | `hop_nds@123`          |
+| DDS      | `hop_dds_user`          | `hop_dds@123`          |
 | Power BI | `analytics_reader_user` | `analytics_reader@123` |
+
+
+
 
 ### 8.9. Enum / coded fields
 
@@ -852,66 +1022,82 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 
 #### Staging (`staging.*`)
 
-| Bảng / cột | Giá trị hợp lệ | Ghi chú |
-| --- | --- | --- |
-| `stg_*_trips.source_city_code` | `CHI`, `NYC` | Khớp `city_code` mọi tầng |
-| `stg_*_trips.rideable_type` | `classic_bike`, `electric_bike` | Từ trip CSV |
-| `stg_*_trips.member_casual` | `member`, `casual` | Từ trip CSV |
-| `stg_weather.source_city_code` | `CHI`, `NYC` | |
-| `stg_weather.report_type` | `FM-15`, `FM-16`, `FM-12` (hourly); loại `SOD`, `SOM` | ETL ưu tiên `FM-15` |
-| `stg_gbfs_station.source_city_code` | `CHI`, `NYC` | |
-| `stg_gbfs_station.station_type` | `classic`, `e_bike` (tùy GBFS; có thể NULL) | |
-| `stg_gbfs_station.station_status` | `open`, `closed`, `maintenance` | DW normalized; mặc định `open` |
-| `stg_gbfs_station.operation` | `INSERT`, `UPDATE`, `DELETE` | MDM push (`HOP_MDM_ALLOWED_OPERATIONS`) |
+
+| Bảng / cột                          | Giá trị hợp lệ                                        | Ghi chú                                 |
+| ----------------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| `stg_*_trips.source_city_code`      | `CHI`, `NYC`                                          | Khớp `city_code` mọi tầng               |
+| `stg_*_trips.rideable_type`         | `classic_bike`, `electric_bike`                       | Từ trip CSV                             |
+| `stg_*_trips.member_casual`         | `member`, `casual`                                    | Từ trip CSV                             |
+| `stg_weather.source_city_code`      | `CHI`, `NYC`                                          |                                         |
+| `stg_weather.report_type`           | `FM-15`, `FM-16`, `FM-12` (hourly); loại `SOD`, `SOM` | ETL ưu tiên `FM-15`                     |
+| `stg_gbfs_station.source_city_code` | `CHI`, `NYC`                                          |                                         |
+| `stg_gbfs_station.station_type`     | `classic`, `e_bike` (tùy GBFS; có thể NULL)           |                                         |
+| `stg_gbfs_station.station_status`   | `open`, `closed`, `maintenance`                       | DW normalized; mặc định `open`          |
+| `stg_gbfs_station.operation`        | `INSERT`, `UPDATE`, `DELETE`                          | MDM push (`HOP_MDM_ALLOWED_OPERATIONS`) |
+
+
+
 
 #### Control + Metadata
 
-| Bảng / cột | Giá trị hợp lệ |
-| --- | --- |
-| `etl_extraction_control.source_name` | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
-| `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED` |
-| `etl_job_log.status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED` |
-| `source_registry.source_type` | `s3_csv`, `file_pull`, `json_push` |
+
+| Bảng / cột                               | Giá trị hợp lệ                                              |
+| ---------------------------------------- | ----------------------------------------------------------- |
+| `etl_extraction_control.source_name`     | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
+| `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
+| `etl_job_log.status`                     | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
+| `source_registry.source_type`            | `s3_csv`, `file_pull`, `json_push`                          |
+
+
+
 
 #### NDS (`nds.*`)
 
-| Bảng / cột | Giá trị hợp lệ | Ghi chú |
-| --- | --- | --- |
-| `city.city_code` | `CHI`, `NYC` | |
-| `city.gbfs_system_id` | `divvy`, `citibike` | |
-| `station.station_status` | `open`, `closed`, `maintenance` | Ví dụ: trạm đang mở vs tạm đóng |
-| `station.row_status` | `active`, `deleted` | SCD2 — `active` = phiên bản hiện tại |
-| `calendar_day.day_of_week` | `1`–`7` | ISO: 1=Thứ Hai … 7=Chủ Nhật |
-| `calendar_day.season` | `winter`, `spring`, `summer`, `fall` | Theo tháng Bắc bán cầu: T12–T2 / T3–T5 / T6–T8 / T9–T11. Kỳ mẫu 202601–202605 chỉ có **winter**, **spring** |
-| `weather.report_type` | `FM-15`, `FM-16`, `FM-12` | Giống staging |
-| `weather.weather_category` | `Clear`, `Rain`, `Snow`, `Fog` | Rule ETL từ precip + present weather |
-| `trip.rideable_type` | `classic_bike`, `electric_bike` | |
-| `trip.member_casual` | `member`, `casual` | |
+
+| Bảng / cột                 | Giá trị hợp lệ                       | Ghi chú                                                                                                     |
+| -------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `city.city_code`           | `CHI`, `NYC`                         |                                                                                                             |
+| `city.gbfs_system_id`      | `divvy`, `citibike`                  |                                                                                                             |
+| `station.station_status`   | `open`, `closed`, `maintenance`      | Ví dụ: trạm đang mở vs tạm đóng                                                                             |
+| `station.row_status`       | `active`, `deleted`                  | SCD2 — `active` = phiên bản hiện tại                                                                        |
+| `calendar_day.day_of_week` | `1`–`7`                              | ISO: 1=Thứ Hai … 7=Chủ Nhật                                                                                 |
+| `calendar_day.season`      | `winter`, `spring`, `summer`, `fall` | Theo tháng Bắc bán cầu: T12–T2 / T3–T5 / T6–T8 / T9–T11. Kỳ mẫu 202601–202605 chỉ có **winter**, **spring** |
+| `weather.report_type`      | `FM-15`, `FM-16`, `FM-12`            | Giống staging                                                                                               |
+| `weather.weather_category` | `Clear`, `Rain`, `Snow`, `Fog`       | Rule ETL từ precip + present weather                                                                        |
+| `trip.rideable_type`       | `classic_bike`, `electric_bike`      |                                                                                                             |
+| `trip.member_casual`       | `member`, `casual`                   |                                                                                                             |
+
+
+
 
 #### DDS (`dds.*`)
 
-| Bảng / cột | Giá trị hợp lệ | Ghi chú |
-| --- | --- | --- |
-| `dim_city.city_code` | `CHI`, `NYC` | |
-| `dim_city.gbfs_system_id` | `divvy`, `citibike` | |
-| `dim_station.station_status` | `open`, `closed`, `maintenance` | Giống `nds.station` |
-| `dim_station.row_status` | `active`, `deleted` | SCD2 |
-| `dim_datetime.day_of_week` | `1`–`7` | ISO |
-| `dim_datetime.hour` | `0`–`23` | Giờ local |
-| `dim_datetime.month` | `1`–`12` | |
-| `dim_datetime.season` | `winter`, `spring`, `summer`, `fall` | Cùng rule `calendar_day.season` |
-| `dim_datetime.is_peak_hour` | `TRUE`, `FALSE` | `TRUE` = ngày thường (T2–T6) giờ 7, 8, 17, 18 |
-| `dim_weather_condition.weather_category` | `Clear`, `Rain`, `Snow`, `Fog` | Seed cố định |
-| `dim_weather_condition.precipitation_band` | `none`, `light_moderate`, `snow` | Seed cố định |
 
-**Ví dụ `season` (seed `03_seed_dimensions.sql`):**
+| Bảng / cột                                 | Giá trị hợp lệ                       | Ghi chú                                       |
+| ------------------------------------------ | ------------------------------------ | --------------------------------------------- |
+| `dim_city.city_code`                       | `CHI`, `NYC`                         |                                               |
+| `dim_city.gbfs_system_id`                  | `divvy`, `citibike`                  |                                               |
+| `dim_station.station_status`               | `open`, `closed`, `maintenance`      | Giống `nds.station`                           |
+| `dim_station.row_status`                   | `active`, `deleted`                  | SCD2                                          |
+| `dim_datetime.day_of_week`                 | `1`–`7`                              | ISO                                           |
+| `dim_datetime.hour`                        | `0`–`23`                             | Giờ local                                     |
+| `dim_datetime.month`                       | `1`–`12`                             |                                               |
+| `dim_datetime.season`                      | `winter`, `spring`, `summer`, `fall` | Cùng rule `calendar_day.season`               |
+| `dim_datetime.is_peak_hour`                | `TRUE`, `FALSE`                      | `TRUE` = ngày thường (T2–T6) giờ 7, 8, 17, 18 |
+| `dim_weather_condition.weather_category`   | `Clear`, `Rain`, `Snow`, `Fog`       | Seed cố định                                  |
+| `dim_weather_condition.precipitation_band` | `none`, `light_moderate`, `snow`     | Seed cố định                                  |
 
-| Tháng | `season` |
-| --- | --- |
-| 12, 1, 2 | `winter` |
-| 3, 4, 5 | `spring` |
-| 6, 7, 8 | `summer` |
-| 9, 10, 11 | `fall` |
+
+**Ví dụ** `season` **(seed** `03_seed_dimensions.sql`**):**
+
+
+| Tháng     | `season` |
+| --------- | -------- |
+| 12, 1, 2  | `winter` |
+| 3, 4, 5   | `spring` |
+| 6, 7, 8   | `summer` |
+| 9, 10, 11 | `fall`   |
+
 
 ---
 
