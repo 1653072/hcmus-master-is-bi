@@ -38,6 +38,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
   - [8.6 Seed data](#86-seed-data-ddl)
   - [8.7 Khởi chạy PostgreSQL](#87-khởi-chạy-postgresql-local)
   - [8.8 Hop metadata & biến môi trường](#88-hop-metadata--biến-môi-trường)
+  - [8.9 Enum / coded fields](#89-enum--coded-fields)
 
 ---
 
@@ -844,6 +845,73 @@ metadata/
 | NDS | `hop_nds_user` | `hop_nds@123` |
 | DDS | `hop_dds_user` | `hop_dds@123` |
 | Power BI | `analytics_reader_user` | `analytics_reader@123` |
+
+### 8.9. Enum / coded fields
+
+Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá trị hợp lệ được ghi trong SQL (`B_databases/*/05_enum_field_notes.sql` hoặc `04_enum_field_notes.sql`) qua `COMMENT ON COLUMN`.
+
+#### Staging (`staging.*`)
+
+| Bảng / cột | Giá trị hợp lệ | Ghi chú |
+| --- | --- | --- |
+| `stg_*_trips.source_city_code` | `CHI`, `NYC` | Khớp `city_code` mọi tầng |
+| `stg_*_trips.rideable_type` | `classic_bike`, `electric_bike` | Từ trip CSV |
+| `stg_*_trips.member_casual` | `member`, `casual` | Từ trip CSV |
+| `stg_weather.source_city_code` | `CHI`, `NYC` | |
+| `stg_weather.report_type` | `FM-15`, `FM-16`, `FM-12` (hourly); loại `SOD`, `SOM` | ETL ưu tiên `FM-15` |
+| `stg_gbfs_station.source_city_code` | `CHI`, `NYC` | |
+| `stg_gbfs_station.station_type` | `classic`, `e_bike` (tùy GBFS; có thể NULL) | |
+| `stg_gbfs_station.station_status` | `open`, `closed`, `maintenance` | DW normalized; mặc định `open` |
+| `stg_gbfs_station.operation` | `INSERT`, `UPDATE`, `DELETE` | MDM push (`HOP_MDM_ALLOWED_OPERATIONS`) |
+
+#### Control + Metadata
+
+| Bảng / cột | Giá trị hợp lệ |
+| --- | --- |
+| `etl_extraction_control.source_name` | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
+| `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED` |
+| `etl_job_log.status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED` |
+| `source_registry.source_type` | `s3_csv`, `file_pull`, `json_push` |
+
+#### NDS (`nds.*`)
+
+| Bảng / cột | Giá trị hợp lệ | Ghi chú |
+| --- | --- | --- |
+| `city.city_code` | `CHI`, `NYC` | |
+| `city.gbfs_system_id` | `divvy`, `citibike` | |
+| `station.station_status` | `open`, `closed`, `maintenance` | Ví dụ: trạm đang mở vs tạm đóng |
+| `station.row_status` | `active`, `deleted` | SCD2 — `active` = phiên bản hiện tại |
+| `calendar_day.day_of_week` | `1`–`7` | ISO: 1=Thứ Hai … 7=Chủ Nhật |
+| `calendar_day.season` | `winter`, `spring`, `summer`, `fall` | Theo tháng Bắc bán cầu: T12–T2 / T3–T5 / T6–T8 / T9–T11. Kỳ mẫu 202601–202605 chỉ có **winter**, **spring** |
+| `weather.report_type` | `FM-15`, `FM-16`, `FM-12` | Giống staging |
+| `weather.weather_category` | `Clear`, `Rain`, `Snow`, `Fog` | Rule ETL từ precip + present weather |
+| `trip.rideable_type` | `classic_bike`, `electric_bike` | |
+| `trip.member_casual` | `member`, `casual` | |
+
+#### DDS (`dds.*`)
+
+| Bảng / cột | Giá trị hợp lệ | Ghi chú |
+| --- | --- | --- |
+| `dim_city.city_code` | `CHI`, `NYC` | |
+| `dim_city.gbfs_system_id` | `divvy`, `citibike` | |
+| `dim_station.station_status` | `open`, `closed`, `maintenance` | Giống `nds.station` |
+| `dim_station.row_status` | `active`, `deleted` | SCD2 |
+| `dim_datetime.day_of_week` | `1`–`7` | ISO |
+| `dim_datetime.hour` | `0`–`23` | Giờ local |
+| `dim_datetime.month` | `1`–`12` | |
+| `dim_datetime.season` | `winter`, `spring`, `summer`, `fall` | Cùng rule `calendar_day.season` |
+| `dim_datetime.is_peak_hour` | `TRUE`, `FALSE` | `TRUE` = ngày thường (T2–T6) giờ 7, 8, 17, 18 |
+| `dim_weather_condition.weather_category` | `Clear`, `Rain`, `Snow`, `Fog` | Seed cố định |
+| `dim_weather_condition.precipitation_band` | `none`, `light_moderate`, `snow` | Seed cố định |
+
+**Ví dụ `season` (seed `03_seed_dimensions.sql`):**
+
+| Tháng | `season` |
+| --- | --- |
+| 12, 1, 2 | `winter` |
+| 3, 4, 5 | `spring` |
+| 6, 7, 8 | `summer` |
+| 9, 10, 11 | `fall` |
 
 ---
 
