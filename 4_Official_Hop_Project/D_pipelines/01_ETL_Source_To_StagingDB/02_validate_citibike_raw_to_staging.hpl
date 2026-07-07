@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>02_validate_citibike_raw_to_staging</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Validate staging.raw_citibike_trips for null, duplicate, datatype, and format rules; accepted rows remain in staging.stg_citibike_trips; warnings/rejects are written by scripts/run_staging_0nf_dq.sh.</description>
+  </info>
+  <transforms/>
+  <order/>
+  <notepads>
+    <notepad>
+      <note>Runtime entrypoint: ${PROJECT_HOME}/scripts/run_staging_0nf_dq.sh. Rules include CITI_NULL_REQUIRED, CITI_DUPLICATE_RIDE, CITI_DATATYPE_TIMESTAMP, CITI_FORMAT_TRIP_MONTH, CITI_WARN_STATION_ID.</note>
+      <xloc>80</xloc>
+      <yloc>80</yloc>
+      <width>760</width>
+      <heigth>120</heigth>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

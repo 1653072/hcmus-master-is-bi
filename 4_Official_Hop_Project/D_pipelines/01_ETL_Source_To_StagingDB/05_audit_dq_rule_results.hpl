@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>05_audit_dq_rule_results</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Audit DQ rule results into control.etl_dq_rule_result.</description>
+  </info>
+  <transforms/>
+  <order/>
+  <notepads>
+    <notepad>
+      <note>Runtime entrypoint: ${PROJECT_HOME}/scripts/run_staging_0nf_dq.sh writes control.etl_dq_rule_result for null, duplicate, datatype, and format rules.</note>
+      <xloc>80</xloc>
+      <yloc>80</yloc>
+      <width>760</width>
+      <heigth>120</heigth>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

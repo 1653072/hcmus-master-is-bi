@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>04_validate_gbfs_raw_to_staging</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Validate staging.raw_gbfs_station and preserve accepted station master rows in staging.stg_gbfs_station.</description>
+  </info>
+  <transforms/>
+  <order/>
+  <notepads>
+    <notepad>
+      <note>Runtime entrypoint: ${PROJECT_HOME}/scripts/run_staging_0nf_dq.sh. Rules include GBFS_NULL_REQUIRED, GBFS_DUPLICATE_STATION, GBFS_DATATYPE_CAPACITY, GBFS_FORMAT_COORDINATE.</note>
+      <xloc>80</xloc>
+      <yloc>80</yloc>
+      <width>760</width>
+      <heigth>120</heigth>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

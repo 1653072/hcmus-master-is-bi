@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>03_load_trips_to_nds</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Load staging.stg_divvy_trips and staging.stg_citibike_trips to nds.trip, derive duration_minutes, and resolve station surrogate keys.</description>
+  </info>
+  <transforms/>
+  <order/>
+  <notepads>
+    <notepad>
+      <note>Runtime entrypoint: ${PROJECT_HOME}/scripts/run_staging_to_nds.sh. Sources: staging.stg_divvy_trips, staging.stg_citibike_trips. Target: nds.trip. Derived field: duration_minutes.</note>
+      <xloc>80</xloc>
+      <yloc>80</yloc>
+      <width>760</width>
+      <heigth>120</heigth>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

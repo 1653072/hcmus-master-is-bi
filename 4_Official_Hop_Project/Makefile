@@ -33,7 +33,7 @@ B_DATABASES := B_databases
 
 .PHONY: help setup-project-home datasets-check datasets-download datasets-full \
         datasets-extract datasets-gbfs datasets-noaa datasets-status \
-        db-up db-down db-status
+        db-up db-down db-status staging-dq nds-load runtime-checks
 
 help:
 	@echo "4_Official_Hop_Project — Makefile"
@@ -49,6 +49,9 @@ help:
 	@echo "  make db-up               Docker: dw_stg (5434) + dw_nds (5435) + dw_dds (5436)"
 	@echo "  make db-down             Stop DW PostgreSQL containers"
 	@echo "  make db-status           docker compose ps (B_databases)"
+	@echo "  make staging-dq          Build raw 0NF + DQ warnings/rejects/results from staging"
+	@echo "  make nds-load            Load accepted staging tables into NDS"
+	@echo "  make runtime-checks      Check XML/schema artifacts and DB runtime counts"
 	@echo ""
 	@echo "Windows (CMD/PowerShell): Git for Windows + make"
 	@echo "Bien: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
@@ -96,3 +99,15 @@ db-down: $(CONFIG_FILE)
 
 db-status: $(CONFIG_FILE)
 	cd $(B_DATABASES) && docker-compose ps
+
+staging-dq: $(CONFIG_FILE)
+	@bash scripts/run_staging_0nf_dq.sh
+
+nds-load: $(CONFIG_FILE)
+	@bash scripts/run_staging_to_nds.sh
+
+runtime-checks: $(CONFIG_FILE)
+	@bash tests/check_staging_etl_artifacts.sh
+	@bash tests/check_staging_0nf_dq_artifacts.sh
+	@bash tests/check_nds_etl_artifacts.sh
+	@bash tests/check_runtime_counts.sh

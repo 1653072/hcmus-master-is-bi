@@ -2,10 +2,24 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PIPE_DIR="$ROOT/D_pipelines/01_Load_Source_Files_To_Staging"
-WORKFLOW="$ROOT/E_workflows/01_load_source_files_to_staging.hwf"
+PIPE_DIR="$ROOT/D_pipelines/01_ETL_Source_To_StagingDB"
+WORKFLOW="$ROOT/E_workflows/01_etl_source_to_stagingdb.hwf"
 README="$ROOT/README.md"
 STAGING_SQL="$ROOT/B_databases/B1_dw_stg_postgresql/02_staging_schema.sql"
+DPIPE_ROOT="$ROOT/D_pipelines"
+DDS_DIR="$ROOT/D_pipelines/03_ETL_NDS_To_DDS"
+
+expected_pipeline_dirs=$'01_ETL_Source_To_StagingDB\n02_ETL_StagingDB_To_NDS\n03_ETL_NDS_To_DDS'
+actual_pipeline_dirs="$(
+  find "$DPIPE_ROOT" -mindepth 1 -maxdepth 1 -type d | sed 's|.*/||' | sort
+)"
+test "$actual_pipeline_dirs" = "$expected_pipeline_dirs"
+
+test -d "$DDS_DIR"
+if find "$DDS_DIR" -maxdepth 1 -type f -name '*.hpl' | grep -q .; then
+  echo "Unexpected DDS .hpl pipelines found in $DDS_DIR" >&2
+  exit 1
+fi
 
 required_pipelines=(
   "01_load_divvy_trips_to_staging.hpl"

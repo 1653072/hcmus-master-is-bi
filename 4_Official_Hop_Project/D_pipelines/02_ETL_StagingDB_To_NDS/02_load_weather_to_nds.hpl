@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>02_load_weather_to_nds</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Load staging.stg_weather to nds.weather and derive weather_category.</description>
+  </info>
+  <transforms/>
+  <order/>
+  <notepads>
+    <notepad>
+      <note>Runtime entrypoint: ${PROJECT_HOME}/scripts/run_staging_to_nds.sh. Source: staging.stg_weather. Target: nds.weather. Derived field: weather_category.</note>
+      <xloc>80</xloc>
+      <yloc>80</yloc>
+      <width>760</width>
+      <heigth>120</heigth>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

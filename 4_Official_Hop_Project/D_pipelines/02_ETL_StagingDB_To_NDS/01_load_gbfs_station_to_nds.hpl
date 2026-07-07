@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>01_load_gbfs_station_to_nds</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Load staging.stg_gbfs_station to nds.station using source_city_code + short_name as the station business key.</description>
+  </info>
+  <transforms/>
+  <order/>
+  <notepads>
+    <notepad>
+      <note>Runtime entrypoint: ${PROJECT_HOME}/scripts/run_staging_to_nds.sh. Source: staging.stg_gbfs_station. Target: nds.station. Join: nds.city.city_code = source_city_code.</note>
+      <xloc>80</xloc>
+      <yloc>80</yloc>
+      <width>760</width>
+      <heigth>120</heigth>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

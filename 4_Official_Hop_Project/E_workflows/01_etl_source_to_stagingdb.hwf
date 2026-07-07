@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow>
+  <info>
+    <name>01_etl_source_to_stagingdb</name>
+    <workflow_type>Normal</workflow_type>
+    <workflow_status>-1</workflow_status>
+    <parameters/>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Orchestrate source file loads into staging, then run raw and DQ validation.</description>
+  </info>
+  <actions>
+    <action><name>Start</name><type>SPECIAL</type><xloc>48</xloc><yloc>160</yloc><parallel>N</parallel></action>
+    <action><connections><connection><name>dw-staging</name><waitfor>0</waitfor><waittime>millisecond</waittime></connection></connections><name>Check dw-staging</name><type>CHECK_DB_CONNECTIONS</type><xloc>224</xloc><yloc>160</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/01_load_divvy_trips_to_staging.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>01_load_divvy_trips_to_staging.hpl</name><type>PIPELINE</type><xloc>496</xloc><yloc>32</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/02_load_citibike_trips_to_staging.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>02_load_citibike_trips_to_staging.hpl</name><type>PIPELINE</type><xloc>496</xloc><yloc>128</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/03_load_noaa_weather_to_staging.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>03_load_noaa_weather_to_staging.hpl</name><type>PIPELINE</type><xloc>496</xloc><yloc>224</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/04_load_gbfs_station_to_staging.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>04_load_gbfs_station_to_staging.hpl</name><type>PIPELINE</type><xloc>496</xloc><yloc>320</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/05_audit_staging_load_counts.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>05_audit_staging_load_counts.hpl</name><type>PIPELINE</type><xloc>760</xloc><yloc>320</yloc><parallel>N</parallel></action>
+    <action><name>Run scripts/run_staging_0nf_dq.sh</name><type>SHELL</type><xloc>760</xloc><yloc>160</yloc><parallel>N</parallel></action>
+  </actions>
+  <hops>
+    <hop><from>Start</from><to>Check dw-staging</to><evaluation>Y</evaluation><unconditional>Y</unconditional><enabled>Y</enabled></hop>
+    <hop><from>Check dw-staging</from><to>01_load_divvy_trips_to_staging.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>01_load_divvy_trips_to_staging.hpl</from><to>02_load_citibike_trips_to_staging.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>02_load_citibike_trips_to_staging.hpl</from><to>03_load_noaa_weather_to_staging.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>03_load_noaa_weather_to_staging.hpl</from><to>04_load_gbfs_station_to_staging.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>04_load_gbfs_station_to_staging.hpl</from><to>05_audit_staging_load_counts.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>05_audit_staging_load_counts.hpl</from><to>Run scripts/run_staging_0nf_dq.sh</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+  </hops>
+</workflow>
