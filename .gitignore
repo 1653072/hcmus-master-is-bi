@@ -43,6 +43,9 @@ hop-check.txt
 .DS_Store
 Thumbs.db
 
+# Local tool artifacts
+.understand-anything/
+
 # Official Hop Project — A_datasets (tải lại bằng A_datasets/download_datasets.sh)
 4_Official_Hop_Project/A_datasets/A1_citibike/*.zip
 4_Official_Hop_Project/A_datasets/A1_citibike/extracted/
