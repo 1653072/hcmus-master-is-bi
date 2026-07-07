@@ -34,6 +34,8 @@ Workflow actions use `set_logfile=Y`, `logext=txt`, `add_date=Y`, `add_time=Y`.
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `IllegalArgumentException: Argument cannot be null` on TextFileInput2 | Empty `<files/>`, missing `<file><name>`, or empty `<fields>` | Add file block + field defs; see `design-hop-etl/reference.md` |
+| `NullPointerException` in `TextFileInputMeta.getFields` / `Locale.of` | TextFileInput2 missing `<date_format_locale>` in generated XML | Add `<date_format_lenient>Y</date_format_lenient>` and `<date_format_locale>en_US</date_format_locale>` |
+| TextFileInput2 `Single line found` on a valid CSV | Wrong line ending format, e.g. LF file configured as `DOS` | Inspect with `file` or byte counts; use `<format>UNIX</format>` for LF-only CSV and `DOS` for CRLF |
 | `IllegalArgumentException: Argument cannot be null` | `${PROJECT_HOME}` or `STAGING_*_DIR` wrong | Update `development_configs.json` PROJECT_HOME (README script) |
 | `SAXParseException` / cannot open `.hpl` | Malformed XML in `<order>` or unescaped `<` in SQL | Run `validate-hpl.sh`; fix hops; use `&lt;=` in SQL XML |
 | Hop opens pipeline but read step has no files | Hop GUI stripped XML on save | Diff git; restore `<file>` and `<fields>`; add `validate-hpl.sh` to pre-commit |
@@ -46,6 +48,9 @@ Workflow actions use `set_logfile=Y`, `logext=txt`, `add_date=Y`, `add_time=Y`.
 | Export writes 0 rows | LSET/CET window has no data; control timestamps ahead of source | Query source `last_update_timestamp` range; reset control `lset`/`cet` in seed SQL if needed |
 | Load inserts 0 rows | File missing or wrong `filemask` | `ls staging/exported_*`; match mask (`exported_movies.json` not `.jsonl`) |
 | Type cast errors on load | CSV date format mismatch | SelectValues conversion_mask `yyyy/MM/dd HH:mm:ss.SSS` |
+| PostgreSQL says numeric column received `character varying` from JsonInput | JsonInput emits numeric-looking JSON values as strings for this pipeline | Cast in ScriptValueMod or SelectValues before InsertUpdate/TableOutput |
+| `NOT NULL` violation for GBFS `short_name` | Some station_information rows omit `short_name` | Fallback to `station_id` for staging key and flag those rows for join-quality review |
+| Audit SQL cannot count staging rows while connected to control DB | `dw_staging` and `dw_control` are separate databases, not schemas in one DB | Use a separate audit pipeline: TableInput on `dw-staging` for counts, then InsertUpdate/TableOutput on `dw-control` |
 | TableOutput connection error | Docker down or wrong port | `docker-compose ps`; test `dw-staging` on 5434 |
 | MDM HTML `401 Unauthorized` | Hop Server Basic Auth failed | `cluster`/`cluster`; curl `-u cluster:cluster` |
 | MDM JSON `401 Unauthorized` | Wrong or missing `X-API-Key` | Header must match `HOP_MDM_USERS_API_KEY`; entry pipeline accepts case-insensitive `x-api-key` |

@@ -297,6 +297,10 @@ Full XML snippets: [reference.md](reference.md).
 | Mistake | Consequence |
 |---------|-------------|
 | Empty TextFileInput2 file/fields | `IllegalArgumentException: Argument cannot be null` |
+| TextFileInput2 missing date locale | Runtime `NullPointerException` in `Locale.of` | Include `date_format_lenient` + `date_format_locale` even when reading fields as strings |
+| Wrong CSV line format | `Single line found` on LF/CRLF mismatch | Match `<format>` to source files: `UNIX` for LF, `DOS` for CRLF |
+| Counting staging rows from control SQL | Cross-database query failure or misleading audit | Read counts from `dw-staging`, then write audit rows to `dw-control` in a separate step |
+| JsonInput numeric values passed straight to DB | PostgreSQL type errors | Cast JSON numeric fields before `InsertUpdate` |
 | Malformed `<order>` XML (e.g. join on string in generators) | SAXParseException, Hop cannot open file |
 | Constant without use_formatting | Literal `${STAGING_BATCH_ID}` or null batch_id |
 | Run load pipeline without init workflow | batch_id stays `INIT` |

@@ -106,7 +106,7 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 ### 2.1 Source Files → StagingDB
 
-Lát cắt ETL đầu tiên triển khai trong `D_pipelines/06_Load_Source_Files_To_Staging/` và `E_workflows/01_load_source_files_to_staging.hwf`: `A_datasets/` là operational landing layer cho JSON/CSV files, Hop đọc file nguồn, chuẩn hóa kiểu dữ liệu, làm sạch giá trị rỗng/trace precipitation, derive `source_city_code`, `trip_month`, rồi upsert vào `dw_staging.staging.*`.
+Lát cắt ETL đầu tiên triển khai trong `D_pipelines/01_Load_Source_Files_To_Staging/` và `E_workflows/01_load_source_files_to_staging.hwf`: `A_datasets/` là operational landing layer cho JSON/CSV files, Hop đọc file nguồn, chuẩn hóa kiểu dữ liệu, làm sạch giá trị rỗng/trace precipitation, derive `source_city_code`, `trip_month`, rồi upsert vào `dw_staging.staging.*`.
 
 **Nguyên tắc staging cho lát cắt này:**
 
@@ -190,7 +190,7 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Ho
 | **A_datasets**  | Sẵn sàng   | Script + tài liệu LCD V2, trip 202601–202605 ([mục 7](#7-a_datasets--phân-tích-và-hướng-dẫn-tải))  |
 | **B_databases** | Sẵn sàng   | `docker-compose.yml` + init SQL B1/B2/B3; `make db-up` ([mục 8.7](#87-khởi-chạy-postgresql-local)) |
 | **C_backend**   | Khung      | Go MDM push GBFS → Hop Web Service (TODO)                                                          |
-| **D_pipelines** | Đang triển khai | `06_Load_Source_Files_To_Staging` load JSON/CSV → StagingDB; NDS/DDS load còn TODO             |
+| **D_pipelines** | Đang triển khai | `01_Load_Source_Files_To_Staging` load JSON/CSV → StagingDB; NDS/DDS load còn TODO             |
 | **E_workflows** | Đang triển khai | `01_load_source_files_to_staging.hwf` orchestration cho staging files                          |
 | **metadata**    | Sẵn sàng   | RDBMS connections + `mdm-station` web service ([mục 8.8](#88-hop-metadata--biến-môi-trường))       |
 
@@ -226,7 +226,7 @@ Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_
 | GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                             |
 | Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds) |
 | Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                               |
-| Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/06_Load_Source_Files_To_Staging`, `E_workflows/01_load_source_files_to_staging.hwf` |
+| Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_Load_Source_Files_To_Staging`, `E_workflows/01_load_source_files_to_staging.hwf` |
 | Hop ETL end-to-end                     | Chưa hoàn tất — NDS/DDS pipelines còn TODO                                |
 
 

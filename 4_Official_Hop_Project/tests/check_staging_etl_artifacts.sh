@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PIPE_DIR="$ROOT/D_pipelines/06_Load_Source_Files_To_Staging"
+PIPE_DIR="$ROOT/D_pipelines/01_Load_Source_Files_To_Staging"
 WORKFLOW="$ROOT/E_workflows/01_load_source_files_to_staging.hwf"
 README="$ROOT/README.md"
 STAGING_SQL="$ROOT/B_databases/B1_dw_stg_postgresql/02_staging_schema.sql"
