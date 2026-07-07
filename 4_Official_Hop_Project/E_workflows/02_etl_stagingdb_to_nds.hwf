@@ -6,13 +6,19 @@
     <workflow_status>-1</workflow_status>
     <parameters/>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Orchestrate staging database loads into NDS.</description>
+    <description>Visible ETL workflow from accepted staging tables into NDS station, weather, and trip entities.</description>
   </info>
   <actions>
     <action><name>Start</name><type>SPECIAL</type><xloc>48</xloc><yloc>160</yloc><parallel>N</parallel></action>
-    <action><name>Run scripts/run_staging_to_nds.sh</name><type>SHELL</type><xloc>272</xloc><yloc>160</yloc><parallel>N</parallel></action>
+    <action><connections><connection><name>dw-staging</name><waitfor>0</waitfor><waittime>millisecond</waittime></connection><connection><name>dw-nds</name><waitfor>0</waitfor><waittime>millisecond</waittime></connection></connections><name>Check staging/NDS DB</name><type>CHECK_DB_CONNECTIONS</type><xloc>224</xloc><yloc>160</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/01_load_gbfs_station_to_nds.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>01_load_gbfs_station_to_nds.hpl</name><type>PIPELINE</type><xloc>512</xloc><yloc>80</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/02_load_weather_to_nds.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>02_load_weather_to_nds.hpl</name><type>PIPELINE</type><xloc>768</xloc><yloc>160</yloc><parallel>N</parallel></action>
+    <action><filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl</filename><wait_until_finished>Y</wait_until_finished><parameters><pass_all_parameters>Y</pass_all_parameters></parameters><run_configuration>local</run_configuration><name>03_load_trips_to_nds.hpl</name><type>PIPELINE</type><xloc>1024</xloc><yloc>240</yloc><parallel>N</parallel></action>
   </actions>
   <hops>
-    <hop><from>Start</from><to>Run scripts/run_staging_to_nds.sh</to><evaluation>Y</evaluation><unconditional>Y</unconditional><enabled>Y</enabled></hop>
+    <hop><from>Start</from><to>Check staging/NDS DB</to><evaluation>Y</evaluation><unconditional>Y</unconditional><enabled>Y</enabled></hop>
+    <hop><from>Check staging/NDS DB</from><to>01_load_gbfs_station_to_nds.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>01_load_gbfs_station_to_nds.hpl</from><to>02_load_weather_to_nds.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
+    <hop><from>02_load_weather_to_nds.hpl</from><to>03_load_trips_to_nds.hpl</to><evaluation>Y</evaluation><unconditional>N</unconditional><enabled>Y</enabled></hop>
   </hops>
 </workflow>

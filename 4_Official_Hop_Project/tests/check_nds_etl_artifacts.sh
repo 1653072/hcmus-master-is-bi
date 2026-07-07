@@ -4,13 +4,38 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PIPE_DIR="$ROOT/D_pipelines/02_ETL_StagingDB_To_NDS"
 WORKFLOW="$ROOT/E_workflows/02_etl_stagingdb_to_nds.hwf"
+DDS_WORKFLOW="$ROOT/E_workflows/03_etl_nds_to_dds.hwf"
 RUNTIME_SCRIPT="$ROOT/scripts/run_staging_to_nds.sh"
+
+assert_no_shell_blackbox() {
+  local path="$1"
+  if grep -q '<type>SHELL</type>' "$path" || grep -q 'scripts/run_' "$path"; then
+    echo "Unexpected shell blackbox references remain in $path" >&2
+    exit 1
+  fi
+}
+
+assert_has_real_transform() {
+  local path="$1"
+  if ! grep -Eq '<type>(TableInput|TableOutput|InsertUpdate|DatabaseLookup|FilterRows|SelectValues|Constant|RowGenerator|ScriptValueMod|TextFileInput2|JsonInput)</type>' "$path"; then
+    echo "Expected a real transform in $path" >&2
+    exit 1
+  fi
+}
 
 test -d "$PIPE_DIR"
 test -f "$WORKFLOW"
+test -f "$DDS_WORKFLOW"
 test -f "$RUNTIME_SCRIPT"
 test -x "$RUNTIME_SCRIPT"
 xmllint --noout "$WORKFLOW" >/dev/null
+xmllint --noout "$DDS_WORKFLOW" >/dev/null
+assert_no_shell_blackbox "$WORKFLOW"
+assert_no_shell_blackbox "$DDS_WORKFLOW"
+if grep -q '<type>PIPELINE</type>' "$DDS_WORKFLOW"; then
+  echo "DDS workflow skeleton must not call a real DDS pipeline yet: $DDS_WORKFLOW" >&2
+  exit 1
+fi
 
 for pipeline in \
   "01_load_gbfs_station_to_nds.hpl" \
@@ -19,6 +44,7 @@ for pipeline in \
   path="$PIPE_DIR/$pipeline"
   test -f "$path"
   xmllint --noout "$path" >/dev/null
+  assert_has_real_transform "$path"
 done
 
 grep -q "stg_gbfs_station" "$PIPE_DIR/01_load_gbfs_station_to_nds.hpl"

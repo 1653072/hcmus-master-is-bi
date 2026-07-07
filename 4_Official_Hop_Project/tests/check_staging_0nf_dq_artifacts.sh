@@ -9,12 +9,29 @@ RUNTIME_SCRIPT="$ROOT/scripts/run_staging_0nf_dq.sh"
 PIPE_DIR="$ROOT/D_pipelines/01_ETL_Source_To_StagingDB"
 WORKFLOW="$ROOT/E_workflows/01_etl_source_to_stagingdb.hwf"
 
+assert_no_shell_blackbox() {
+  local path="$1"
+  if grep -q '<type>SHELL</type>' "$path" || grep -q 'scripts/run_' "$path"; then
+    echo "Unexpected shell blackbox references remain in $path" >&2
+    exit 1
+  fi
+}
+
+assert_has_real_transform() {
+  local path="$1"
+  if ! grep -Eq '<type>(TableInput|TableOutput|InsertUpdate|DatabaseLookup|FilterRows|SelectValues|Constant|RowGenerator|ScriptValueMod|TextFileInput2|JsonInput)</type>' "$path"; then
+    echo "Expected a real transform in $path" >&2
+    exit 1
+  fi
+}
+
 test -f "$DQ_SQL"
 test -f "$RUNTIME_SCRIPT"
 test -x "$RUNTIME_SCRIPT"
 test -d "$PIPE_DIR"
 test -f "$WORKFLOW"
 xmllint --noout "$WORKFLOW" >/dev/null
+assert_no_shell_blackbox "$WORKFLOW"
 
 required_raw_tables=(
   "raw_divvy_trips"
@@ -54,4 +71,5 @@ for pipeline in \
   path="$PIPE_DIR/$pipeline"
   test -f "$path"
   xmllint --noout "$path" >/dev/null
+  assert_has_real_transform "$path"
 done

@@ -118,11 +118,13 @@ Lát cắt ETL đầu tiên triển khai trong `D_pipelines/01_ETL_Source_To_Sta
 
 ### 2.2 Pipeline 2: StagingDB → NDS
 
-Lát cắt bổ sung tạo raw 0NF và DQ evidence bằng `scripts/run_staging_0nf_dq.sh`, sau đó load accepted staging sang NDS bằng `scripts/run_staging_to_nds.sh`. Đây là nhóm pipeline logic cho staging → NDS station/weather/trip, với các Hop artifacts tương ứng:
+Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không phải shell blackbox. `E_workflows/01_etl_source_to_stagingdb.hwf` gọi tuần tự các `.hpl` source load, raw/DQ validation, DQ audit và staging audit. `E_workflows/02_etl_stagingdb_to_nds.hwf` gọi tuần tự 3 `.hpl` load NDS:
 
-- `D_pipelines/02_ETL_StagingDB_To_NDS/`, `E_workflows/02_etl_stagingdb_to_nds.hwf`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/01_load_gbfs_station_to_nds.hpl`: `stg_gbfs_station` → `nds.station`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/02_load_weather_to_nds.hpl`: `stg_weather` → `nds.weather`, derive `weather_category`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl`: `stg_divvy_trips` + `stg_citibike_trips` → `nds.trip`, derive `duration_minutes`
 
-**DQ rule coverage:** null, duplicate, datatype, format; hard reject ghi `staging.dq_reject_row`, warning ghi `staging.dq_warning_row`, summary ghi `control.etl_dq_rule_result`.
+**DQ rule coverage:** null, duplicate, datatype, format; hard reject ghi `staging.dq_reject_row`, warning ghi `staging.dq_warning_row`, summary ghi `control.etl_dq_rule_result`. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
 
 **Lệnh chạy nhanh:**
 
@@ -248,8 +250,8 @@ Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_
 | Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds) |
 | Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                               |
 | Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines |
-| Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và runtime script |
-| ETL StagingDB → NDS                    | Đã có runtime script + Hop artifact; load `nds.station`, `nds.weather`, `nds.trip` qua `D_pipelines/02_ETL_StagingDB_To_NDS`, `E_workflows/02_etl_stagingdb_to_nds.hwf` |
+| Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification |
+| ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.station`, `nds.weather`, `nds.trip` qua `D_pipelines/02_ETL_StagingDB_To_NDS`, `E_workflows/02_etl_stagingdb_to_nds.hwf`; script chỉ là fallback/manual verification |
 | Hop ETL end-to-end                     | `D_pipelines/03_ETL_NDS_To_DDS`, `E_workflows/03_etl_nds_to_dds.hwf` hiện là skeleton/placeholder; DDS load làm sau |
 
 
