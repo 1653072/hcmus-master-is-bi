@@ -77,10 +77,6 @@ CREATE TABLE staging.stg_gbfs_station (
     CONSTRAINT pk_stg_gbfs_station PRIMARY KEY (source_city_code, short_name)
 );
 
-CREATE INDEX idx_stg_divvy_started_at ON staging.stg_divvy_trips (started_at);
-CREATE INDEX idx_stg_citibike_started_at ON staging.stg_citibike_trips (started_at);
-CREATE INDEX idx_stg_weather_city_ts ON staging.stg_weather (source_city_code, observation_ts);
-
 ALTER TABLE staging.stg_divvy_trips OWNER TO hop_staging_user;
 ALTER TABLE staging.stg_citibike_trips OWNER TO hop_staging_user;
 ALTER TABLE staging.stg_weather OWNER TO hop_staging_user;
