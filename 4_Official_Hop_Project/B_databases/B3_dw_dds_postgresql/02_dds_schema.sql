@@ -25,7 +25,8 @@ CREATE TABLE dds.dim_station (
     effective_from    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     effective_to      TIMESTAMP,
     row_status        VARCHAR(20) NOT NULL DEFAULT 'active',
-    is_current        BOOLEAN NOT NULL DEFAULT TRUE
+    is_current        BOOLEAN NOT NULL DEFAULT TRUE,
+    version           INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE INDEX idx_dim_station_lookup ON dds.dim_station (city_sk, source_station_id) WHERE row_status = 'active';
@@ -62,7 +63,8 @@ CREATE TABLE dds.fact_station_hour_balance (
     casual_trip_count        INTEGER NOT NULL DEFAULT 0,
     electric_trip_count      INTEGER NOT NULL DEFAULT 0,
     classic_trip_count       INTEGER NOT NULL DEFAULT 0,
-    avg_duration_minutes     NUMERIC(10, 2),
+    avg_duration_member_minutes NUMERIC(10, 2),
+    avg_duration_casual_minutes NUMERIC(10, 2),
     temperature              NUMERIC(8, 2),
     precipitation            NUMERIC(10, 2),
     wind_speed               NUMERIC(8, 2),
