@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>02_load_weather_to_nds</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Visible Hop load from staging.stg_weather into nds.weather with weather_category and city/hour dedupe.</description>
+  </info>
+  <transform>
+    <type>TableInput</type>
+    <name>Read staging.stg_weather deduped</name>
+    <connection>dw-staging</connection>
+    <sql><![CDATA[WITH weather_ranked AS (
+  SELECT
+    source_city_code,
+    date_trunc('hour', observation_ts) AS observation_hour,
+    report_type,
+    hourly_dry_bulb_temperature AS temperature_c,
+    hourly_precipitation AS precipitation_mm,
+    hourly_wind_speed AS wind_speed_ms,
+    hourly_present_weather_type AS present_weather,
+    CASE
+      WHEN COALESCE(hourly_precipitation, 0) > 0 THEN 'wet'
+      WHEN hourly_dry_bulb_temperature <= 0 THEN 'freezing'
+      WHEN hourly_wind_speed >= 10 THEN 'windy'
+      ELSE 'clear'
+    END AS weather_category,
+    ROW_NUMBER() OVER (
+      PARTITION BY source_city_code, date_trunc('hour', observation_ts)
+      ORDER BY CASE report_type WHEN 'FM-15' THEN 1 WHEN 'FM-16' THEN 2 WHEN 'FM-12' THEN 3 ELSE 4 END,
+               observation_ts
+    ) AS rn
+  FROM staging.stg_weather
+  WHERE observation_ts IS NOT NULL
+)
+SELECT source_city_code, observation_hour, report_type, temperature_c,
+       precipitation_mm, wind_speed_ms, present_weather, weather_category
+FROM weather_ranked
+WHERE rn = 1]]></sql>
+    <limit>0</limit>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>N</variables_active>
+    <lookup/>
+    <sql_from_file/>
+    <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
+  </transform>
+  <transform>
+    <type>DatabaseLookup</type>
+    <name>Lookup nds.city by source_city_code</name>
+    <connection>dw-nds</connection>
+    <schema>nds</schema>
+    <table>city</table>
+    <cache>N</cache>
+    <lookup>
+      <key><name>city_code</name><field>source_city_code</field><condition>=</condition><name2/></key>
+      <value><name>city_sk</name><rename>city_sk</rename><default/><type>Integer</type></value>
+    </lookup>
+    <GUI><xloc>384</xloc><yloc>96</yloc></GUI>
+  </transform>
+  <transform>
+    <type>InsertUpdate</type>
+    <name>Upsert nds.weather</name>
+    <connection>dw-nds</connection>
+    <lookup>
+      <key><name>city_sk</name><field>city_sk</field><condition>=</condition><name2/></key>
+      <key><name>observation_hour</name><field>observation_hour</field><condition>=</condition><name2/></key>
+      <value><name>city_sk</name><rename>city_sk</rename><update>N</update></value>
+      <value><name>observation_hour</name><rename>observation_hour</rename><update>N</update></value>
+      <value><name>report_type</name><rename>report_type</rename><update>Y</update></value>
+      <value><name>temperature_c</name><rename>temperature_c</rename><update>Y</update></value>
+      <value><name>precipitation_mm</name><rename>precipitation_mm</rename><update>Y</update></value>
+      <value><name>wind_speed_ms</name><rename>wind_speed_ms</rename><update>Y</update></value>
+      <value><name>present_weather</name><rename>present_weather</rename><update>Y</update></value>
+      <value><name>weather_category</name><rename>weather_category</rename><update>Y</update></value>
+      <schema>nds</schema>
+      <table>weather</table>
+    </lookup>
+    <commit>1000</commit>
+    <update_bypassed>N</update_bypassed>
+    <GUI><xloc>672</xloc><yloc>96</yloc></GUI>
+  </transform>
+  <order>
+    <hop><from>Read staging.stg_weather deduped</from><to>Lookup nds.city by source_city_code</to><enabled>Y</enabled></hop>
+    <hop><from>Lookup nds.city by source_city_code</from><to>Upsert nds.weather</to><enabled>Y</enabled></hop>
+  </order>
+  <notepads>
+    <notepad><note>Target: nds.weather. Idempotent key: city_sk + observation_hour. weather_category is derived before upsert.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

@@ -1,62 +1,294 @@
 {
-  "variables" : [
-    { "name" : "HOP_ENV", "value" : "dev", "description" : "Runtime environment: dev | staging | prod" },
-    { "name" : "PROJECT_HOME", "value" : "D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/4_Official_Hop_Project", "description" : "Hop project root directory" },
-    { "name" : "RAW_DATASET_ROOT", "value" : "${PROJECT_HOME}/A_datasets", "description" : "Root folder for bike-share datasets" },
-    { "name" : "SAMPLE_PERIOD", "value" : "202601-202605", "description" : "Sample period for trip + NOAA ETL" },
-    { "name" : "DATASETS_CSV_FOLDER", "value" : "${PROJECT_HOME}/A_datasets", "description" : "Base path for CSV/JSON dataset folders" },
-    { "name" : "DIVVY_TRIPS_DIR", "value" : "${PROJECT_HOME}/A_datasets/A2_divvy/extracted", "description" : "Divvy trip CSV (extracted monthly folders)" },
-    { "name" : "CITIBIKE_TRIPS_DIR", "value" : "${PROJECT_HOME}/A_datasets/A1_citibike/extracted", "description" : "Citi Bike trip CSV (extracted monthly folders)" },
-    { "name" : "NOAA_LCD_DIR", "value" : "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2", "description" : "NOAA LCD v2 filtered CSV directory" },
-    { "name" : "NOAA_LCD_CHICAGO", "value" : "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00014819_2026_01-05.csv", "description" : "Chicago NOAA LCD v2 filtered file" },
-    { "name" : "NOAA_LCD_NYC", "value" : "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00094728_2026_01-05.csv", "description" : "NYC NOAA LCD v2 filtered file" },
-    { "name" : "GBFS_STATION_DIR", "value" : "${PROJECT_HOME}/A_datasets/A4_mdm_station_info", "description" : "GBFS station_information JSON (MDM source)" },
-    { "name" : "HOP_MDM_API_HOST", "value" : "127.0.0.1", "description" : "Hop MDM API bind host" },
-    { "name" : "HOP_MDM_API_PORT", "value" : "8080", "description" : "Hop MDM API port (receives GBFS station push)" },
-    { "name" : "HOP_MDM_API_URL", "value" : "http://localhost:8080/hop/webService/?service=", "description" : "Hop Web Service base URL (append HOP_MDM_STATION_SERVICE_ID)" },
-    { "name" : "HOP_MDM_STATION_API_KEY", "value" : "local-dev-mdm-key", "description" : "Shared secret for MDM Station push (local fake — committed for dev)" },
-    { "name" : "HOP_MDM_STATION_SERVICE_ID", "value" : "mdm-station", "description" : "MDM Station service ID — matches ?service= and metadata/web-service/mdm-station.json name" },
-    { "name" : "HOP_MDM_STATION_STAGING_TABLE", "value" : "stg_gbfs_station", "description" : "Staging table for pushed GBFS station changes" },
-    { "name" : "HOP_MDM_ALLOWED_OPERATIONS", "value" : "INSERT,UPDATE,DELETE", "description" : "Allowed MDM Station push operations" },
-    { "name" : "STAGING_DB_HOST", "value" : "localhost", "description" : "Staging Area host (docker: dw-stg-postgres)" },
-    { "name" : "STAGING_DB_PORT", "value" : "5434", "description" : "Staging Area port" },
-    { "name" : "STAGING_DB_NAME", "value" : "dw_staging", "description" : "Staging Area database name" },
-    { "name" : "STAGING_DB_USER", "value" : "hop_staging_user", "description" : "Staging Area database user" },
-    { "name" : "STAGING_DB_PASSWORD", "value" : "hop_staging@123", "description" : "Staging Area password (local fake — committed for dev)" },
-    { "name" : "STAGING_DB_SCHEMA", "value" : "staging", "description" : "Staging Area schema" },
-    { "name" : "CONTROL_DB_HOST", "value" : "localhost", "description" : "Control + Audit host (docker: dw-stg-postgres)" },
-    { "name" : "CONTROL_DB_PORT", "value" : "5434", "description" : "Control + Audit port" },
-    { "name" : "CONTROL_DB_NAME", "value" : "dw_control", "description" : "Control + Audit database name" },
-    { "name" : "CONTROL_DB_USER", "value" : "hop_control_user", "description" : "Control + Audit database user" },
-    { "name" : "CONTROL_DB_PASSWORD", "value" : "hop_control@123", "description" : "Control + Audit password (local fake — committed for dev)" },
-    { "name" : "CONTROL_DB_SCHEMA", "value" : "control", "description" : "Control + Audit schema" },
-    { "name" : "ETL_JOB_NAME", "value" : "hop_bikeshare_etl", "description" : "ETL job identifier for audit logs" },
-    { "name" : "ETL_LOG_LEVEL", "value" : "INFO", "description" : "ETL log level: INFO | DEBUG" },
-    { "name" : "NDS_DB_HOST", "value" : "localhost", "description" : "NDS host (docker: dw-nds-postgres)" },
-    { "name" : "NDS_DB_PORT", "value" : "5435", "description" : "NDS port" },
-    { "name" : "NDS_DB_NAME", "value" : "dw_nds", "description" : "NDS database name" },
-    { "name" : "NDS_DB_USER", "value" : "hop_nds_user", "description" : "NDS database user" },
-    { "name" : "NDS_DB_PASSWORD", "value" : "hop_nds@123", "description" : "NDS password (local fake — committed for dev)" },
-    { "name" : "NDS_DB_SCHEMA", "value" : "nds", "description" : "NDS schema" },
-    { "name" : "NDS_LOAD_MASTER_BEFORE_TRANSACTION", "value" : "true", "description" : "Load master tables before transaction tables" },
-    { "name" : "DDS_DB_HOST", "value" : "localhost", "description" : "DDS host (docker: dw-dds-postgres)" },
-    { "name" : "DDS_DB_PORT", "value" : "5436", "description" : "DDS port" },
-    { "name" : "DDS_DB_NAME", "value" : "dw_dds", "description" : "DDS database name" },
-    { "name" : "DDS_DB_USER", "value" : "hop_dds_user", "description" : "DDS database user" },
-    { "name" : "DDS_DB_PASSWORD", "value" : "hop_dds@123", "description" : "DDS password (local fake — committed for dev)" },
-    { "name" : "DDS_DB_SCHEMA", "value" : "dds", "description" : "DDS schema (Snowflake — Power BI reads here)" },
-    { "name" : "DDS_LOAD_DIMENSIONS_BEFORE_FACTS", "value" : "true", "description" : "Load dimension tables before fact tables" },
-    { "name" : "METADATA_DB_HOST", "value" : "localhost", "description" : "Metadata host (docker: dw-stg-postgres)" },
-    { "name" : "METADATA_DB_PORT", "value" : "5434", "description" : "Metadata port" },
-    { "name" : "METADATA_DB_NAME", "value" : "dw_metadata", "description" : "Metadata database name" },
-    { "name" : "METADATA_DB_USER", "value" : "hop_metadata_user", "description" : "Metadata database user" },
-    { "name" : "METADATA_DB_PASSWORD", "value" : "hop_metadata@123", "description" : "Metadata password (local fake — committed for dev)" },
-    { "name" : "METADATA_DB_SCHEMA", "value" : "metadata", "description" : "Metadata schema" },
-    { "name" : "POWERBI_DDS_HOST", "value" : "localhost", "description" : "Power BI — DDS host (docker: dw-dds-postgres)" },
-    { "name" : "POWERBI_DDS_PORT", "value" : "5436", "description" : "Power BI — DDS port" },
-    { "name" : "POWERBI_DDS_NAME", "value" : "dw_dds", "description" : "Power BI — DDS database" },
-    { "name" : "POWERBI_DDS_USER", "value" : "analytics_reader_user", "description" : "Power BI — read-only user" },
-    { "name" : "POWERBI_DDS_PASSWORD", "value" : "analytics_reader@123", "description" : "Power BI — password (local fake — committed for dev)" },
-    { "name" : "POWERBI_DDS_SCHEMA", "value" : "dds", "description" : "Power BI — DDS schema" }
+  "variables": [
+    {
+      "name": "HOP_ENV",
+      "value": "dev",
+      "description": "Runtime environment: dev | staging | prod"
+    },
+    {
+      "name": "PROJECT_HOME",
+      "value": "D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/4_Official_Hop_Project",
+      "description": "Hop project root directory"
+    },
+    {
+      "name": "RAW_DATASET_ROOT",
+      "value": "${PROJECT_HOME}/A_datasets",
+      "description": "Root folder for bike-share datasets"
+    },
+    {
+      "name": "SAMPLE_PERIOD",
+      "value": "202601-202605",
+      "description": "Sample period for trip + NOAA ETL"
+    },
+    {
+      "name": "DATASETS_CSV_FOLDER",
+      "value": "${PROJECT_HOME}/A_datasets",
+      "description": "Base path for CSV/JSON dataset folders"
+    },
+    {
+      "name": "DIVVY_TRIPS_DIR",
+      "value": "${PROJECT_HOME}/A_datasets/A2_divvy/extracted",
+      "description": "Divvy trip CSV (extracted monthly folders)"
+    },
+    {
+      "name": "CITIBIKE_TRIPS_DIR",
+      "value": "${PROJECT_HOME}/A_datasets/A1_citibike/extracted",
+      "description": "Citi Bike trip CSV (extracted monthly folders)"
+    },
+    {
+      "name": "NOAA_LCD_DIR",
+      "value": "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2",
+      "description": "NOAA LCD v2 filtered CSV directory"
+    },
+    {
+      "name": "NOAA_LCD_CHICAGO",
+      "value": "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00014819_2026_01-05.csv",
+      "description": "Chicago NOAA LCD v2 filtered file"
+    },
+    {
+      "name": "NOAA_LCD_NYC",
+      "value": "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00094728_2026_01-05.csv",
+      "description": "NYC NOAA LCD v2 filtered file"
+    },
+    {
+      "name": "GBFS_STATION_DIR",
+      "value": "${PROJECT_HOME}/A_datasets/A4_mdm_station_info",
+      "description": "GBFS station_information JSON (MDM source)"
+    },
+    {
+      "name": "HOP_MDM_API_HOST",
+      "value": "127.0.0.1",
+      "description": "Hop MDM API bind host"
+    },
+    {
+      "name": "HOP_MDM_API_PORT",
+      "value": "8080",
+      "description": "Hop MDM API port (receives GBFS station push)"
+    },
+    {
+      "name": "HOP_MDM_API_URL",
+      "value": "http://localhost:8080/hop/webService/?service=",
+      "description": "Hop Web Service base URL (append HOP_MDM_STATION_SERVICE_ID)"
+    },
+    {
+      "name": "HOP_MDM_STATION_API_KEY",
+      "value": "local-dev-mdm-key",
+      "description": "Shared secret for MDM Station push (local fake — committed for dev)"
+    },
+    {
+      "name": "HOP_MDM_STATION_SERVICE_ID",
+      "value": "mdm-station",
+      "description": "MDM Station service ID — matches ?service= and metadata/web-service/mdm-station.json name"
+    },
+    {
+      "name": "HOP_MDM_STATION_STAGING_TABLE",
+      "value": "stg_gbfs_station",
+      "description": "Staging table for pushed GBFS station changes"
+    },
+    {
+      "name": "HOP_MDM_ALLOWED_OPERATIONS",
+      "value": "INSERT,UPDATE,DELETE",
+      "description": "Allowed MDM Station push operations"
+    },
+    {
+      "name": "STAGING_DB_HOST",
+      "value": "localhost",
+      "description": "Staging Area host (docker: dw-stg-postgres)"
+    },
+    {
+      "name": "STAGING_DB_PORT",
+      "value": "5434",
+      "description": "Staging Area port"
+    },
+    {
+      "name": "STAGING_DB_NAME",
+      "value": "dw_staging",
+      "description": "Staging Area database name"
+    },
+    {
+      "name": "STAGING_DB_USER",
+      "value": "hop_staging_user",
+      "description": "Staging Area database user"
+    },
+    {
+      "name": "STAGING_DB_PASSWORD",
+      "value": "hop_staging@123",
+      "description": "Staging Area password (local fake — committed for dev)"
+    },
+    {
+      "name": "STAGING_DB_SCHEMA",
+      "value": "staging",
+      "description": "Staging Area schema"
+    },
+    {
+      "name": "CONTROL_DB_HOST",
+      "value": "localhost",
+      "description": "Control + Audit host (docker: dw-stg-postgres)"
+    },
+    {
+      "name": "CONTROL_DB_PORT",
+      "value": "5434",
+      "description": "Control + Audit port"
+    },
+    {
+      "name": "CONTROL_DB_NAME",
+      "value": "dw_control",
+      "description": "Control + Audit database name"
+    },
+    {
+      "name": "CONTROL_DB_USER",
+      "value": "hop_control_user",
+      "description": "Control + Audit database user"
+    },
+    {
+      "name": "CONTROL_DB_PASSWORD",
+      "value": "hop_control@123",
+      "description": "Control + Audit password (local fake — committed for dev)"
+    },
+    {
+      "name": "CONTROL_DB_SCHEMA",
+      "value": "control",
+      "description": "Control + Audit schema"
+    },
+    {
+      "name": "ETL_JOB_NAME",
+      "value": "hop_bikeshare_etl",
+      "description": "ETL job identifier for audit logs"
+    },
+    {
+      "name": "ETL_LOG_LEVEL",
+      "value": "INFO",
+      "description": "ETL log level: INFO | DEBUG"
+    },
+    {
+      "name": "NDS_DB_HOST",
+      "value": "localhost",
+      "description": "NDS host (docker: dw-nds-postgres)"
+    },
+    {
+      "name": "NDS_DB_PORT",
+      "value": "5435",
+      "description": "NDS port"
+    },
+    {
+      "name": "NDS_DB_NAME",
+      "value": "dw_nds",
+      "description": "NDS database name"
+    },
+    {
+      "name": "NDS_DB_USER",
+      "value": "hop_nds_user",
+      "description": "NDS database user"
+    },
+    {
+      "name": "NDS_DB_PASSWORD",
+      "value": "hop_nds@123",
+      "description": "NDS password (local fake — committed for dev)"
+    },
+    {
+      "name": "NDS_DB_SCHEMA",
+      "value": "nds",
+      "description": "NDS schema"
+    },
+    {
+      "name": "NDS_LOAD_MASTER_BEFORE_TRANSACTION",
+      "value": "true",
+      "description": "Load master tables before transaction tables"
+    },
+    {
+      "name": "DDS_DB_HOST",
+      "value": "localhost",
+      "description": "DDS host (docker: dw-dds-postgres)"
+    },
+    {
+      "name": "DDS_DB_PORT",
+      "value": "5436",
+      "description": "DDS port"
+    },
+    {
+      "name": "DDS_DB_NAME",
+      "value": "dw_dds",
+      "description": "DDS database name"
+    },
+    {
+      "name": "DDS_DB_USER",
+      "value": "hop_dds_user",
+      "description": "DDS database user"
+    },
+    {
+      "name": "DDS_DB_PASSWORD",
+      "value": "hop_dds@123",
+      "description": "DDS password (local fake — committed for dev)"
+    },
+    {
+      "name": "DDS_DB_SCHEMA",
+      "value": "dds",
+      "description": "DDS schema (Snowflake — Power BI reads here)"
+    },
+    {
+      "name": "DDS_LOAD_DIMENSIONS_BEFORE_FACTS",
+      "value": "true",
+      "description": "Load dimension tables before fact tables"
+    },
+    {
+      "name": "METADATA_DB_HOST",
+      "value": "localhost",
+      "description": "Metadata host (docker: dw-stg-postgres)"
+    },
+    {
+      "name": "METADATA_DB_PORT",
+      "value": "5434",
+      "description": "Metadata port"
+    },
+    {
+      "name": "METADATA_DB_NAME",
+      "value": "dw_metadata",
+      "description": "Metadata database name"
+    },
+    {
+      "name": "METADATA_DB_USER",
+      "value": "hop_metadata_user",
+      "description": "Metadata database user"
+    },
+    {
+      "name": "METADATA_DB_PASSWORD",
+      "value": "hop_metadata@123",
+      "description": "Metadata password (local fake — committed for dev)"
+    },
+    {
+      "name": "METADATA_DB_SCHEMA",
+      "value": "metadata",
+      "description": "Metadata schema"
+    },
+    {
+      "name": "POWERBI_DDS_HOST",
+      "value": "localhost",
+      "description": "Power BI — DDS host (docker: dw-dds-postgres)"
+    },
+    {
+      "name": "POWERBI_DDS_PORT",
+      "value": "5436",
+      "description": "Power BI — DDS port"
+    },
+    {
+      "name": "POWERBI_DDS_NAME",
+      "value": "dw_dds",
+      "description": "Power BI — DDS database"
+    },
+    {
+      "name": "POWERBI_DDS_USER",
+      "value": "analytics_reader_user",
+      "description": "Power BI — read-only user"
+    },
+    {
+      "name": "POWERBI_DDS_PASSWORD",
+      "value": "analytics_reader@123",
+      "description": "Power BI — password (local fake — committed for dev)"
+    },
+    {
+      "name": "POWERBI_DDS_SCHEMA",
+      "value": "dds",
+      "description": "Power BI — DDS schema"
+    }
   ]
 }

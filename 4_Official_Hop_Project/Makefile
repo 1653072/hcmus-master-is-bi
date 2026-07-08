@@ -13,6 +13,7 @@ DOWNLOAD_SCRIPT := $(A_DATASETS)/download_datasets.sh
 CONFIG_LOCAL    := development_configs.local.json
 CONFIG_FILE     := development_configs.json
 SETUP_SCRIPT    := setup_project_home.sh
+HOP_RUN         ?= $(shell command -v hop-run.sh 2>/dev/null || command -v hop-run 2>/dev/null)
 
 # Windows: dùng Git Bash thật, không dùng bash.exe stub của WSL
 ifeq ($(OS),Windows_NT)
@@ -33,7 +34,7 @@ B_DATABASES := B_databases
 
 .PHONY: help setup-project-home datasets-check datasets-download datasets-full \
         datasets-extract datasets-gbfs datasets-noaa datasets-status \
-        db-up db-down db-status
+        db-up db-down db-status staging-dq nds-load runtime-checks
 
 help:
 	@echo "4_Official_Hop_Project — Makefile"
@@ -49,6 +50,9 @@ help:
 	@echo "  make db-up               Docker: dw_stg (5434) + dw_nds (5435) + dw_dds (5436)"
 	@echo "  make db-down             Stop DW PostgreSQL containers"
 	@echo "  make db-status           docker compose ps (B_databases)"
+	@echo "  make staging-dq          Run visible Hop workflow 01; fallback script if Hop CLI is unavailable"
+	@echo "  make nds-load            Run visible Hop workflow 02; fallback script if Hop CLI is unavailable"
+	@echo "  make runtime-checks      Check XML/schema artifacts and DB runtime counts"
 	@echo ""
 	@echo "Windows (CMD/PowerShell): Git for Windows + make"
 	@echo "Bien: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
@@ -96,3 +100,27 @@ db-down: $(CONFIG_FILE)
 
 db-status: $(CONFIG_FILE)
 	cd $(B_DATABASES) && docker-compose ps
+
+staging-dq: $(CONFIG_FILE)
+	@if [ -n "$(HOP_RUN)" ]; then \
+		echo "Running Hop workflow: E_workflows/01_etl_source_to_stagingdb.hwf"; \
+		"$(HOP_RUN)" -r local -j E_workflows/01_etl_source_to_stagingdb.hwf; \
+	else \
+		echo "Hop CLI not found; using manual verification fallback script"; \
+		bash scripts/run_staging_0nf_dq.sh; \
+	fi
+
+nds-load: $(CONFIG_FILE)
+	@if [ -n "$(HOP_RUN)" ]; then \
+		echo "Running Hop workflow: E_workflows/02_etl_stagingdb_to_nds.hwf"; \
+		"$(HOP_RUN)" -r local -j E_workflows/02_etl_stagingdb_to_nds.hwf; \
+	else \
+		echo "Hop CLI not found; using manual verification fallback script"; \
+		bash scripts/run_staging_to_nds.sh; \
+	fi
+
+runtime-checks: $(CONFIG_FILE)
+	@bash tests/check_staging_etl_artifacts.sh
+	@bash tests/check_staging_0nf_dq_artifacts.sh
+	@bash tests/check_nds_etl_artifacts.sh
+	@bash tests/check_runtime_counts.sh
