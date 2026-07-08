@@ -44,10 +44,14 @@ assert_equals() {
   fi
 }
 
-assert_positive "stg_divvy_trips" "$(stg_query "SELECT COUNT(*) FROM staging.stg_divvy_trips;")"
+assert_positive "raw_divvy_trips"    "$(stg_query "SELECT COUNT(*) FROM staging.raw_divvy_trips;")"
+assert_positive "raw_citibike_trips" "$(stg_query "SELECT COUNT(*) FROM staging.raw_citibike_trips;")"
+assert_positive "raw_noaa_weather"   "$(stg_query "SELECT COUNT(*) FROM staging.raw_noaa_weather;")"
+assert_positive "raw_gbfs_station"   "$(stg_query "SELECT COUNT(*) FROM staging.raw_gbfs_station;")"
+assert_positive "stg_divvy_trips"    "$(stg_query "SELECT COUNT(*) FROM staging.stg_divvy_trips;")"
 assert_positive "stg_citibike_trips" "$(stg_query "SELECT COUNT(*) FROM staging.stg_citibike_trips;")"
-assert_positive "stg_weather" "$(stg_query "SELECT COUNT(*) FROM staging.stg_weather;")"
-assert_positive "stg_gbfs_station" "$(stg_query "SELECT COUNT(*) FROM staging.stg_gbfs_station;")"
+assert_positive "stg_weather"        "$(stg_query "SELECT COUNT(*) FROM staging.stg_weather;")"
+assert_positive "stg_gbfs_station"   "$(stg_query "SELECT COUNT(*) FROM staging.stg_gbfs_station;")"
 assert_positive "dq_rule_result_details" "$(control_query "SELECT COUNT(*) FROM control.etl_dq_rule_result_details;")"
 assert_positive "dq_rule_result" "$(control_query "SELECT COUNT(*) FROM control.etl_dq_rule_result_analysis;")"
 assert_positive "nds_station" "$(nds_query "SELECT COUNT(*) FROM nds.station;")"

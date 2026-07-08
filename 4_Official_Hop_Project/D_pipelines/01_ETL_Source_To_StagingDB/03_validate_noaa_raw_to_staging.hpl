@@ -6,29 +6,105 @@
     <parameters/>
     <name>03_validate_noaa_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Visible DQ pipeline for staging.raw_noaa_weather: required fields, duplicate hour, numeric datatype, report_type format, and accepted staging evidence.</description>
+    <description>Flow 2 — DQ gate for NOAA: 3 parallel streams from raw_noaa_weather. Stream A: row-level reject details to etl_dq_rule_result_details. Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: clean rows cast and upserted into stg_weather.</description>
   </info>
+
+  <!-- ===== STREAM A: row-level details ===== -->
+  <transform>
+    <type>TableInput</type>
+    <name>Read NOAA reject row details</name>
+    <connection>dw-staging</connection>
+    <sql><![CDATA[SELECT load_run_id, 'noaa_lcd' AS source_name, 'raw_noaa_weather' AS source_table,
+       source_file, source_row_number,
+       COALESCE(NULLIF(BTRIM(noaa_station_id),''), '(null)') || '@' || COALESCE(NULLIF(BTRIM(observation_ts),''), '(null)') AS business_key,
+       'NOAA_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS dq_verdict,
+       'Required field(s) null or blank: noaa_station_id/observation_ts/source_city_code' AS reason,
+       NULL::JSONB AS raw_payload
+FROM staging.raw_noaa_weather
+WHERE NULLIF(BTRIM(source_city_code),'') IS NULL
+   OR NULLIF(BTRIM(noaa_station_id),'') IS NULL
+   OR NULLIF(BTRIM(observation_ts),'') IS NULL
+
+UNION ALL
+
+SELECT r.load_run_id, 'noaa_lcd', 'raw_noaa_weather',
+       r.source_file, r.source_row_number,
+       COALESCE(r.noaa_station_id, '(null)') || '@' || COALESCE(r.observation_ts, '(null)'),
+       'NOAA_DUPLICATE_HOUR', 'duplicate', 'reject',
+       'Duplicate (source_city_code, observation_ts) in this load run', NULL::JSONB
+FROM staging.raw_noaa_weather r
+JOIN (SELECT source_city_code, observation_ts FROM staging.raw_noaa_weather
+      GROUP BY source_city_code, observation_ts HAVING COUNT(*) > 1) d
+  ON r.source_city_code = d.source_city_code AND r.observation_ts = d.observation_ts
+
+UNION ALL
+
+SELECT load_run_id, 'noaa_lcd', 'raw_noaa_weather',
+       source_file, source_row_number,
+       COALESCE(noaa_station_id, '(null)') || '@' || COALESCE(observation_ts, '(null)'),
+       'NOAA_DATATYPE_NUMERIC', 'datatype', 'reject',
+       'One or more numeric weather fields contain non-numeric text', NULL::JSONB
+FROM staging.raw_noaa_weather
+WHERE NULLIF(BTRIM(noaa_station_id),'') IS NOT NULL
+  AND NULLIF(BTRIM(observation_ts),'') IS NOT NULL
+  AND (
+    (hourly_dry_bulb_temperature IS NOT NULL AND hourly_dry_bulb_temperature !~ '^-?[0-9]+(\.[0-9]+)?$')
+    OR (hourly_precipitation IS NOT NULL AND hourly_precipitation !~ '^-?[0-9]+(\.[0-9]+)?$')
+    OR (hourly_wind_speed IS NOT NULL AND hourly_wind_speed !~ '^-?[0-9]+(\.[0-9]+)?$')
+  )
+
+UNION ALL
+
+SELECT load_run_id, 'noaa_lcd', 'raw_noaa_weather',
+       source_file, source_row_number,
+       COALESCE(noaa_station_id, '(null)') || '@' || COALESCE(observation_ts, '(null)'),
+       'NOAA_FORMAT_REPORT_TYPE', 'format', 'reject',
+       'report_type null or not in (FM-15, FM-16, FM-12)', NULL::JSONB
+FROM staging.raw_noaa_weather
+WHERE NULLIF(BTRIM(noaa_station_id),'') IS NOT NULL
+  AND NULLIF(BTRIM(observation_ts),'') IS NOT NULL
+  AND (NULLIF(BTRIM(report_type),'') IS NULL OR report_type NOT IN ('FM-15', 'FM-16', 'FM-12'))]]></sql>
+    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
+    <GUI><xloc>96</xloc><yloc>32</yloc></GUI>
+  </transform>
+  <transform>
+    <type>TableOutput</type>
+    <name>Write NOAA DQ row details</name>
+    <connection>dw-control</connection><schema>control</schema><table>etl_dq_rule_result_details</table><commit>100</commit><truncate>N</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
+    <fields>
+      <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
+      <field><stream_name>source_name</stream_name><column_name>source_name</column_name></field>
+      <field><stream_name>source_table</stream_name><column_name>source_table</column_name></field>
+      <field><stream_name>source_file</stream_name><column_name>source_file</column_name></field>
+      <field><stream_name>source_row_number</stream_name><column_name>source_row_number</column_name></field>
+      <field><stream_name>business_key</stream_name><column_name>business_key</column_name></field>
+      <field><stream_name>rule_code</stream_name><column_name>rule_code</column_name></field>
+      <field><stream_name>rule_type</stream_name><column_name>rule_type</column_name></field>
+      <field><stream_name>dq_verdict</stream_name><column_name>dq_verdict</column_name></field>
+      <field><stream_name>reason</stream_name><column_name>reason</column_name></field>
+      <field><stream_name>raw_payload</stream_name><column_name>raw_payload</column_name></field>
+    </fields>
+    <GUI><xloc>448</xloc><yloc>32</yloc></GUI>
+  </transform>
+
+  <!-- ===== STREAM B: aggregate counts ===== -->
   <transform>
     <type>TableInput</type>
     <name>Read NOAA raw DQ rule counts</name>
     <connection>dw-staging</connection>
     <sql><![CDATA[WITH src AS (
-  SELECT *
-  FROM staging.stg_weather
+  SELECT * FROM staging.raw_noaa_weather
 ),
 dup AS (
   SELECT source_city_code, observation_ts, COUNT(*) AS duplicate_count
-  FROM src
-  GROUP BY source_city_code, observation_ts
-  HAVING COUNT(*) > 1
+  FROM src GROUP BY source_city_code, observation_ts HAVING COUNT(*) > 1
 ),
 rules AS (
   SELECT 'NOAA_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS severity,
-         COUNT(*) FILTER (WHERE source_city_code IS NULL
-                           OR noaa_station_id IS NULL
-                           OR observation_ts IS NULL) AS failed_count,
-         0::BIGINT AS warning_count,
-         COUNT(*) AS total_count
+         COUNT(*) FILTER (WHERE NULLIF(BTRIM(source_city_code),'') IS NULL
+                           OR NULLIF(BTRIM(noaa_station_id),'') IS NULL
+                           OR NULLIF(BTRIM(observation_ts),'') IS NULL) AS failed_count,
+         0::BIGINT AS warning_count, COUNT(*) AS total_count
   FROM src
   UNION ALL
   SELECT 'NOAA_DUPLICATE_HOUR', 'duplicate', 'reject',
@@ -36,45 +112,34 @@ rules AS (
   FROM dup
   UNION ALL
   SELECT 'NOAA_DATATYPE_NUMERIC', 'datatype', 'reject',
-         0::BIGINT, 0::BIGINT, COUNT(*)
+         COUNT(*) FILTER (WHERE
+           (hourly_dry_bulb_temperature IS NOT NULL AND hourly_dry_bulb_temperature !~ '^-?[0-9]+(\.[0-9]+)?$')
+           OR (hourly_precipitation IS NOT NULL AND hourly_precipitation !~ '^-?[0-9]+(\.[0-9]+)?$')
+           OR (hourly_wind_speed IS NOT NULL AND hourly_wind_speed !~ '^-?[0-9]+(\.[0-9]+)?$')
+         ),
+         0::BIGINT, COUNT(*)
   FROM src
   UNION ALL
   SELECT 'NOAA_FORMAT_REPORT_TYPE', 'format', 'reject',
-         COUNT(*) FILTER (WHERE report_type IS NULL OR report_type NOT IN ('FM-15', 'FM-16', 'FM-12')),
+         COUNT(*) FILTER (WHERE NULLIF(BTRIM(report_type),'') IS NULL
+                           OR report_type NOT IN ('FM-15', 'FM-16', 'FM-12')),
          0::BIGINT, COUNT(*)
   FROM src
 )
 SELECT 'noaa_lcd' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
-       'staging.stg_weather' AS source_table,
-       'control.etl_dq_rule_result_details' AS reject_target,
-       'staging.stg_weather' AS accepted_target,
-       rule_code,
-       rule_type,
-       severity,
+       rule_code, rule_type, severity,
        GREATEST(total_count - failed_count - warning_count, 0)::INTEGER AS passed_count,
        failed_count::INTEGER AS failed_count,
        warning_count::INTEGER AS warning_count
 FROM rules]]></sql>
-    <limit>0</limit>
-    <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
-    <lookup/>
-    <sql_from_file/>
-    <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
+    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
+    <GUI><xloc>96</xloc><yloc>160</yloc></GUI>
   </transform>
   <transform>
     <type>TableOutput</type>
     <name>Write NOAA DQ rule stream evidence</name>
-    <connection>dw-control</connection>
-    <schema>control</schema>
-    <table>etl_dq_rule_result_analysis</table>
-    <commit>100</commit>
-    <truncate>N</truncate>
-    <only_when_have_rows>N</only_when_have_rows>
-    <ignore_errors>N</ignore_errors>
-    <use_batch>Y</use_batch>
-    <specify_fields>Y</specify_fields>
+    <connection>dw-control</connection><schema>control</schema><table>etl_dq_rule_result_analysis</table><commit>100</commit><truncate>N</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
     <fields>
       <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
       <field><stream_name>source_name</stream_name><column_name>source_name</column_name></field>
@@ -85,12 +150,93 @@ FROM rules]]></sql>
       <field><stream_name>failed_count</stream_name><column_name>failed_count</column_name></field>
       <field><stream_name>warning_count</stream_name><column_name>warning_count</column_name></field>
     </fields>
-    <GUI><xloc>448</xloc><yloc>96</yloc></GUI>
+    <GUI><xloc>448</xloc><yloc>160</yloc></GUI>
   </transform>
-  <order><hop><from>Read NOAA raw DQ rule counts</from><to>Write NOAA DQ rule stream evidence</to><enabled>Y</enabled></hop></order>
+
+  <!-- ===== STREAM C: clean rows → cast → stg_weather ===== -->
+  <transform>
+    <type>TableInput</type>
+    <name>Read NOAA clean rows</name>
+    <connection>dw-staging</connection>
+    <sql><![CDATA[SELECT DISTINCT ON (source_city_code, observation_ts)
+       load_run_id, source_file, source_row_number,
+       noaa_station_id, observation_ts, report_type,
+       hourly_dry_bulb_temperature, hourly_precipitation, hourly_wind_speed,
+       hourly_present_weather_type, source_city_code
+FROM staging.raw_noaa_weather
+WHERE NULLIF(BTRIM(source_city_code),'') IS NOT NULL
+  AND NULLIF(BTRIM(noaa_station_id),'') IS NOT NULL
+  AND NULLIF(BTRIM(observation_ts),'') IS NOT NULL
+  AND NULLIF(BTRIM(report_type),'') IS NOT NULL
+  AND report_type IN ('FM-15', 'FM-16', 'FM-12')
+  AND (hourly_dry_bulb_temperature IS NULL OR hourly_dry_bulb_temperature ~ '^-?[0-9]+(\.[0-9]+)?$')
+  AND (hourly_precipitation IS NULL OR hourly_precipitation ~ '^-?[0-9]+(\.[0-9]+)?$')
+  AND (hourly_wind_speed IS NULL OR hourly_wind_speed ~ '^-?[0-9]+(\.[0-9]+)?$')
+ORDER BY source_city_code, observation_ts, source_row_number]]></sql>
+    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
+    <GUI><xloc>96</xloc><yloc>320</yloc></GUI>
+  </transform>
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Cast NOAA clean rows</name>
+    <jsScripts><jsScript><jsScript_type>0</jsScript_type><jsScript_name>process</jsScript_name><jsScript_script>function blankToNull(v) { if (v == null) return null; var s = String(v).trim(); return s.length == 0 ? null : s; }
+function toTimestamp_iso(v) {
+  var s = blankToNull(v); if (s == null) return null;
+  var fmt = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+  return new Packages.java.sql.Timestamp(fmt.parse(s).getTime());
+}
+function toNumber(v) {
+  var s = blankToNull(v); if (s == null || s == "T") return null;
+  s = s.replace(/[^0-9\.\-]/g, "");
+  return s.length == 0 ? null : java.lang.Double.valueOf(s);
+}
+observation_ts = toTimestamp_iso(observation_ts);
+hourly_dry_bulb_temperature = toNumber(hourly_dry_bulb_temperature);
+hourly_precipitation = toNumber(hourly_precipitation);
+hourly_wind_speed = toNumber(hourly_wind_speed);
+hourly_present_weather_type = blankToNull(hourly_present_weather_type);
+var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script></jsScript></jsScripts>
+    <fields>
+      <field><name>observation_ts</name><rename>observation_ts</rename><type>Timestamp</type><length>-1</length><precision>-1</precision><replace>Y</replace></field>
+      <field><name>hourly_dry_bulb_temperature</name><rename>hourly_dry_bulb_temperature</rename><type>Number</type><length>8</length><precision>2</precision><replace>Y</replace></field>
+      <field><name>hourly_precipitation</name><rename>hourly_precipitation</rename><type>Number</type><length>10</length><precision>2</precision><replace>Y</replace></field>
+      <field><name>hourly_wind_speed</name><rename>hourly_wind_speed</rename><type>Number</type><length>8</length><precision>2</precision><replace>Y</replace></field>
+      <field><name>hourly_present_weather_type</name><rename>hourly_present_weather_type</rename><type>String</type><length>50</length><precision>-1</precision><replace>Y</replace></field>
+      <field><name>loaded_at</name><rename>loaded_at</rename><type>Timestamp</type><length>-1</length><precision>-1</precision><replace>N</replace></field>
+    </fields>
+    <optimizationLevel>9</optimizationLevel><GUI><xloc>384</xloc><yloc>320</yloc></GUI>
+  </transform>
+  <transform>
+    <type>InsertUpdate</type>
+    <name>Upsert staging.stg_weather</name>
+    <lookup>
+      <key><name>source_city_code</name><field>source_city_code</field><condition>=</condition><name2/></key>
+      <key><name>observation_ts</name><field>observation_ts</field><condition>=</condition><name2/></key>
+      <value><name>source_city_code</name><rename>source_city_code</rename><update>Y</update></value>
+      <value><name>noaa_station_id</name><rename>noaa_station_id</rename><update>Y</update></value>
+      <value><name>observation_ts</name><rename>observation_ts</rename><update>Y</update></value>
+      <value><name>report_type</name><rename>report_type</rename><update>Y</update></value>
+      <value><name>hourly_dry_bulb_temperature</name><rename>hourly_dry_bulb_temperature</rename><update>Y</update></value>
+      <value><name>hourly_precipitation</name><rename>hourly_precipitation</rename><update>Y</update></value>
+      <value><name>hourly_wind_speed</name><rename>hourly_wind_speed</rename><update>Y</update></value>
+      <value><name>hourly_present_weather_type</name><rename>hourly_present_weather_type</rename><update>Y</update></value>
+      <value><name>loaded_at</name><rename>loaded_at</rename><update>Y</update></value>
+      <schema>staging</schema><table>stg_weather</table>
+    </lookup>
+    <commit>1000</commit><update_bypassed>N</update_bypassed><connection>dw-staging</connection>
+    <GUI><xloc>720</xloc><yloc>320</yloc></GUI>
+  </transform>
+
+  <order>
+    <hop><from>Read NOAA reject row details</from><to>Write NOAA DQ row details</to><enabled>Y</enabled></hop>
+    <hop><from>Read NOAA raw DQ rule counts</from><to>Write NOAA DQ rule stream evidence</to><enabled>Y</enabled></hop>
+    <hop><from>Read NOAA clean rows</from><to>Cast NOAA clean rows</to><enabled>Y</enabled></hop>
+    <hop><from>Cast NOAA clean rows</from><to>Upsert staging.stg_weather</to><enabled>Y</enabled></hop>
+  </order>
   <notepads>
-    <notepad><note>Hard reject target: control.etl_dq_rule_result_details. Accepted weather rows are represented by staging.stg_weather.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+    <notepad><note>Stream A → etl_dq_rule_result_details (row-level rejects; no warnings for NOAA)
+Stream B → etl_dq_rule_result_analysis (aggregate counts per rule)
+Stream C → stg_weather (FM-15/16/12 rows, numeric fields cast, deduplicated by city+hour)</note><xloc>96</xloc><yloc>440</yloc><width>760</width><heigth>80</heigth></notepad>
   </notepads>
-  <attributes/>
-  <transform_error_handling/>
+  <attributes/><transform_error_handling/>
 </pipeline>

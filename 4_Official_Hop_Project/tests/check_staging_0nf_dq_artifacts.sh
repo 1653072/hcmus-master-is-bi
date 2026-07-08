@@ -33,6 +33,21 @@ test -f "$WORKFLOW"
 xmllint --noout "$WORKFLOW" >/dev/null
 assert_no_shell_blackbox "$WORKFLOW"
 
+required_raw_tables=(
+  "raw_divvy_trips"
+  "raw_citibike_trips"
+  "raw_noaa_weather"
+  "raw_gbfs_station"
+)
+
+for table in "${required_raw_tables[@]}"; do
+  grep -q "CREATE TABLE staging.${table}" "$STAGING_SQL"
+  if awk "/CREATE TABLE staging\\.${table}/,/;/" "$STAGING_SQL" | grep -q "PRIMARY KEY"; then
+    echo "Raw table $table must NOT define a primary key" >&2
+    exit 1
+  fi
+done
+
 required_stg_tables=(
   "stg_divvy_trips"
   "stg_citibike_trips"

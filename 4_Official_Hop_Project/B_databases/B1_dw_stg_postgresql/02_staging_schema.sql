@@ -3,6 +3,94 @@
 CREATE SCHEMA IF NOT EXISTS staging AUTHORIZATION hop_staging_user;
 ALTER USER hop_staging_user SET search_path TO staging, public;
 
+-- ============================================================
+-- Raw 0NF landing tables: all TEXT, no PK, truncated each run
+-- ============================================================
+
+CREATE TABLE staging.raw_divvy_trips (
+    load_run_id        TEXT NOT NULL,
+    source_file        TEXT,
+    source_row_number  BIGINT,
+    ride_id            TEXT,
+    rideable_type      TEXT,
+    started_at         TEXT,
+    ended_at           TEXT,
+    start_station_name TEXT,
+    start_station_id   TEXT,
+    end_station_name   TEXT,
+    end_station_id     TEXT,
+    start_lat          TEXT,
+    start_lng          TEXT,
+    end_lat            TEXT,
+    end_lng            TEXT,
+    member_casual      TEXT,
+    source_city_code   TEXT,
+    trip_month         TEXT,
+    raw_loaded_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE staging.raw_citibike_trips (
+    load_run_id        TEXT NOT NULL,
+    source_file        TEXT,
+    source_row_number  BIGINT,
+    ride_id            TEXT,
+    rideable_type      TEXT,
+    started_at         TEXT,
+    ended_at           TEXT,
+    start_station_name TEXT,
+    start_station_id   TEXT,
+    end_station_name   TEXT,
+    end_station_id     TEXT,
+    start_lat          TEXT,
+    start_lng          TEXT,
+    end_lat            TEXT,
+    end_lng            TEXT,
+    member_casual      TEXT,
+    source_city_code   TEXT,
+    trip_month         TEXT,
+    raw_loaded_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE staging.raw_noaa_weather (
+    load_run_id                   TEXT NOT NULL,
+    source_file                   TEXT,
+    source_row_number             BIGINT,
+    noaa_station_id               TEXT,
+    observation_ts                TEXT,
+    report_type                   TEXT,
+    hourly_dry_bulb_temperature   TEXT,
+    hourly_precipitation          TEXT,
+    hourly_wind_speed             TEXT,
+    hourly_present_weather_type   TEXT,
+    source_city_code              TEXT,
+    raw_loaded_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE staging.raw_gbfs_station (
+    load_run_id        TEXT NOT NULL,
+    source_file        TEXT,
+    source_row_number  BIGINT,
+    gbfs_station_id    TEXT,
+    station_name       TEXT,
+    short_name         TEXT,
+    longitude          TEXT,
+    latitude           TEXT,
+    capacity           TEXT,
+    station_type       TEXT,
+    region_id          TEXT,
+    source_city_code   TEXT,
+    raw_loaded_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE staging.raw_divvy_trips OWNER TO hop_staging_user;
+ALTER TABLE staging.raw_citibike_trips OWNER TO hop_staging_user;
+ALTER TABLE staging.raw_noaa_weather OWNER TO hop_staging_user;
+ALTER TABLE staging.raw_gbfs_station OWNER TO hop_staging_user;
+
+-- ============================================================
+-- Staging (typed, cleaned, with PK)
+-- ============================================================
+
 -- Trip tables mirror 14-column CSV; upsert key (source_city_code, ride_id); no batch_id
 CREATE TABLE staging.stg_divvy_trips (
     ride_id              VARCHAR(64),

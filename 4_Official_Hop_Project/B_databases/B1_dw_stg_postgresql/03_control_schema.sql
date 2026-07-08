@@ -21,9 +21,11 @@ CREATE TABLE control.etl_job_log (
     source_name       VARCHAR(100),
     started_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     finished_at       TIMESTAMP,
-    status            VARCHAR(20),
-    rows_processed    INTEGER DEFAULT 0,
-    error_message     TEXT
+    status             VARCHAR(20),
+    total_rows_count   INTEGER DEFAULT 0,
+    success_rows_count INTEGER DEFAULT 0,
+    failed_rows_count  INTEGER DEFAULT 0,
+    error_message      TEXT
 );
 
 CREATE TABLE control.dq_rule_catalog (
