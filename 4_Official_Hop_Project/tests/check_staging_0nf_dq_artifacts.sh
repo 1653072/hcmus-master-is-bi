@@ -33,24 +33,20 @@ test -f "$WORKFLOW"
 xmllint --noout "$WORKFLOW" >/dev/null
 assert_no_shell_blackbox "$WORKFLOW"
 
-required_raw_tables=(
-  "raw_divvy_trips"
-  "raw_citibike_trips"
-  "raw_noaa_weather"
-  "raw_gbfs_station"
+required_stg_tables=(
+  "stg_divvy_trips"
+  "stg_citibike_trips"
+  "stg_weather"
+  "stg_gbfs_station"
 )
 
-for table in "${required_raw_tables[@]}"; do
+for table in "${required_stg_tables[@]}"; do
   grep -q "CREATE TABLE staging.${table}" "$STAGING_SQL"
-  if awk "/CREATE TABLE staging\\.${table}/,/;/" "$STAGING_SQL" | grep -q "PRIMARY KEY"; then
-    echo "Raw 0NF table $table must not define a primary key" >&2
+  if ! awk "/CREATE TABLE staging\\.${table}/,/;/" "$STAGING_SQL" | grep -q "PRIMARY KEY"; then
+    echo "Staging table $table must define a primary key" >&2
     exit 1
   fi
 done
-
-grep -q "load_run_id" "$STAGING_SQL"
-grep -q "source_row_number" "$STAGING_SQL"
-grep -q "raw_loaded_at" "$STAGING_SQL"
 
 grep -q "CREATE TABLE staging.dq_reject_row" "$DQ_SQL"
 grep -q "CREATE TABLE staging.dq_warning_row" "$DQ_SQL"

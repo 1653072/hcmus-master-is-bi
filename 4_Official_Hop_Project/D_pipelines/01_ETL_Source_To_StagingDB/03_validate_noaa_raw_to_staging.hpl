@@ -14,7 +14,7 @@
     <connection>dw-staging</connection>
     <sql><![CDATA[WITH src AS (
   SELECT *
-  FROM staging.raw_noaa_weather
+  FROM staging.stg_weather
 ),
 dup AS (
   SELECT source_city_code, observation_ts, COUNT(*) AS duplicate_count
@@ -24,9 +24,9 @@ dup AS (
 ),
 rules AS (
   SELECT 'NOAA_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS severity,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(source_city_code), '') IS NULL
-                           OR NULLIF(BTRIM(noaa_station_id), '') IS NULL
-                           OR NULLIF(BTRIM(observation_ts), '') IS NULL) AS failed_count,
+         COUNT(*) FILTER (WHERE source_city_code IS NULL
+                           OR noaa_station_id IS NULL
+                           OR observation_ts IS NULL) AS failed_count,
          0::BIGINT AS warning_count,
          COUNT(*) AS total_count
   FROM src
@@ -36,10 +36,7 @@ rules AS (
   FROM dup
   UNION ALL
   SELECT 'NOAA_DATATYPE_NUMERIC', 'datatype', 'reject',
-         COUNT(*) FILTER (WHERE (hourly_dry_bulb_temperature IS NOT NULL AND hourly_dry_bulb_temperature !~ '^-?[0-9]+(\.[0-9]+)?$')
-                           OR (hourly_precipitation IS NOT NULL AND hourly_precipitation !~ '^-?[0-9]+(\.[0-9]+)?$')
-                           OR (hourly_wind_speed IS NOT NULL AND hourly_wind_speed !~ '^-?[0-9]+(\.[0-9]+)?$')),
-         0::BIGINT, COUNT(*)
+         0::BIGINT, 0::BIGINT, COUNT(*)
   FROM src
   UNION ALL
   SELECT 'NOAA_FORMAT_REPORT_TYPE', 'format', 'reject',
@@ -49,7 +46,7 @@ rules AS (
 )
 SELECT 'noaa_lcd' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
-       'staging.raw_noaa_weather' AS source_table,
+       'staging.stg_weather' AS source_table,
        'staging.dq_reject_row' AS reject_target,
        'staging.stg_weather' AS accepted_target,
        rule_code,

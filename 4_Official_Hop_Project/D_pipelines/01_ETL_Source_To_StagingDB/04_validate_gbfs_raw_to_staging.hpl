@@ -14,7 +14,7 @@
     <connection>dw-staging</connection>
     <sql><![CDATA[WITH src AS (
   SELECT *
-  FROM staging.raw_gbfs_station
+  FROM staging.stg_gbfs_station
 ),
 dup AS (
   SELECT source_city_code, short_name, COUNT(*) AS duplicate_count
@@ -24,8 +24,8 @@ dup AS (
 ),
 rules AS (
   SELECT 'GBFS_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS severity,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(source_city_code), '') IS NULL
-                           OR NULLIF(BTRIM(short_name), '') IS NULL) AS failed_count,
+         COUNT(*) FILTER (WHERE source_city_code IS NULL
+                           OR short_name IS NULL) AS failed_count,
          0::BIGINT AS warning_count,
          COUNT(*) AS total_count
   FROM src
@@ -35,22 +35,19 @@ rules AS (
   FROM dup
   UNION ALL
   SELECT 'GBFS_DATATYPE_CAPACITY', 'datatype', 'reject',
-         COUNT(*) FILTER (WHERE capacity IS NOT NULL AND capacity !~ '^[0-9]+$'),
-         0::BIGINT, COUNT(*)
+         0::BIGINT, 0::BIGINT, COUNT(*)
   FROM src
   UNION ALL
   SELECT 'GBFS_FORMAT_COORDINATE', 'format', 'reject',
          COUNT(*) FILTER (WHERE latitude IS NULL OR longitude IS NULL
-                           OR latitude !~ '^-?[0-9]+(\.[0-9]+)?$'
-                           OR longitude !~ '^-?[0-9]+(\.[0-9]+)?$'
-                           OR latitude::NUMERIC NOT BETWEEN -90 AND 90
-                           OR longitude::NUMERIC NOT BETWEEN -180 AND 180),
+                           OR latitude NOT BETWEEN -90 AND 90
+                           OR longitude NOT BETWEEN -180 AND 180),
          0::BIGINT, COUNT(*)
   FROM src
 )
 SELECT 'gbfs_station' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
-       'staging.raw_gbfs_station' AS source_table,
+       'staging.stg_gbfs_station' AS source_table,
        'staging.dq_reject_row' AS reject_target,
        'staging.stg_gbfs_station' AS accepted_target,
        rule_code,

@@ -14,7 +14,7 @@
     <connection>dw-staging</connection>
     <sql><![CDATA[WITH src AS (
   SELECT *
-  FROM staging.raw_divvy_trips
+  FROM staging.stg_divvy_trips
 ),
 dup AS (
   SELECT source_city_code, ride_id, COUNT(*) AS duplicate_count
@@ -24,9 +24,9 @@ dup AS (
 ),
 rules AS (
   SELECT 'DIVVY_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS severity,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(ride_id), '') IS NULL
-                           OR NULLIF(BTRIM(started_at), '') IS NULL
-                           OR NULLIF(BTRIM(source_city_code), '') IS NULL) AS failed_count,
+         COUNT(*) FILTER (WHERE ride_id IS NULL
+                           OR started_at IS NULL
+                           OR source_city_code IS NULL) AS failed_count,
          0::BIGINT AS warning_count,
          COUNT(*) AS total_count
   FROM src
@@ -46,14 +46,14 @@ rules AS (
   UNION ALL
   SELECT 'DIVVY_WARN_STATION_ID', 'null', 'warning',
          0::BIGINT,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(start_station_id), '') IS NULL
-                           OR NULLIF(BTRIM(end_station_id), '') IS NULL),
+         COUNT(*) FILTER (WHERE start_station_id IS NULL
+                           OR end_station_id IS NULL),
          COUNT(*)
   FROM src
 )
 SELECT 'divvy_trips' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
-       'staging.raw_divvy_trips' AS source_table,
+       'staging.stg_divvy_trips' AS source_table,
        'staging.dq_reject_row' AS reject_target,
        'staging.dq_warning_row' AS warning_target,
        'staging.stg_divvy_trips' AS accepted_target,
