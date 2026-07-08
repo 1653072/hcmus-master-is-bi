@@ -512,7 +512,7 @@ Tải bằng `./download_datasets.sh --gbfs`.
 | Pull theo giờ: `HourlyDryBulbTemperature`, `HourlyPrecipitation`, `HourlyWindSpeed` | **Có**                                          |
 | Join `city_code` + `date_hour`                                                      | **Có**                                          |
 | Fact grain City × Station × Hour                                                    | Trip aggregate + weather denormalize theo giờ   |
-| `Dim_WeatherCondition` (Clear/Rain/Snow)                                            | Rule ETL từ precip + `HourlyPresentWeatherType` |
+| `Dim_WeatherCondition` (Clear/Rain/Snow/Fog)                                        | Rule ETL ưu tiên `HourlyPresentWeatherType`; precip > 0 chỉ là fallback cho Rain |
 | Phân tích tuần / cuối tuần (`is_weekend`)                                           | Lịch **2026**; weather **2026 thật**            |
 | KPI `Weather_Sensitivity_Score`                                                     | **Hợp lệ** với quan sát thật                    |
 | Chicago + NYC so sánh công bằng                                                     | Cùng kỳ 5 tháng 2026                            |
@@ -1108,7 +1108,7 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 | `calendar_day.day_of_week` | `1`–`7`                              | ISO: 1=Thứ Hai … 7=Chủ Nhật                                                                                 |
 | `calendar_day.season`      | `winter`, `spring`, `summer`, `fall` | Theo tháng Bắc bán cầu: T12–T2 / T3–T5 / T6–T8 / T9–T11. Kỳ mẫu 202601–202605 chỉ có **winter**, **spring** |
 | `weather.report_type`      | `FM-15`, `FM-16`, `FM-12`            | Giống staging                                                                                               |
-| `weather.weather_category` | `Clear`, `Rain`, `Snow`, `Fog`       | Rule ETL từ precip + present weather                                                                        |
+| `weather.weather_category` | `Clear`, `Rain`, `Snow`, `Fog`       | Rule ETL ưu tiên `HourlyPresentWeatherType`: SN/SG/PL → Snow; FG/BR/HZ → Fog; RA/DZ/TS/GR hoặc precip > 0 → Rain; còn lại Clear |
 | `trip.rideable_type`       | `classic_bike`, `electric_bike`      |                                                                                                             |
 | `trip.member_casual`       | `member`, `casual`                   |                                                                                                             |
 

@@ -30,14 +30,14 @@ WHERE short_name IS NOT NULL]]></sql>
     <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
   </transform>
   <transform>
-    <type>DatabaseLookup</type>
+    <type>DBLookup</type>
     <name>Lookup nds.city by source_city_code</name>
     <connection>dw-nds</connection>
-    <schema>nds</schema>
-    <table>city</table>
     <cache>N</cache>
     <lookup>
-      <key><name>city_code</name><field>source_city_code</field><condition>=</condition><name2/></key>
+      <schema>nds</schema>
+      <table>city</table>
+      <key><name>source_city_code</name><field>city_code</field><condition>=</condition><name2/></key>
       <value><name>city_sk</name><rename>city_sk</rename><default/><type>Integer</type></value>
     </lookup>
     <GUI><xloc>384</xloc><yloc>96</yloc></GUI>

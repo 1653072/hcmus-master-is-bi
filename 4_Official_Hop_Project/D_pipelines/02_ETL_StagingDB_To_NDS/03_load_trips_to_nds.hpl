@@ -43,14 +43,14 @@ WHERE ride_id IS NOT NULL AND started_at IS NOT NULL]]></sql>
     <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
   </transform>
   <transform>
-    <type>DatabaseLookup</type>
+    <type>DBLookup</type>
     <name>Lookup nds.city</name>
     <connection>dw-nds</connection>
-    <schema>nds</schema>
-    <table>city</table>
     <cache>N</cache>
     <lookup>
-      <key><name>city_code</name><field>source_city_code</field><condition>=</condition><name2/></key>
+      <schema>nds</schema>
+      <table>city</table>
+      <key><name>source_city_code</name><field>city_code</field><condition>=</condition><name2/></key>
       <value><name>city_sk</name><rename>city_sk</rename><default/><type>Integer</type></value>
     </lookup>
     <GUI><xloc>336</xloc><yloc>96</yloc></GUI>
@@ -72,30 +72,30 @@ WHERE ride_id IS NOT NULL AND started_at IS NOT NULL]]></sql>
     <GUI><xloc>456</xloc><yloc>96</yloc></GUI>
   </transform>
   <transform>
-    <type>DatabaseLookup</type>
+    <type>DBLookup</type>
     <name>Lookup start station_sk</name>
     <connection>dw-nds</connection>
-    <schema>nds</schema>
-    <table>station</table>
     <cache>N</cache>
     <lookup>
+      <schema>nds</schema>
+      <table>station</table>
       <key><name>city_sk</name><field>city_sk</field><condition>=</condition><name2/></key>
-      <key><name>source_station_id</name><field>start_station_id</field><condition>=</condition><name2/></key>
+      <key><name>start_station_id</name><field>source_station_id</field><condition>=</condition><name2/></key>
       <key><name>is_current</name><field>is_current</field><condition>=</condition><name2/></key>
       <value><name>station_sk</name><rename>start_station_sk</rename><default/><type>Integer</type></value>
     </lookup>
     <GUI><xloc>576</xloc><yloc>48</yloc></GUI>
   </transform>
   <transform>
-    <type>DatabaseLookup</type>
+    <type>DBLookup</type>
     <name>Lookup end station_sk</name>
     <connection>dw-nds</connection>
-    <schema>nds</schema>
-    <table>station</table>
     <cache>N</cache>
     <lookup>
+      <schema>nds</schema>
+      <table>station</table>
       <key><name>city_sk</name><field>city_sk</field><condition>=</condition><name2/></key>
-      <key><name>source_station_id</name><field>end_station_id</field><condition>=</condition><name2/></key>
+      <key><name>end_station_id</name><field>source_station_id</field><condition>=</condition><name2/></key>
       <key><name>is_current</name><field>is_current</field><condition>=</condition><name2/></key>
       <value><name>station_sk</name><rename>end_station_sk</rename><default/><type>Integer</type></value>
     </lookup>

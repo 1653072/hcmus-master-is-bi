@@ -19,7 +19,7 @@ assert_no_shell_blackbox() {
 
 assert_has_real_transform() {
   local path="$1"
-  if ! grep -Eq '<type>(TableInput|TableOutput|InsertUpdate|DatabaseLookup|FilterRows|SelectValues|Constant|RowGenerator|ScriptValueMod|TextFileInput2|JsonInput)</type>' "$path"; then
+  if ! grep -Eq '<type>(TableInput|TableOutput|InsertUpdate|DBLookup|FilterRows|SelectValues|Constant|RowGenerator|ScriptValueMod|TextFileInput2|JsonInput)</type>' "$path"; then
     echo "Expected a real transform in $path" >&2
     exit 1
   fi

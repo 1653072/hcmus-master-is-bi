@@ -109,10 +109,21 @@ WITH weather_ranked AS (
            i.wind_speed_ms,
            i.present_weather,
            CASE
-               WHEN COALESCE(i.precipitation_mm, 0) > 0 THEN 'wet'
-               WHEN i.temperature_c <= 0 THEN 'freezing'
-               WHEN i.wind_speed_ms >= 10 THEN 'windy'
-               ELSE 'clear'
+               WHEN UPPER(COALESCE(i.present_weather, '')) LIKE '%SN%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%SG%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%PL%'
+                 THEN 'Snow'
+               WHEN UPPER(COALESCE(i.present_weather, '')) LIKE '%FG%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%BR%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%HZ%'
+                 THEN 'Fog'
+               WHEN UPPER(COALESCE(i.present_weather, '')) LIKE '%RA%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%DZ%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%TS%'
+                 OR UPPER(COALESCE(i.present_weather, '')) LIKE '%GR%'
+                 OR COALESCE(i.precipitation_mm, 0) > 0
+                 THEN 'Rain'
+               ELSE 'Clear'
            END AS weather_category,
            ROW_NUMBER() OVER (
                PARTITION BY c.city_sk, date_trunc('hour', i.observation_ts)
