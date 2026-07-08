@@ -1,0 +1,14 @@
+2026/07/03 17:35:12 - 03_load_exported_movies_to_staging.hpl - Using run configuration [local]
+2026/07/03 17:35:12 - 03_load_exported_movies_to_staging - Executing this pipeline using the Local Pipeline Engine with run configuration 'local'
+2026/07/03 17:35:12 - 03_load_exported_movies_to_staging - Execution started for pipeline [03_load_exported_movies_to_staging]
+2026/07/03 17:35:12 - Insert into staging.stg_movies.0 - Connected to database [dw-staging] (commit=100)
+2026/07/03 17:35:12 - Read exported_movies.json (JSON Line format).0 - Opening file: file:///D:/Stuyding/Thac%20si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/staging/exported_movies/exported_movies.json
+2026/07/03 17:35:12 - Read exported_movies.json (JSON Line format).0 - Finished processing (I=5, O=0, R=0, W=5, U=1, E=0)
+2026/07/03 17:35:12 - Parse JSON documents.0 - Finished processing (I=5, O=0, R=5, W=5, U=0, E=0)
+2026/07/03 17:35:12 - Trim string columns.0 - Finished processing (I=0, O=0, R=5, W=5, U=0, E=0)
+2026/07/03 17:35:12 - Flatten nested genres array.0 - Finished processing (I=0, O=0, R=5, W=5, U=0, E=0)
+2026/07/03 17:35:12 - Cast column types.0 - Finished processing (I=0, O=0, R=5, W=5, U=0, E=0)
+2026/07/03 17:35:12 - Add batch_id through the existing variable.0 - Finished processing (I=0, O=0, R=5, W=5, U=0, E=0)
+2026/07/03 17:35:12 - Insert into staging.stg_movies.0 - Finished processing (I=0, O=5, R=5, W=5, U=0, E=0)
+2026/07/03 17:35:12 - 03_load_exported_movies_to_staging - Pipeline duration : 0.319 seconds [  0.319" ]
+2026/07/03 17:35:12 - 03_load_exported_movies_to_staging - Execution finished on a local pipeline engine with run configuration 'local'
