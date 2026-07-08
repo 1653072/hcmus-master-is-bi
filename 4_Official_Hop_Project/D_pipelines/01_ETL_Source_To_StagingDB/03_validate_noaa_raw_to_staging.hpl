@@ -47,7 +47,7 @@ rules AS (
 SELECT 'noaa_lcd' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
        'staging.stg_weather' AS source_table,
-       'staging.dq_reject_row' AS reject_target,
+       'control.etl_dq_rule_result_details' AS reject_target,
        'staging.stg_weather' AS accepted_target,
        rule_code,
        rule_type,
@@ -68,7 +68,7 @@ FROM rules]]></sql>
     <name>Write NOAA DQ rule stream evidence</name>
     <connection>dw-control</connection>
     <schema>control</schema>
-    <table>etl_dq_rule_result</table>
+    <table>etl_dq_rule_result_analysis</table>
     <commit>100</commit>
     <truncate>N</truncate>
     <only_when_have_rows>N</only_when_have_rows>
@@ -89,7 +89,7 @@ FROM rules]]></sql>
   </transform>
   <order><hop><from>Read NOAA raw DQ rule counts</from><to>Write NOAA DQ rule stream evidence</to><enabled>Y</enabled></hop></order>
   <notepads>
-    <notepad><note>Hard reject target: staging.dq_reject_row. Accepted weather rows are represented by staging.stg_weather.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+    <notepad><note>Hard reject target: control.etl_dq_rule_result_details. Accepted weather rows are represented by staging.stg_weather.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
   </notepads>
   <attributes/>
   <transform_error_handling/>

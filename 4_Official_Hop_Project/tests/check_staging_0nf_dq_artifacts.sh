@@ -48,9 +48,8 @@ for table in "${required_stg_tables[@]}"; do
   fi
 done
 
-grep -q "CREATE TABLE staging.dq_reject_row" "$DQ_SQL"
-grep -q "CREATE TABLE staging.dq_warning_row" "$DQ_SQL"
-grep -q "CREATE TABLE control.etl_dq_rule_result" "$CONTROL_SQL"
+grep -q "CREATE TABLE control.etl_dq_rule_result_details" "$CONTROL_SQL"
+grep -q "CREATE TABLE control.etl_dq_rule_result_analysis" "$CONTROL_SQL"
 grep -q "CREATE TABLE control.dq_rule_catalog" "$CONTROL_SQL"
 
 grep -q "DIVVY_NULL_REQUIRED" "$CONTROL_SQL"

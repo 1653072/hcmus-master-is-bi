@@ -35,7 +35,7 @@ CREATE TABLE control.dq_rule_catalog (
     is_active         BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE control.etl_dq_rule_result (
+CREATE TABLE control.etl_dq_rule_result_analysis (
     result_id         SERIAL PRIMARY KEY,
     load_run_id       VARCHAR(80) NOT NULL,
     source_name       VARCHAR(100) NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE control.etl_dq_rule_result (
     failed_count      INTEGER NOT NULL DEFAULT 0,
     warning_count     INTEGER NOT NULL DEFAULT 0,
     checked_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_dq_rule_result_catalog
+    CONSTRAINT fk_dq_rule_result_analysis_catalog
         FOREIGN KEY (rule_code) REFERENCES control.dq_rule_catalog (rule_code)
 );
 
@@ -76,7 +76,27 @@ INSERT INTO control.dq_rule_catalog (rule_code, source_name, rule_type, severity
     ('GBFS_DATATYPE_CAPACITY',    'gbfs_station',   'datatype',  'reject',  'capacity must be an integer when present'),
     ('GBFS_FORMAT_COORDINATE',    'gbfs_station',   'format',    'reject',  'latitude and longitude must be in valid coordinate ranges');
 
+CREATE TABLE control.etl_dq_rule_result_details (
+    detail_id         BIGSERIAL PRIMARY KEY,
+    load_run_id       VARCHAR(80) NOT NULL,
+    source_name       VARCHAR(100) NOT NULL,
+    source_table      VARCHAR(100) NOT NULL,
+    source_file       TEXT,
+    source_row_number BIGINT,
+    business_key      TEXT,
+    rule_code         VARCHAR(80) NOT NULL,
+    rule_type         VARCHAR(30) NOT NULL,
+    dq_verdict        VARCHAR(10) NOT NULL,
+    reason            TEXT NOT NULL,
+    raw_payload       JSONB,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_dq_result_details_run_source
+    ON control.etl_dq_rule_result_details (load_run_id, source_name);
+
 ALTER TABLE control.etl_extraction_control OWNER TO hop_control_user;
 ALTER TABLE control.etl_job_log OWNER TO hop_control_user;
 ALTER TABLE control.dq_rule_catalog OWNER TO hop_control_user;
-ALTER TABLE control.etl_dq_rule_result OWNER TO hop_control_user;
+ALTER TABLE control.etl_dq_rule_result_analysis OWNER TO hop_control_user;
+ALTER TABLE control.etl_dq_rule_result_details OWNER TO hop_control_user;

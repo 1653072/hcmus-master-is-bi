@@ -54,8 +54,8 @@ rules AS (
 SELECT 'citibike_trips' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
        'staging.stg_citibike_trips' AS source_table,
-       'staging.dq_reject_row' AS reject_target,
-       'staging.dq_warning_row' AS warning_target,
+       'control.etl_dq_rule_result_details' AS reject_target,
+       'control.etl_dq_rule_result_details' AS warning_target,
        'staging.stg_citibike_trips' AS accepted_target,
        rule_code,
        rule_type,
@@ -76,7 +76,7 @@ FROM rules]]></sql>
     <name>Write Citi Bike DQ rule stream evidence</name>
     <connection>dw-control</connection>
     <schema>control</schema>
-    <table>etl_dq_rule_result</table>
+    <table>etl_dq_rule_result_analysis</table>
     <commit>100</commit>
     <truncate>N</truncate>
     <only_when_have_rows>N</only_when_have_rows>
@@ -97,7 +97,7 @@ FROM rules]]></sql>
   </transform>
   <order><hop><from>Read Citi Bike raw DQ rule counts</from><to>Write Citi Bike DQ rule stream evidence</to><enabled>Y</enabled></hop></order>
   <notepads>
-    <notepad><note>Hard reject target: staging.dq_reject_row. Warning target: staging.dq_warning_row. Missing station id is retained as warning; accepted rows remain in staging.stg_citibike_trips.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+    <notepad><note>Hard reject target: control.etl_dq_rule_result_details. Warning target: control.etl_dq_rule_result_details. Missing station id is retained as warning; accepted rows remain in staging.stg_citibike_trips.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
   </notepads>
   <attributes/>
   <transform_error_handling/>

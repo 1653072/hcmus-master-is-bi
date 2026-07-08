@@ -124,7 +124,7 @@ Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không p
 - `D_pipelines/02_ETL_StagingDB_To_NDS/02_load_weather_to_nds.hpl`: `stg_weather` → `nds.weather`, derive `weather_category`
 - `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl`: `stg_divvy_trips` + `stg_citibike_trips` → `nds.trip`, derive `duration_minutes`
 
-**DQ rule coverage:** null, duplicate, datatype, format; hard reject ghi `staging.dq_reject_row`, warning ghi `staging.dq_warning_row`, summary ghi `control.etl_dq_rule_result`. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
+**DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
 
 **Lệnh chạy nhanh:**
 
@@ -646,7 +646,7 @@ flowchart LR
 
 - Không `Dim_Holiday` / `holiday_sk` — weekday/weekend qua `Dim_DateTime.is_weekend`.
 - Không `batch_id` — upsert staging + audit qua `loaded_at` + control tables.
-- DQ Validation: hard reject vào `staging.dq_reject_row`; warning như thiếu station id vào `staging.dq_warning_row`; rule summary vào `control.etl_dq_rule_result`.
+- DQ Validation: reject và warning row-level details vào `control.etl_dq_rule_result_details` (field `dq_verdict`); rule-level summary vào `control.etl_dq_rule_result_analysis`.
 - **Station join:** `(city_sk, source_station_id)`; trip id = GBFS `short_name`; không cross-city; cast TEXT.
 - NOAA: `city_code` + `date_hour_local`; ưu tiên `REPORT_TYPE = 'FM-15'`; đơn vị v2 **°C, mm, m/s**.
 

@@ -48,7 +48,7 @@ rules AS (
 SELECT 'gbfs_station' AS source_name,
        'bootstrap_202601_202605' AS load_run_id,
        'staging.stg_gbfs_station' AS source_table,
-       'staging.dq_reject_row' AS reject_target,
+       'control.etl_dq_rule_result_details' AS reject_target,
        'staging.stg_gbfs_station' AS accepted_target,
        rule_code,
        rule_type,
@@ -69,7 +69,7 @@ FROM rules]]></sql>
     <name>Write GBFS DQ rule stream evidence</name>
     <connection>dw-control</connection>
     <schema>control</schema>
-    <table>etl_dq_rule_result</table>
+    <table>etl_dq_rule_result_analysis</table>
     <commit>100</commit>
     <truncate>N</truncate>
     <only_when_have_rows>N</only_when_have_rows>
@@ -90,7 +90,7 @@ FROM rules]]></sql>
   </transform>
   <order><hop><from>Read GBFS raw DQ rule counts</from><to>Write GBFS DQ rule stream evidence</to><enabled>Y</enabled></hop></order>
   <notepads>
-    <notepad><note>Hard reject target: staging.dq_reject_row. Accepted station rows are represented by staging.stg_gbfs_station.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+    <notepad><note>Hard reject target: control.etl_dq_rule_result_details. Accepted station rows are represented by staging.stg_gbfs_station.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
   </notepads>
   <attributes/>
   <transform_error_handling/>
