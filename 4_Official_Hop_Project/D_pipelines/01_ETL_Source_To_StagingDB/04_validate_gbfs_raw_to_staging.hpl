@@ -171,7 +171,7 @@ FROM rules]]></sql>
     <name>Read GBFS clean rows</name>
     <connection>dw-staging</connection>
     <sql><![CDATA[SELECT DISTINCT ON (source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),'')))
-       load_run_id, source_file, source_row_number,
+       load_run_id, source_file,
        gbfs_station_id, station_name, short_name,
        longitude, latitude, capacity,
        station_type, region_id, source_city_code
@@ -185,7 +185,7 @@ WHERE NULLIF(BTRIM(source_city_code),'') IS NOT NULL
   AND BTRIM(longitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
   AND CAST(BTRIM(latitude) AS NUMERIC) BETWEEN -90 AND 90
   AND CAST(BTRIM(longitude) AS NUMERIC) BETWEEN -180 AND 180
-ORDER BY source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),'')), source_row_number]]></sql>
+ORDER BY source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),''))]]></sql>
     <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
     <GUI><xloc>96</xloc><yloc>320</yloc></GUI>
   </transform>

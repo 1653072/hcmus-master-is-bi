@@ -49,16 +49,10 @@ region_id = blankToNull(region_id);</jsScript_script></jsScript></jsScripts>
     <optimizationLevel>9</optimizationLevel><GUI><xloc>608</xloc><yloc>80</yloc></GUI>
   </transform>
   <transform>
-    <type>RowNumber</type><name>Add source_row_number</name>
-    <fieldName>source_row_number</fieldName><resultType>Integer</resultType><starting_value>1</starting_value><increment>1</increment>
-    <GUI><xloc>864</xloc><yloc>80</yloc></GUI>
-  </transform>
-  <transform>
     <type>TableOutput</type><name>Load to raw_gbfs_station</name><connection>dw-staging</connection><schema>staging</schema><table>raw_gbfs_station</table><commit>1000</commit><truncate>Y</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
     <fields>
       <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
       <field><stream_name>source_file</stream_name><column_name>source_file</column_name></field>
-      <field><stream_name>source_row_number</stream_name><column_name>source_row_number</column_name></field>
       <field><stream_name>gbfs_station_id</stream_name><column_name>gbfs_station_id</column_name></field>
       <field><stream_name>station_name</stream_name><column_name>station_name</column_name></field>
       <field><stream_name>short_name</stream_name><column_name>short_name</column_name></field>
@@ -75,8 +69,7 @@ region_id = blankToNull(region_id);</jsScript_script></jsScript></jsScripts>
   <order>
     <hop><from>Read GBFS station_information JSON files</from><to>Parse GBFS stations</to><enabled>Y</enabled></hop>
     <hop><from>Parse GBFS stations</from><to>Prepare GBFS raw fields</to><enabled>Y</enabled></hop>
-    <hop><from>Prepare GBFS raw fields</from><to>Add source_row_number</to><enabled>Y</enabled></hop>
-    <hop><from>Add source_row_number</from><to>Load to raw_gbfs_station</to><enabled>Y</enabled></hop>
+    <hop><from>Prepare GBFS raw fields</from><to>Load to raw_gbfs_station</to><enabled>Y</enabled></hop>
   </order>
   <notepads><notepad><note>Flow 1 — all JSON fields kept as STRING. DQ validation and transformation to stg_gbfs_station happen in 04_validate_gbfs_raw_to_staging.hpl.</note><xloc>96</xloc><yloc>200</yloc><width>760</width><heigth>60</heigth></notepad></notepads>
   <attributes/><transform_error_handling/>

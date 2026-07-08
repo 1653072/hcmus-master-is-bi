@@ -159,7 +159,7 @@ FROM rules]]></sql>
     <name>Read NOAA clean rows</name>
     <connection>dw-staging</connection>
     <sql><![CDATA[SELECT DISTINCT ON (source_city_code, observation_ts)
-       load_run_id, source_file, source_row_number,
+       load_run_id, source_file,
        noaa_station_id, observation_ts, report_type,
        hourly_dry_bulb_temperature, hourly_precipitation, hourly_wind_speed,
        hourly_present_weather_type, source_city_code
@@ -172,7 +172,7 @@ WHERE NULLIF(BTRIM(source_city_code),'') IS NOT NULL
   AND (hourly_dry_bulb_temperature IS NULL OR hourly_dry_bulb_temperature ~ '^-?[0-9]+(\.[0-9]+)?$')
   AND (hourly_precipitation IS NULL OR hourly_precipitation ~ '^-?[0-9]+(\.[0-9]+)?$')
   AND (hourly_wind_speed IS NULL OR hourly_wind_speed ~ '^-?[0-9]+(\.[0-9]+)?$')
-ORDER BY source_city_code, observation_ts, source_row_number]]></sql>
+ORDER BY source_city_code, observation_ts]]></sql>
     <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
     <GUI><xloc>96</xloc><yloc>320</yloc></GUI>
   </transform>

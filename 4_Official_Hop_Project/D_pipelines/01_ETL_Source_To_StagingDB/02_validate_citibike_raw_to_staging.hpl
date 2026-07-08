@@ -177,7 +177,7 @@ FROM rules]]></sql>
     <name>Read Citi Bike clean rows</name>
     <connection>dw-staging</connection>
     <sql><![CDATA[SELECT DISTINCT ON (source_city_code, ride_id)
-       load_run_id, source_file, source_row_number,
+       load_run_id, source_file,
        ride_id, rideable_type, started_at, ended_at,
        start_station_name, start_station_id, end_station_name, end_station_id,
        start_lat, start_lng, end_lat, end_lng,
@@ -188,7 +188,7 @@ WHERE NULLIF(BTRIM(ride_id),'') IS NOT NULL
   AND NULLIF(BTRIM(source_city_code),'') IS NOT NULL
   AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
   AND (trip_month IS NOT NULL AND trip_month ~ '^[0-9]{6}$')
-ORDER BY source_city_code, ride_id, source_row_number]]></sql>
+ORDER BY source_city_code, ride_id]]></sql>
     <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
     <GUI><xloc>96</xloc><yloc>320</yloc></GUI>
   </transform>

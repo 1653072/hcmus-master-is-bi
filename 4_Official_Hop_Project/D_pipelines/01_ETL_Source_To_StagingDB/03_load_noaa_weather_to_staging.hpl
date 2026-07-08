@@ -63,16 +63,10 @@ hourly_wind_speed = blankToNull(hourly_wind_speed);</jsScript_script></jsScript>
     <optimizationLevel>9</optimizationLevel><GUI><xloc>352</xloc><yloc>80</yloc></GUI>
   </transform>
   <transform>
-    <type>RowNumber</type><name>Add source_row_number</name>
-    <fieldName>source_row_number</fieldName><resultType>Integer</resultType><starting_value>1</starting_value><increment>1</increment>
-    <GUI><xloc>608</xloc><yloc>80</yloc></GUI>
-  </transform>
-  <transform>
     <type>TableOutput</type><name>Load to raw_noaa_weather</name><connection>dw-staging</connection><schema>staging</schema><table>raw_noaa_weather</table><commit>1000</commit><truncate>Y</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
     <fields>
       <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
       <field><stream_name>source_file</stream_name><column_name>source_file</column_name></field>
-      <field><stream_name>source_row_number</stream_name><column_name>source_row_number</column_name></field>
       <field><stream_name>noaa_station_id</stream_name><column_name>noaa_station_id</column_name></field>
       <field><stream_name>observation_ts</stream_name><column_name>observation_ts</column_name></field>
       <field><stream_name>report_type</stream_name><column_name>report_type</column_name></field>
@@ -87,8 +81,7 @@ hourly_wind_speed = blankToNull(hourly_wind_speed);</jsScript_script></jsScript>
   </transform>
   <order>
     <hop><from>Read NOAA LCD v2 CSV files</from><to>Prepare NOAA raw fields</to><enabled>Y</enabled></hop>
-    <hop><from>Prepare NOAA raw fields</from><to>Add source_row_number</to><enabled>Y</enabled></hop>
-    <hop><from>Add source_row_number</from><to>Load to raw_noaa_weather</to><enabled>Y</enabled></hop>
+    <hop><from>Prepare NOAA raw fields</from><to>Load to raw_noaa_weather</to><enabled>Y</enabled></hop>
   </order>
   <notepads><notepad><note>Flow 1 — no type casting, no FM filter. DQ validation and transformation to stg_weather happen in 03_validate_noaa_raw_to_staging.hpl.</note><xloc>96</xloc><yloc>200</yloc><width>760</width><heigth>60</heigth></notepad></notepads>
   <attributes/><transform_error_handling/>
