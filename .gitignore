@@ -47,6 +47,7 @@ Thumbs.db
 .understand-anything/
 
 # Official Hop Project — A_datasets (tải lại bằng A_datasets/download_datasets.sh)
+4_Official_Hop_Project/development_configs.json
 4_Official_Hop_Project/A_datasets/A1_citibike/*.zip
 4_Official_Hop_Project/A_datasets/A1_citibike/extracted/
 4_Official_Hop_Project/A_datasets/A2_divvy/*.zip
