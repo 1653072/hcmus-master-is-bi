@@ -1,7 +1,7 @@
 {
   "variables" : [
     { "name" : "HOP_ENV", "value" : "dev", "description" : "Runtime environment: dev | staging | prod" },
-    { "name" : "PROJECT_HOME", "value" : "/Users/quoctran/Documents/999999_HCMUS_Master_Exercises/HocPhan2/1_Advanced_Business_Inteligence/hcmus-master-is-bi/4_Official_Hop_Project", "description" : "Hop project root directory" },
+    { "name" : "PROJECT_HOME", "value" : "D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/4_Official_Hop_Project", "description" : "Hop project root directory" },
     { "name" : "RAW_DATASET_ROOT", "value" : "${PROJECT_HOME}/A_datasets", "description" : "Root folder for bike-share datasets" },
     { "name" : "SAMPLE_PERIOD", "value" : "202601-202605", "description" : "Sample period for trip + NOAA ETL" },
     { "name" : "DATASETS_CSV_FOLDER", "value" : "${PROJECT_HOME}/A_datasets", "description" : "Base path for CSV/JSON dataset folders" },

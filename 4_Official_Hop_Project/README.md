@@ -916,7 +916,8 @@ erDiagram
     int casual_trip_count
     int electric_trip_count
     int classic_trip_count
-    numeric avg_duration_minutes
+    numeric avg_duration_member_minutes
+    numeric avg_duration_casual_minutes
     numeric temperature
     numeric precipitation
     numeric wind_speed

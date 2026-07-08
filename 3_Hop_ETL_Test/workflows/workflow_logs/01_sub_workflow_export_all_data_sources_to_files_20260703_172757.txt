@@ -1,0 +1,54 @@
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - ERROR: Error running action 'workflow' : 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - ERROR: org.apache.hop.core.exception.HopException: 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Unexpected error during workflow metadata load
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Unable to load the workflow from XML file [D:\Stuyding\Thac si\KHTN\HP2\Advanced_BI\Proj\hcmus-master-is-bi\3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf]
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Unable to read file [file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf]
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Could not read from "file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf" because it is not a file.
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.actions.workflow.ActionWorkflow.getWorkflowMeta(ActionWorkflow.java:727)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.actions.workflow.ActionWorkflow.execute(ActionWorkflow.java:304)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.Workflow.executeFromStart(Workflow.java:760)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.Workflow.executeFromStart(Workflow.java:933)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.Workflow.executeFromStart(Workflow.java:452)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.Workflow.startExecution(Workflow.java:312)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.engines.local.LocalWorkflowEngine.startExecution(LocalWorkflowEngine.java:257)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.ui.hopgui.file.workflow.HopGuiWorkflowGraph.lambda$start$19(HopGuiWorkflowGraph.java:4065)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at java.base/java.lang.Thread.run(Thread.java:1474)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Caused by: org.apache.hop.core.exception.HopXmlException: 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Unable to load the workflow from XML file [D:\Stuyding\Thac si\KHTN\HP2\Advanced_BI\Proj\hcmus-master-is-bi\3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf]
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Unable to read file [file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf]
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Could not read from "file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf" because it is not a file.
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.WorkflowMeta.loadXml(WorkflowMeta.java:406)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.WorkflowMeta.<init>(WorkflowMeta.java:161)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.actions.workflow.ActionWorkflow.getWorkflowMeta(ActionWorkflow.java:721)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	... 8 more
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Caused by: org.apache.hop.core.exception.HopXmlException: 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Unable to read file [file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf]
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Could not read from "file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf" because it is not a file.
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.core.xml.XmlHandler.loadXmlFile(XmlHandler.java:551)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.core.xml.XmlHandler.loadXmlFile(XmlHandler.java:532)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.workflow.WorkflowMeta.loadXml(WorkflowMeta.java:393)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	... 10 more
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Caused by: org.apache.commons.vfs2.FileNotFoundException: Could not read from "file:///D:/Stuyding/Thac si/KHTN/HP2/Advanced_BI/Proj/hcmus-master-is-bi/3_Hop_ETL_Test/workflows/01_sub_workflow_load_exported_files_to_staging.hwf" because it is not a file.
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.commons.vfs2.provider.AbstractFileObject.getInputStream(AbstractFileObject.java:1202)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.commons.vfs2.provider.AbstractFileObject.getInputStream(AbstractFileObject.java:1187)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.commons.vfs2.provider.DefaultFileContent.buildInputStream(DefaultFileContent.java:257)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.commons.vfs2.provider.DefaultFileContent.getInputStream(DefaultFileContent.java:525)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.core.vfs.HopVfs.getInputStream(HopVfs.java:394)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.hop.core.xml.XmlHandler.loadXmlFile(XmlHandler.java:549)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	... 12 more
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - Caused by: java.io.FileNotFoundException: D:\Stuyding\Thac si\KHTN\HP2\Advanced_BI\Proj\hcmus-master-is-bi\3_Hop_ETL_Test\workflows\01_sub_workflow_load_exported_files_to_staging.hwf (The system cannot find the file specified)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at java.base/java.io.FileInputStream.open0(Native Method)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at java.base/java.io.FileInputStream.open(FileInputStream.java:185)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at java.base/java.io.FileInputStream.<init>(FileInputStream.java:139)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.commons.vfs2.provider.local.LocalFile.doGetInputStream(LocalFile.java:105)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	at org.apache.commons.vfs2.provider.AbstractFileObject.getInputStream(AbstractFileObject.java:1200)
+2026/07/03 17:27:57 - 01_sub_workflow_export_all_data_sources_to_files.hwf - 	... 17 more

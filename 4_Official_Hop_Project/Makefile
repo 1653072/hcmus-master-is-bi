@@ -16,9 +16,9 @@ SETUP_SCRIPT    := setup_project_home.sh
 
 # Windows: dùng Git Bash thật, không dùng bash.exe stub của WSL
 ifeq ($(OS),Windows_NT)
-  ifneq (,$(wildcard C:/Program Files/Git/bin/bash.exe))
+  ifneq (,$(wildcard C:/Program?Files/Git/bin/bash.exe))
     BASH := C:/Program Files/Git/bin/bash.exe
-  else ifneq (,$(wildcard C:/Program Files (x86)/Git/bin/bash.exe))
+  else ifneq (,$(wildcard C:/Program?Files?(x86)/Git/bin/bash.exe))
     BASH := C:/Program Files (x86)/Git/bin/bash.exe
   else
     BASH := bash
@@ -54,7 +54,7 @@ help:
 	@echo "Bien: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
 
 define RUN_SETUP
-	@chmod +x "$(SETUP_SCRIPT)" 2>/dev/null || true
+	@"$(BASH)" -c 'chmod +x "$(SETUP_SCRIPT)" 2>/dev/null || true'
 	@"$(BASH)" "$(SETUP_SCRIPT)"
 endef
 
@@ -83,10 +83,10 @@ datasets-noaa: $(CONFIG_FILE)
 	@"$(BASH)" "$(DOWNLOAD_SCRIPT)" --noaa-only
 
 datasets-status: $(CONFIG_FILE)
-	@$(BASH) -c 'test -f $(A_DATASETS)/manifest.json && cat $(A_DATASETS)/manifest.json || echo "(chua co manifest — chay make datasets-full)"'
+	@"$(BASH)" -c 'test -f $(A_DATASETS)/manifest.json && cat $(A_DATASETS)/manifest.json || echo "(chua co manifest — chay make datasets-full)"'
 	@echo ""
 	@echo "=== Dung luong ==="
-	@$(BASH) -c 'for d in $(A_DATASETS)/A*; do test -d "$$d" && du -sh "$$d" 2>/dev/null || true; done'
+	@"$(BASH)" -c 'for d in $(A_DATASETS)/A*; do test -d "$$d" && du -sh "$$d" 2>/dev/null || true; done'
 
 db-up: $(CONFIG_FILE)
 	cd $(B_DATABASES) && docker-compose up -d

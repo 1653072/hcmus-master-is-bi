@@ -15,16 +15,31 @@ LOCAL_CONFIG="${SCRIPT_DIR}/development_configs.local.json"
 OUT_CONFIG="${SCRIPT_DIR}/development_configs.json"
 PROJECT_HOME_ABS="$(cd "$SCRIPT_DIR" && pwd)"
 
+python_works() {
+  local out
+  out=$("$@" -c "import sys; print(sys.version_info[0])" 2>&1) || return 1
+  if [[ "$out" == *Microsoft*Store* ]] \
+    || [[ "$out" == *Microsoft* ]] \
+    || [[ "$out" == *App*execution*aliases* ]]; then
+    return 1
+  fi
+  [[ "$out" == "3" ]]
+}
+
 find_python() {
-  if command -v python3 >/dev/null 2>&1; then
+  if command -v python3 >/dev/null 2>&1 && python_works python3; then
     echo python3
     return 0
   fi
-  if command -v py >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1 && python_works python; then
+    echo python
+    return 0
+  fi
+  if command -v py >/dev/null 2>&1 && python_works py -3; then
     echo "py -3"
     return 0
   fi
-  echo "ERROR: python3 or py not found." >&2
+  echo "ERROR: python3, python or py not found." >&2
   return 1
 }
 
@@ -72,7 +87,7 @@ for i, var in enumerate(data["variables"]):
 lines.append("  ]\n}\n")
 out_path.write_text("".join(lines), encoding="utf-8")
 print(f"Generated {out_path.name} from {local_path.name}")
-print(f"PROJECT_HOME → {project_home}")
+print(f"PROJECT_HOME -> {project_home}")
 PY
 }
 
