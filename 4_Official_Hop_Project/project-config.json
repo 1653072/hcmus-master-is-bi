@@ -1,5 +1,5 @@
 {
-  "metadataBaseFolder" : "/Users/huynguyen/Data/Master/6. BI/0. Project/hcmus-master-is-bi/4_Official_Hop_Project/metadata",
+  "metadataBaseFolder" : "${PROJECT_HOME}/metadata",
   "unitTestsBasePath" : "${PROJECT_HOME}",
   "dataSetsCsvFolder" : "${PROJECT_HOME}/A_datasets",
   "enforcingExecutionInHome" : true,

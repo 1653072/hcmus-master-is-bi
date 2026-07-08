@@ -235,6 +235,14 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Ho
 
 Mở project trong Hop GUI: trỏ **Project home** tới thư mục `4_Official_Hop_Project`.
 
+Sau mỗi lần clone/pull trên máy khác, chạy:
+
+```bash
+make setup-project-home
+```
+
+Lệnh này sinh lại `development_configs.json` từ `development_configs.local.json` với `PROJECT_HOME` đúng theo máy hiện tại. Không commit `development_configs.json`; các workflow/pipeline đã dùng `${PROJECT_HOME}/...` để tránh kéo đường dẫn tuyệt đối của máy khác.
+
 ---
 
 
