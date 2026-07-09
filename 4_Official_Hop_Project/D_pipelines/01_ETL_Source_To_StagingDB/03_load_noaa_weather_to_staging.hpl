@@ -516,6 +516,7 @@ if (typeof _last_file === 'undefined' || _last_file !== String(filename)) {
 } else {
   _row_counter++;
 }
+// The current source_row_number didn't include the header of CSV files (e.g., 1). If it includes the header, then it'll be 2.
 var source_row_number = _row_counter;</jsScript_script>
       </jsScript>
     </jsScripts>

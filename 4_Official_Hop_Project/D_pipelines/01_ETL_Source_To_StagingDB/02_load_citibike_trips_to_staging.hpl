@@ -39,7 +39,7 @@
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>96</xloc>
+      <xloc>176</xloc>
       <yloc>80</yloc>
     </GUI>
     <partitioning>
@@ -299,8 +299,8 @@
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>80</yloc>
+      <xloc>176</xloc>
+      <yloc>224</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -338,6 +338,7 @@ if (typeof _last_file === 'undefined' || _last_file !== String(filename)) {
 } else {
   _row_counter++;
 }
+// The current source_row_number didn't include the header of CSV files (e.g., 1). If it includes the header, then it'll be 2.
 var source_row_number = _row_counter;</jsScript_script>
       </jsScript>
     </jsScripts>
@@ -491,8 +492,8 @@ var source_row_number = _row_counter;</jsScript_script>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>608</xloc>
-      <yloc>80</yloc>
+      <xloc>176</xloc>
+      <yloc>368</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -604,8 +605,8 @@ var source_row_number = _row_counter;</jsScript_script>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>864</xloc>
-      <yloc>80</yloc>
+      <xloc>176</xloc>
+      <yloc>512</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -645,8 +646,8 @@ var source_row_number = _row_counter;</jsScript_script>
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>64</xloc>
-      <yloc>176</yloc>
+      <xloc>96</xloc>
+      <yloc>592</yloc>
       <width>768</width>
       <height>32</height>
     </notepad>

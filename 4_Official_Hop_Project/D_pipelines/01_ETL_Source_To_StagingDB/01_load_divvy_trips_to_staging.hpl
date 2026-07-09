@@ -323,8 +323,8 @@
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>192</yloc>
+      <xloc>96</xloc>
+      <yloc>352</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -522,8 +522,8 @@ var source_row_number = _row_counter; </jsScript_script>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>608</xloc>
-      <yloc>192</yloc>
+      <xloc>96</xloc>
+      <yloc>512</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -635,8 +635,8 @@ var source_row_number = _row_counter; </jsScript_script>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>848</xloc>
-      <yloc>192</yloc>
+      <xloc>96</xloc>
+      <yloc>656</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -676,8 +676,8 @@ var source_row_number = _row_counter; </jsScript_script>
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>96</xloc>
-      <yloc>320</yloc>
+      <xloc>16</xloc>
+      <yloc>736</yloc>
       <width>760</width>
       <height>-1</height>
     </notepad>

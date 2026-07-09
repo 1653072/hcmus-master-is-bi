@@ -77,7 +77,18 @@ try {
 } catch(e) {
   started_at = finished_at;
 }
-var error_message = null;</jsScript_script>
+var error_message = null;
+
+// LSET/CET watermark update:
+// lset_value = old CET (read at start by 00_start_etl_source_to_staging and stored as JVM variable)
+// cet_value  = MAX(raw_loaded_at) from SQL above
+// Convention: variable name = "CET_" + source_name.toUpperCase()
+var _srcUpper = String(source_name).toUpperCase();
+var _lsetStr = getVariable("CET_" + _srcUpper, null);
+var lset_value = null;
+if (_lsetStr != null &amp;&amp; String(_lsetStr).length > 0) {
+  try { lset_value = Packages.java.sql.Timestamp.valueOf(String(_lsetStr)); } catch(e2) {}
+}</jsScript_script>
       </jsScript>
     </jsScripts>
     <fields>
@@ -117,6 +128,14 @@ var error_message = null;</jsScript_script>
         <name>error_message</name>
         <rename>error_message</rename>
         <type>String</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>lset_value</name>
+        <rename>lset_value</rename>
+        <type>Timestamp</type>
         <length>-1</length>
         <precision>-1</precision>
         <replace>N</replace>
@@ -169,6 +188,11 @@ var error_message = null;</jsScript_script>
       <value>
         <name>last_run_status</name>
         <rename>status</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>lset</name>
+        <rename>lset_value</rename>
         <update>Y</update>
       </value>
       <value>
@@ -293,7 +317,12 @@ var error_message = null;</jsScript_script>
     <notepad>
       <note>Staging audit: total_rows_count = raw_* count, success_rows_count = stg_* count (clean rows), failed_rows_count = raw - stg.
 etl_extraction_control.rows_extracted = success_rows_count (accepted rows).
-started_at comes from ETL_STARTED_AT workflow variable.</note>
+started_at comes from ETL_STARTED_AT JVM variable (set by 00_start_etl_source_to_staging).
+LSET/CET watermark update pattern:
+  lset_value = old CET (read from JVM variable CET_{SOURCE_NAME} set by 00_start)
+  cet_value  = MAX(raw_loaded_at) from SQL query
+  => After this run: lset = old cet, cet = new max raw_loaded_at
+Incremental load in future: load pipelines use LSET_*/CET_* JVM vars to filter source records.</note>
       <fontsize>-1</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
