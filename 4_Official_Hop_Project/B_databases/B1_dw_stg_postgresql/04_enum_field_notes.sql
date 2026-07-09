@@ -1,4 +1,4 @@
--- Enum / coded field notes (staging + control + metadata)
+-- Enum / coded field notes (staging + control)
 -- Valid values documented for ETL validation and reporting; VARCHAR columns (no PG ENUM type).
 
 \connect dw_staging
@@ -49,8 +49,3 @@ COMMENT ON COLUMN control.etl_extraction_control.last_run_status IS
 
 COMMENT ON COLUMN control.etl_job_log.status IS
     'Enum: SUCCESS, FAILED, RUNNING, SKIPPED.';
-
-\connect dw_metadata
-
-COMMENT ON COLUMN metadata.source_registry.source_type IS
-    'Enum: s3_csv (trip ZIP pull), file_pull (NOAA LCD), json_push (GBFS MDM).';

@@ -4,7 +4,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STAGING_SQL="$ROOT/B_databases/B1_dw_stg_postgresql/02_staging_schema.sql"
 CONTROL_SQL="$ROOT/B_databases/B1_dw_stg_postgresql/03_control_schema.sql"
-DQ_SQL="$ROOT/B_databases/B1_dw_stg_postgresql/06_dq_schema.sql"
 RUNTIME_SCRIPT="$ROOT/scripts/run_staging_0nf_dq.sh"
 PIPE_DIR="$ROOT/D_pipelines/01_ETL_Source_To_StagingDB"
 WORKFLOW="$ROOT/E_workflows/01_etl_source_to_stagingdb.hwf"
@@ -25,7 +24,6 @@ assert_has_real_transform() {
   fi
 }
 
-test -f "$DQ_SQL"
 test -f "$RUNTIME_SCRIPT"
 test -x "$RUNTIME_SCRIPT"
 test -d "$PIPE_DIR"

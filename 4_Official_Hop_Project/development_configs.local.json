@@ -53,13 +53,6 @@
     { "name" : "DDS_DB_SCHEMA", "value" : "dds", "description" : "DDS schema (Snowflake — Power BI reads here)" },
     { "name" : "DDS_LOAD_DIMENSIONS_BEFORE_FACTS", "value" : "true", "description" : "Load dimension tables before fact tables" },
 
-    { "name" : "METADATA_DB_HOST", "value" : "localhost", "description" : "Metadata host (docker: dw-stg-postgres)" },
-    { "name" : "METADATA_DB_PORT", "value" : "5434", "description" : "Metadata port" },
-    { "name" : "METADATA_DB_NAME", "value" : "dw_metadata", "description" : "Metadata database name" },
-    { "name" : "METADATA_DB_USER", "value" : "hop_metadata_user", "description" : "Metadata database user" },
-    { "name" : "METADATA_DB_PASSWORD", "value" : "hop_metadata@123", "description" : "Metadata password (local fake — committed for dev)" },
-    { "name" : "METADATA_DB_SCHEMA", "value" : "metadata", "description" : "Metadata schema" },
-
     { "name" : "POWERBI_DDS_HOST", "value" : "localhost", "description" : "Power BI — DDS host (docker: dw-dds-postgres)" },
     { "name" : "POWERBI_DDS_PORT", "value" : "5436", "description" : "Power BI — DDS port" },
     { "name" : "POWERBI_DDS_NAME", "value" : "dw_dds", "description" : "Power BI — DDS database" },

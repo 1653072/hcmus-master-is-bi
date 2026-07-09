@@ -32,7 +32,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
   - [8.1 Tổng quan 3 tầng](#81-tổng-quan-3-tầng)
   - [8.1b Khóa join & GBFS mapping](#81b-khóa-join--gbfs-mapping)
   - [8.2 Staging ER](#82-staging-er-4-bảng)
-  - [8.3 Control + Metadata](#83-control--metadata)
+  - [8.3 Control](#83-control)
   - [8.4 NDS 3NF](#84-nds-3nf-5-bảng)
   - [8.5 DDS Snowflake](#85-dds-snowflake-4-dim--1-fact)
   - [8.6 Seed data](#86-seed-data-ddl)
@@ -76,7 +76,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
 ├── D_pipelines/                   # Hop pipelines (.hpl) — nhóm tạo
 ├── E_workflows/                   # Hop workflows (.hwf) — nhóm tạo
 └── metadata/                      # Hop DB + Web Service metadata
-    ├── rdbms/                     # dw-staging, dw-control, dw-metadata, dw-nds, dw-dds
+    ├── rdbms/                     # dw-staging, dw-control, dw-nds, dw-dds
     ├── web-service/               # mdm-station.json
     ├── pipeline-run-configuration/
     └── workflow-run-configuration/
@@ -229,7 +229,7 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Ho
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
 | `project-config.json`      | `dataSetsCsvFolder` → `${PROJECT_HOME}/A_datasets`                                                  |
 | `development_configs.json` | Biến DB (5434/5435/5436), dataset paths, MDM Station — [mục 8.8](#88-hop-metadata--biến-môi-trường) |
-| `metadata/rdbms/`          | `dw-staging`, `dw-control`, `dw-metadata`, `dw-nds`, `dw-dds`                                       |
+| `metadata/rdbms/`          | `dw-staging`, `dw-control`, `dw-nds`, `dw-dds`                                                      |
 | `metadata/web-service/`    | `mdm-station.json` — Hop Web Service nhận GBFS push                                                 |
 
 
@@ -624,9 +624,7 @@ flowchart LR
   subgraph stg [dw_staging :5434]
     RAW[staging.raw_* 0NF]
     STG[staging.stg_*]
-    DQ[staging.dq_*]
     CTL[control.etl_*]
-    META[metadata.source_registry]
   end
   subgraph nds [dw_nds :5435]
     NDS3[nds.* 3NF]
@@ -772,9 +770,9 @@ erDiagram
 
 
 
-### 8.3. Control + Metadata (`control.*`, `metadata.*`)
+### 8.3. Control (`control.*`)
 
-Port **5434** · SQL: `B1_dw_stg_postgresql/03_control_schema.sql`, `04_metadata_schema.sql`
+Port **5434** · SQL: `B1_dw_stg_postgresql/03_control_schema.sql`
 
 ```mermaid
 erDiagram
@@ -795,25 +793,20 @@ erDiagram
     timestamp started_at
     timestamp finished_at
     varchar status
-    int rows_processed
+    int total_rows_count
+    int success_rows_count
+    int failed_rows_count
     text error_message
-  }
-  source_registry {
-    varchar source_name PK
-    varchar source_type
-    varchar connection_ref
-    text notes
   }
 ```
 
 
 
 
-| Schema     | Bảng                     | PK / UK                                      | Ghi chú                                                               |
-| ---------- | ------------------------ | -------------------------------------------- | --------------------------------------------------------------------- |
-| `control`  | `etl_extraction_control` | `control_id`; UK `(source_name, table_name)` | LSET/CET: `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
-| `control`  | `etl_job_log`            | `log_id`                                     | Audit từng lần chạy workflow/pipeline                                 |
-| `metadata` | `source_registry`        | `source_name`                                | `source_type`, `connection_ref`, `notes`                              |
+| Schema    | Bảng                     | PK / UK                                      | Ghi chú                                                               |
+| --------- | ------------------------ | -------------------------------------------- | --------------------------------------------------------------------- |
+| `control` | `etl_extraction_control` | `control_id`; UK `(source_name, table_name)` | LSET/CET: `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
+| `control` | `etl_job_log`            | `log_id`                                     | Audit từng lần chạy workflow/pipeline                                 |
 
 
 
@@ -1022,7 +1015,7 @@ make db-down        # dừng containers
 
 | Service           | Port | Databases                                 |
 | ----------------- | ---- | ----------------------------------------- |
-| `dw-stg-postgres` | 5434 | `dw_staging`, `dw_control`, `dw_metadata` |
+| `dw-stg-postgres` | 5434 | `dw_staging`, `dw_control` |
 | `dw-nds-postgres` | 5435 | `dw_nds`                                  |
 | `dw-dds-postgres` | 5436 | `dw_dds`                                  |
 
@@ -1035,7 +1028,7 @@ make db-down        # dừng containers
 
 ```text
 metadata/
-├── rdbms/dw-staging.json, dw-control.json, dw-metadata.json, dw-nds.json, dw-dds.json
+├── rdbms/dw-staging.json, dw-control.json, dw-nds.json, dw-dds.json
 ├── web-service/mdm-station.json
 ├── workflow-run-configuration/local.json
 └── pipeline-run-configuration/local.json
@@ -1062,7 +1055,6 @@ metadata/
 | -------- | ----------------------- | ---------------------- |
 | Staging  | `hop_staging_user`      | `hop_staging@123`      |
 | Control  | `hop_control_user`      | `hop_control@123`      |
-| Metadata | `hop_metadata_user`     | `hop_metadata@123`     |
 | NDS      | `hop_nds_user`          | `hop_nds@123`          |
 | DDS      | `hop_dds_user`          | `hop_dds@123`          |
 | Power BI | `analytics_reader_user` | `analytics_reader@123` |
@@ -1072,7 +1064,7 @@ metadata/
 
 ### 8.9. Enum / coded fields
 
-Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá trị hợp lệ được ghi trong SQL (`B_databases/*/05_enum_field_notes.sql` hoặc `04_enum_field_notes.sql`) qua `COMMENT ON COLUMN`.
+Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá trị hợp lệ được ghi trong SQL (`B_databases/*/04_enum_field_notes.sql`) qua `COMMENT ON COLUMN`.
 
 #### Staging (`staging.*`)
 
@@ -1100,7 +1092,6 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 | `etl_extraction_control.source_name`     | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
 | `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
 | `etl_job_log.status`                     | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
-| `source_registry.source_type`            | `s3_csv`, `file_pull`, `json_push`                          |
 
 
 

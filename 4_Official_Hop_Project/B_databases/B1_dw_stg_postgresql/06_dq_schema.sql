@@ -1,2 +1,0 @@
--- DQ detail tables (reject + warning rows) have been merged into control.etl_dq_rule_result_details.
--- See 03_control_schema.sql for the unified table definition.
