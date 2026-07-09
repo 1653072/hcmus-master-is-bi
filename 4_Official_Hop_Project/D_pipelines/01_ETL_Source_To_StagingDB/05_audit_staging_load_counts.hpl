@@ -17,13 +17,14 @@
   </info>
   <transform>
     <type>TableInput</type>
-    <name>Read staging row counts</name>
+    <name>Read staging.raw_* row counts</name>
     <sql>SELECT
     s.source_name,
     s.table_name,
-    r.raw_count        AS total_rows_count,
-    s.stg_count        AS success_rows_count,
-    (r.raw_count - s.stg_count) AS failed_rows_count
+    r.raw_count              AS total_rows_count,
+    s.stg_count              AS success_rows_count,
+    (r.raw_count - s.stg_count) AS failed_rows_count,
+    r.max_raw_loaded_at      AS cet_value
 FROM (
     SELECT 'divvy_trips'   AS source_name, 'stg_divvy_trips'   AS table_name, COUNT(*)::INTEGER AS stg_count FROM staging.stg_divvy_trips
     UNION ALL
@@ -34,13 +35,13 @@ FROM (
     SELECT 'gbfs_station',   'stg_gbfs_station',    COUNT(*)::INTEGER FROM staging.stg_gbfs_station
 ) s
 JOIN (
-    SELECT 'divvy_trips'   AS source_name, COUNT(*)::INTEGER AS raw_count FROM staging.raw_divvy_trips
+    SELECT 'divvy_trips'   AS source_name, COUNT(*)::INTEGER AS raw_count, MAX(raw_loaded_at) AS max_raw_loaded_at FROM staging.raw_divvy_trips
     UNION ALL
-    SELECT 'citibike_trips', COUNT(*)::INTEGER FROM staging.raw_citibike_trips
+    SELECT 'citibike_trips', COUNT(*)::INTEGER, MAX(raw_loaded_at) FROM staging.raw_citibike_trips
     UNION ALL
-    SELECT 'noaa_lcd',       COUNT(*)::INTEGER FROM staging.raw_noaa_weather
+    SELECT 'noaa_lcd',       COUNT(*)::INTEGER, MAX(raw_loaded_at) FROM staging.raw_noaa_weather
     UNION ALL
-    SELECT 'gbfs_station',   COUNT(*)::INTEGER FROM staging.raw_gbfs_station
+    SELECT 'gbfs_station',   COUNT(*)::INTEGER, MAX(raw_loaded_at) FROM staging.raw_gbfs_station
 ) r ON s.source_name = r.source_name</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
@@ -68,14 +69,15 @@ JOIN (
         <jsScript_type>0</jsScript_type>
         <jsScript_name>process</jsScript_name>
         <jsScript_script>var job_name = "etl_source_to_stagingdb_stg_result";
-var status = "SUCCESS";
+var status = (total_rows_count > 0 &amp;&amp; success_rows_count == 0) ? "FAILED" : "SUCCESS";
 var finished_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());
 var started_at;
 try {
   started_at = Packages.java.sql.Timestamp.valueOf(getVariable("ETL_STARTED_AT", "2026-01-01 00:00:00.0"));
 } catch(e) {
   started_at = finished_at;
-}</jsScript_script>
+}
+var error_message = null;</jsScript_script>
       </jsScript>
     </jsScripts>
     <fields>
@@ -107,6 +109,14 @@ try {
         <name>started_at</name>
         <rename>started_at</rename>
         <type>Timestamp</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>error_message</name>
+        <rename>error_message</rename>
+        <type>String</type>
         <length>-1</length>
         <precision>-1</precision>
         <replace>N</replace>
@@ -162,6 +172,11 @@ try {
         <update>Y</update>
       </value>
       <value>
+        <name>cet</name>
+        <rename>cet_value</rename>
+        <update>Y</update>
+      </value>
+      <value>
         <name>updated_at</name>
         <rename>finished_at</rename>
         <update>Y</update>
@@ -176,7 +191,7 @@ try {
     <copies>1</copies>
     <GUI>
       <xloc>608</xloc>
-      <yloc>32</yloc>
+      <yloc>48</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -240,6 +255,10 @@ try {
         <stream_name>failed_rows_count</stream_name>
         <column_name>failed_rows_count</column_name>
       </field>
+      <field>
+        <stream_name>error_message</stream_name>
+        <column_name>error_message</column_name>
+      </field>
     </fields>
     <distribute>N</distribute>
     <copies>1</copies>
@@ -255,7 +274,7 @@ try {
   </transform>
   <order>
     <hop>
-      <from>Read staging row counts</from>
+      <from>Read staging.raw_* row counts</from>
       <to>Add audit fields</to>
       <enabled>Y</enabled>
     </hop>

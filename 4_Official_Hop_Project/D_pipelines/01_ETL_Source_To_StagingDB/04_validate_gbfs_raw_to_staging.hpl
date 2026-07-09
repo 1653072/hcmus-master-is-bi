@@ -1,176 +1,462 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <pipeline>
   <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
     <parameters/>
     <name>04_validate_gbfs_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
     <description>Flow 2 — DQ gate for GBFS: 3 parallel streams from raw_gbfs_station. Stream A: row-level reject details to etl_dq_rule_result_details. Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: clean rows cast and upserted into stg_gbfs_station.</description>
+    <created_user>-</created_user>
+    <modified_user>-</modified_user>
+    <created_date>2026/07/09 22:27:54.525</created_date>
+    <modified_date>2026/07/09 22:27:54.525</modified_date>
   </info>
-
-  <!-- ===== STREAM A: row-level details ===== -->
   <transform>
     <type>TableInput</type>
     <name>Read GBFS reject row details</name>
-    <connection>dw-staging</connection>
-    <sql><![CDATA[SELECT load_run_id, 'gbfs_station' AS source_name, 'raw_gbfs_station' AS source_table,
-       source_file, source_row_number,
-       COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),''), '(null)') AS business_key,
-       'GBFS_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS dq_verdict,
-       'Required field(s) null or blank: source_city_code and short_name/gbfs_station_id' AS reason,
-       NULL::JSONB AS raw_payload
-FROM staging.raw_gbfs_station
-WHERE NULLIF(BTRIM(source_city_code),'') IS NULL
-   OR (NULLIF(BTRIM(short_name),'') IS NULL AND NULLIF(BTRIM(gbfs_station_id),'') IS NULL)
+    <sql>WITH src AS (
+    SELECT
+        r.load_run_id,
+        r.source_file,
+        r.source_row_number,
+        r.gbfs_station_id,
+        r.station_name,
+        r.short_name,
+        r.longitude,
+        r.latitude,
+        r.capacity,
+        r.station_type,
+        r.region_id,
+        r.source_city_code,
+        COALESCE(
+            NULLIF(BTRIM(r.short_name), ''),
+            NULLIF(BTRIM(r.gbfs_station_id), ''),
+            '(null)'
+        ) AS business_key,
+        NULLIF(BTRIM(r.source_city_code), '')  AS source_city_code_norm,
+        NULLIF(BTRIM(r.short_name), '')        AS short_name_norm,
+        NULLIF(BTRIM(r.gbfs_station_id), '')   AS gbfs_station_id_norm,
+        NULLIF(BTRIM(r.capacity), '')          AS capacity_norm,
+        NULLIF(BTRIM(r.latitude), '')         AS latitude_norm,
+        NULLIF(BTRIM(r.longitude), '')        AS longitude_norm,
+        jsonb_build_object(
+            'gbfs_station_id',  r.gbfs_station_id,
+            'station_name',   r.station_name,
+            'short_name',     r.short_name,
+            'longitude',      r.longitude,
+            'latitude',       r.latitude,
+            'capacity',       r.capacity,
+            'station_type',   r.station_type,
+            'region_id',      r.region_id,
+            'source_city_code', r.source_city_code
+        ) AS raw_payload
+    FROM staging.raw_gbfs_station AS r
+),
+
+dup_keys AS (
+    SELECT
+        source_city_code,
+        NULLIF(BTRIM(short_name), '') AS short_name_norm
+    FROM staging.raw_gbfs_station
+    WHERE NULLIF(BTRIM(short_name), '') IS NOT NULL
+    GROUP BY
+        source_city_code,
+        NULLIF(BTRIM(short_name), '')
+    HAVING COUNT(*) > 1
+)
+
+-- Rule 1: required fields
+SELECT
+    load_run_id,
+    'gbfs_station'     AS source_name,
+    'raw_gbfs_station' AS source_table,
+    source_file,
+    source_row_number,
+    business_key,
+    'GBFS_NULL_REQUIRED' AS rule_code,
+    'null'               AS rule_type,
+    'reject'             AS dq_verdict,
+    'Required field(s) null or blank: source_city_code and short_name/gbfs_station_id' AS reason,
+    raw_payload
+FROM src
+WHERE source_city_code_norm IS NULL
+   OR (short_name_norm IS NULL AND gbfs_station_id_norm IS NULL)
 
 UNION ALL
 
-SELECT r.load_run_id, 'gbfs_station', 'raw_gbfs_station',
-       r.source_file, r.source_row_number,
-       COALESCE(NULLIF(BTRIM(r.short_name),''), NULLIF(BTRIM(r.gbfs_station_id),''), '(null)'),
-       'GBFS_DUPLICATE_STATION', 'duplicate', 'reject',
-       'Duplicate (source_city_code, short_name) in this load run', NULL::JSONB
-FROM staging.raw_gbfs_station r
-JOIN (SELECT source_city_code, NULLIF(BTRIM(short_name),'') AS short_name
-      FROM staging.raw_gbfs_station
-      WHERE NULLIF(BTRIM(short_name),'') IS NOT NULL
-      GROUP BY source_city_code, NULLIF(BTRIM(short_name),'') HAVING COUNT(*) > 1) d
-  ON r.source_city_code = d.source_city_code AND NULLIF(BTRIM(r.short_name),'') = d.short_name
+-- Rule 2: duplicate (source_city_code, short_name)
+SELECT
+    s.load_run_id,
+    'gbfs_station',
+    'raw_gbfs_station',
+    s.source_file,
+    s.source_row_number,
+    s.business_key,
+    'GBFS_DUPLICATE_STATION',
+    'duplicate',
+    'reject',
+    'Duplicate (source_city_code, short_name) in this load run',
+    s.raw_payload
+FROM src AS s
+INNER JOIN dup_keys AS d
+    ON  s.source_city_code = d.source_city_code
+    AND s.short_name_norm   = d.short_name_norm
 
 UNION ALL
 
-SELECT load_run_id, 'gbfs_station', 'raw_gbfs_station',
-       source_file, source_row_number,
-       COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),''), '(null)'),
-       'GBFS_DATATYPE_CAPACITY', 'datatype', 'reject',
-       'capacity contains non-integer text', NULL::JSONB
-FROM staging.raw_gbfs_station
-WHERE NULLIF(BTRIM(source_city_code),'') IS NOT NULL
-  AND (NULLIF(BTRIM(short_name),'') IS NOT NULL OR NULLIF(BTRIM(gbfs_station_id),'') IS NOT NULL)
-  AND capacity IS NOT NULL AND NULLIF(BTRIM(capacity),'') IS NOT NULL
+-- Rule 3: capacity must be integer when present
+SELECT
+    load_run_id,
+    'gbfs_station',
+    'raw_gbfs_station',
+    source_file,
+    source_row_number,
+    business_key,
+    'GBFS_DATATYPE_CAPACITY',
+    'datatype',
+    'reject',
+    'capacity contains non-integer text',
+    raw_payload
+FROM src
+WHERE source_city_code_norm IS NOT NULL
+  AND (short_name_norm IS NOT NULL OR gbfs_station_id_norm IS NOT NULL)
+  AND capacity IS NOT NULL
+  AND capacity_norm IS NOT NULL
   AND BTRIM(capacity) !~ '^[0-9]+$'
 
 UNION ALL
 
-SELECT load_run_id, 'gbfs_station', 'raw_gbfs_station',
-       source_file, source_row_number,
-       COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),''), '(null)'),
-       'GBFS_FORMAT_COORDINATE', 'format', 'reject',
-       'latitude or longitude missing, non-numeric, or out of coordinate range', NULL::JSONB
-FROM staging.raw_gbfs_station
-WHERE NULLIF(BTRIM(source_city_code),'') IS NOT NULL
-  AND (NULLIF(BTRIM(short_name),'') IS NOT NULL OR NULLIF(BTRIM(gbfs_station_id),'') IS NOT NULL)
-  AND (capacity IS NULL OR NULLIF(BTRIM(capacity),'') IS NULL OR BTRIM(capacity) ~ '^[0-9]+$')
+-- Rule 4: latitude/longitude format and range
+SELECT
+    load_run_id,
+    'gbfs_station',
+    'raw_gbfs_station',
+    source_file,
+    source_row_number,
+    business_key,
+    'GBFS_FORMAT_COORDINATE',
+    'format',
+    'reject',
+    'latitude or longitude missing, non-numeric, or out of coordinate range',
+    raw_payload
+FROM src
+WHERE source_city_code_norm IS NOT NULL
+  AND (short_name_norm IS NOT NULL OR gbfs_station_id_norm IS NOT NULL)
   AND (
-    NULLIF(BTRIM(latitude),'') IS NULL OR NULLIF(BTRIM(longitude),'') IS NULL
-    OR BTRIM(latitude) !~ '^-?[0-9]+(\.[0-9]+)?$' OR BTRIM(longitude) !~ '^-?[0-9]+(\.[0-9]+)?$'
-    OR CASE WHEN BTRIM(latitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
-            THEN CAST(BTRIM(latitude) AS NUMERIC) NOT BETWEEN -90 AND 90 ELSE true END
-    OR CASE WHEN BTRIM(longitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
-            THEN CAST(BTRIM(longitude) AS NUMERIC) NOT BETWEEN -180 AND 180 ELSE true END
-  )]]></sql>
-    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
-    <GUI><xloc>96</xloc><yloc>32</yloc></GUI>
+        capacity IS NULL
+     OR capacity_norm IS NULL
+     OR BTRIM(capacity) ~ '^[0-9]+$'
+      )
+  AND (
+        latitude_norm IS NULL
+     OR longitude_norm IS NULL
+     OR BTRIM(latitude) !~ '^-?[0-9]+(\.[0-9]+)?$'
+     OR BTRIM(longitude) !~ '^-?[0-9]+(\.[0-9]+)?$'
+     OR CASE
+            WHEN BTRIM(latitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
+            THEN CAST(BTRIM(latitude) AS NUMERIC) NOT BETWEEN -90 AND 90
+            ELSE TRUE
+        END
+     OR CASE
+            WHEN BTRIM(longitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
+            THEN CAST(BTRIM(longitude) AS NUMERIC) NOT BETWEEN -180 AND 180
+            ELSE TRUE
+        END
+      );</sql>
+    <limit>0</limit>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>N</variables_active>
+    <connection>dw-staging</connection>
+    <lookup/>
+    <sql_from_file/>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>224</xloc>
+      <yloc>32</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
     <type>TableOutput</type>
     <name>Write GBFS DQ row details</name>
-    <connection>dw-control</connection><schema>control</schema><table>etl_dq_rule_result_details</table><commit>100</commit><truncate>N</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
+    <connection>dw-control</connection>
+    <schema>control</schema>
+    <table>etl_dq_rule_result_details</table>
+    <commit>100</commit>
+    <truncate>N</truncate>
+    <only_when_have_rows>N</only_when_have_rows>
+    <ignore_errors>N</ignore_errors>
+    <use_batch>Y</use_batch>
+    <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_daily>N</partitioning_daily>
+    <partitioning_monthly>N</partitioning_monthly>
+    <tablename_in_field>N</tablename_in_field>
+    <tablename_in_table>N</tablename_in_table>
+    <return_keys>N</return_keys>
+    <specify_fields>Y</specify_fields>
+    <auto_update_table_structure>N</auto_update_table_structure>
+    <always_drop_and_recreate>N</always_drop_and_recreate>
+    <add_columns>N</add_columns>
+    <drop_columns>N</drop_columns>
+    <change_column_types>N</change_column_types>
     <fields>
-      <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
-      <field><stream_name>source_name</stream_name><column_name>source_name</column_name></field>
-      <field><stream_name>source_table</stream_name><column_name>source_table</column_name></field>
-      <field><stream_name>source_file</stream_name><column_name>source_file</column_name></field>
-      <field><stream_name>source_row_number</stream_name><column_name>source_row_number</column_name></field>
-      <field><stream_name>business_key</stream_name><column_name>business_key</column_name></field>
-      <field><stream_name>rule_code</stream_name><column_name>rule_code</column_name></field>
-      <field><stream_name>rule_type</stream_name><column_name>rule_type</column_name></field>
-      <field><stream_name>dq_verdict</stream_name><column_name>dq_verdict</column_name></field>
-      <field><stream_name>reason</stream_name><column_name>reason</column_name></field>
-      <field><stream_name>raw_payload</stream_name><column_name>raw_payload</column_name></field>
+      <field>
+        <stream_name>load_run_id</stream_name>
+        <column_name>load_run_id</column_name>
+      </field>
+      <field>
+        <stream_name>source_name</stream_name>
+        <column_name>source_name</column_name>
+      </field>
+      <field>
+        <stream_name>source_table</stream_name>
+        <column_name>source_table</column_name>
+      </field>
+      <field>
+        <stream_name>source_file</stream_name>
+        <column_name>source_file</column_name>
+      </field>
+      <field>
+        <stream_name>source_row_number</stream_name>
+        <column_name>source_row_number</column_name>
+      </field>
+      <field>
+        <stream_name>business_key</stream_name>
+        <column_name>business_key</column_name>
+      </field>
+      <field>
+        <stream_name>rule_code</stream_name>
+        <column_name>rule_code</column_name>
+      </field>
+      <field>
+        <stream_name>rule_type</stream_name>
+        <column_name>rule_type</column_name>
+      </field>
+      <field>
+        <stream_name>dq_verdict</stream_name>
+        <column_name>dq_verdict</column_name>
+      </field>
+      <field>
+        <stream_name>reason</stream_name>
+        <column_name>reason</column_name>
+      </field>
+      <field>
+        <stream_name>raw_payload</stream_name>
+        <column_name>raw_payload</column_name>
+      </field>
     </fields>
-    <GUI><xloc>448</xloc><yloc>32</yloc></GUI>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>480</xloc>
+      <yloc>32</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
-
-  <!-- ===== STREAM B: aggregate counts ===== -->
   <transform>
     <type>TableInput</type>
     <name>Read GBFS raw DQ rule counts</name>
-    <connection>dw-staging</connection>
-    <sql><![CDATA[WITH src AS (
-  SELECT * FROM staging.raw_gbfs_station
+    <sql>WITH src AS (
+    SELECT
+        r.*,
+        NULLIF(BTRIM(r.source_city_code), '') AS source_city_code_norm,
+        NULLIF(BTRIM(r.short_name), '')       AS short_name_norm,
+        NULLIF(BTRIM(r.gbfs_station_id), '')  AS gbfs_station_id_norm,
+        NULLIF(BTRIM(r.capacity), '')         AS capacity_norm,
+        NULLIF(BTRIM(r.latitude), '')         AS latitude_norm,
+        NULLIF(BTRIM(r.longitude), '')        AS longitude_norm
+    FROM staging.raw_gbfs_station AS r
 ),
-dup AS (
-  SELECT source_city_code, NULLIF(BTRIM(short_name),'') AS short_name, COUNT(*) AS duplicate_count
-  FROM src
-  WHERE NULLIF(BTRIM(short_name),'') IS NOT NULL
-  GROUP BY source_city_code, NULLIF(BTRIM(short_name),'')
-  HAVING COUNT(*) > 1
+
+enriched AS (
+    SELECT
+        s.*,
+        CASE
+            WHEN s.short_name_norm IS NOT NULL
+            THEN COUNT(*) OVER (
+                PARTITION BY s.source_city_code, s.short_name_norm
+            )
+        END AS short_name_key_count
+    FROM src AS s
 ),
+
+metrics AS (
+    SELECT
+        COUNT(*)::BIGINT AS total_count,
+
+        COUNT(*) FILTER (
+            WHERE source_city_code_norm IS NULL
+               OR (short_name_norm IS NULL AND gbfs_station_id_norm IS NULL)
+        )::BIGINT AS null_required_count,
+
+        COUNT(*) FILTER (
+            WHERE short_name_norm IS NOT NULL
+              AND short_name_key_count > 1
+        )::BIGINT AS duplicate_station_count,
+
+        COUNT(*) FILTER (
+            WHERE capacity IS NOT NULL
+              AND capacity_norm IS NOT NULL
+              AND BTRIM(capacity) !~ '^[0-9]+$'
+        )::BIGINT AS bad_capacity_count,
+
+        COUNT(*) FILTER (
+            WHERE latitude_norm IS NULL
+               OR longitude_norm IS NULL
+               OR BTRIM(latitude) !~ '^-?[0-9]+(\.[0-9]+)?$'
+               OR BTRIM(longitude) !~ '^-?[0-9]+(\.[0-9]+)?$'
+               OR CASE
+                      WHEN BTRIM(latitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
+                      THEN CAST(BTRIM(latitude) AS NUMERIC) NOT BETWEEN -90 AND 90
+                      ELSE TRUE
+                  END
+               OR CASE
+                      WHEN BTRIM(longitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
+                      THEN CAST(BTRIM(longitude) AS NUMERIC) NOT BETWEEN -180 AND 180
+                      ELSE TRUE
+                  END
+        )::BIGINT AS bad_coordinate_count
+    FROM enriched
+),
+
 rules AS (
-  SELECT 'GBFS_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS severity,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(source_city_code),'') IS NULL
-                           OR (NULLIF(BTRIM(short_name),'') IS NULL AND NULLIF(BTRIM(gbfs_station_id),'') IS NULL)) AS failed_count,
-         0::BIGINT AS warning_count, COUNT(*) AS total_count
-  FROM src
-  UNION ALL
-  SELECT 'GBFS_DUPLICATE_STATION', 'duplicate', 'reject',
-         COALESCE(SUM(duplicate_count), 0), 0::BIGINT, (SELECT COUNT(*) FROM src)
-  FROM dup
-  UNION ALL
-  SELECT 'GBFS_DATATYPE_CAPACITY', 'datatype', 'reject',
-         COUNT(*) FILTER (WHERE capacity IS NOT NULL
-                           AND NULLIF(BTRIM(capacity),'') IS NOT NULL
-                           AND BTRIM(capacity) !~ '^[0-9]+$'),
-         0::BIGINT, COUNT(*)
-  FROM src
-  UNION ALL
-  SELECT 'GBFS_FORMAT_COORDINATE', 'format', 'reject',
-         COUNT(*) FILTER (WHERE
-           NULLIF(BTRIM(latitude),'') IS NULL OR NULLIF(BTRIM(longitude),'') IS NULL
-           OR BTRIM(latitude) !~ '^-?[0-9]+(\.[0-9]+)?$' OR BTRIM(longitude) !~ '^-?[0-9]+(\.[0-9]+)?$'
-           OR CASE WHEN BTRIM(latitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
-                   THEN CAST(BTRIM(latitude) AS NUMERIC) NOT BETWEEN -90 AND 90 ELSE true END
-           OR CASE WHEN BTRIM(longitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
-                   THEN CAST(BTRIM(longitude) AS NUMERIC) NOT BETWEEN -180 AND 180 ELSE true END
-         ),
-         0::BIGINT, COUNT(*)
-  FROM src
+    SELECT
+        rule_code,
+        rule_type,
+        severity,
+        failed_count,
+        warning_count,
+        m.total_count
+    FROM metrics AS m
+    CROSS JOIN LATERAL (
+        VALUES
+            ('GBFS_NULL_REQUIRED',      'null',      'reject', m.null_required_count,     0::BIGINT),
+            ('GBFS_DUPLICATE_STATION',  'duplicate', 'reject', m.duplicate_station_count, 0::BIGINT),
+            ('GBFS_DATATYPE_CAPACITY',  'datatype',  'reject', m.bad_capacity_count,      0::BIGINT),
+            ('GBFS_FORMAT_COORDINATE',  'format',    'reject', m.bad_coordinate_count,    0::BIGINT)
+    ) AS rule_def (
+        rule_code,
+        rule_type,
+        severity,
+        failed_count,
+        warning_count
+    )
 )
-SELECT 'gbfs_station' AS source_name,
-       'bootstrap_202601_202605' AS load_run_id,
-       rule_code, rule_type, severity,
-       GREATEST(total_count - failed_count - warning_count, 0)::INTEGER AS passed_count,
-       failed_count::INTEGER AS failed_count,
-       warning_count::INTEGER AS warning_count
-FROM rules]]></sql>
-    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
-    <GUI><xloc>96</xloc><yloc>160</yloc></GUI>
+
+SELECT
+    'gbfs_station'            AS source_name,
+    'bootstrap_202601_202605' AS load_run_id,
+    rule_code,
+    rule_type,
+    severity,
+    GREATEST(total_count - failed_count - warning_count, 0)::INTEGER AS passed_count,
+    failed_count::INTEGER,
+    warning_count::INTEGER
+FROM rules;</sql>
+    <limit>0</limit>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>N</variables_active>
+    <connection>dw-staging</connection>
+    <lookup/>
+    <sql_from_file/>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>224</xloc>
+      <yloc>160</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
     <type>TableOutput</type>
     <name>Write GBFS DQ rule stream evidence</name>
-    <connection>dw-control</connection><schema>control</schema><table>etl_dq_rule_result_analysis</table><commit>100</commit><truncate>N</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
+    <connection>dw-control</connection>
+    <schema>control</schema>
+    <table>etl_dq_rule_result_analysis</table>
+    <commit>100</commit>
+    <truncate>N</truncate>
+    <only_when_have_rows>N</only_when_have_rows>
+    <ignore_errors>N</ignore_errors>
+    <use_batch>Y</use_batch>
+    <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_daily>N</partitioning_daily>
+    <partitioning_monthly>N</partitioning_monthly>
+    <tablename_in_field>N</tablename_in_field>
+    <tablename_in_table>N</tablename_in_table>
+    <return_keys>N</return_keys>
+    <specify_fields>Y</specify_fields>
+    <auto_update_table_structure>N</auto_update_table_structure>
+    <always_drop_and_recreate>N</always_drop_and_recreate>
+    <add_columns>N</add_columns>
+    <drop_columns>N</drop_columns>
+    <change_column_types>N</change_column_types>
     <fields>
-      <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
-      <field><stream_name>source_name</stream_name><column_name>source_name</column_name></field>
-      <field><stream_name>rule_code</stream_name><column_name>rule_code</column_name></field>
-      <field><stream_name>rule_type</stream_name><column_name>rule_type</column_name></field>
-      <field><stream_name>severity</stream_name><column_name>severity</column_name></field>
-      <field><stream_name>passed_count</stream_name><column_name>passed_count</column_name></field>
-      <field><stream_name>failed_count</stream_name><column_name>failed_count</column_name></field>
-      <field><stream_name>warning_count</stream_name><column_name>warning_count</column_name></field>
+      <field>
+        <stream_name>load_run_id</stream_name>
+        <column_name>load_run_id</column_name>
+      </field>
+      <field>
+        <stream_name>source_name</stream_name>
+        <column_name>source_name</column_name>
+      </field>
+      <field>
+        <stream_name>rule_code</stream_name>
+        <column_name>rule_code</column_name>
+      </field>
+      <field>
+        <stream_name>rule_type</stream_name>
+        <column_name>rule_type</column_name>
+      </field>
+      <field>
+        <stream_name>severity</stream_name>
+        <column_name>severity</column_name>
+      </field>
+      <field>
+        <stream_name>passed_count</stream_name>
+        <column_name>passed_count</column_name>
+      </field>
+      <field>
+        <stream_name>failed_count</stream_name>
+        <column_name>failed_count</column_name>
+      </field>
+      <field>
+        <stream_name>warning_count</stream_name>
+        <column_name>warning_count</column_name>
+      </field>
     </fields>
-    <GUI><xloc>448</xloc><yloc>160</yloc></GUI>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>480</xloc>
+      <yloc>160</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
-
-  <!-- ===== STREAM C: clean rows → cast → stg_gbfs_station ===== -->
   <transform>
     <type>TableInput</type>
     <name>Read GBFS clean rows</name>
-    <connection>dw-staging</connection>
-    <sql><![CDATA[SELECT DISTINCT ON (source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),'')))
+    <sql>SELECT DISTINCT ON (source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),'')))
        load_run_id, source_file,
        gbfs_station_id, station_name, short_name,
        longitude, latitude, capacity,
@@ -185,14 +471,33 @@ WHERE NULLIF(BTRIM(source_city_code),'') IS NOT NULL
   AND BTRIM(longitude) ~ '^-?[0-9]+(\.[0-9]+)?$'
   AND CAST(BTRIM(latitude) AS NUMERIC) BETWEEN -90 AND 90
   AND CAST(BTRIM(longitude) AS NUMERIC) BETWEEN -180 AND 180
-ORDER BY source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),''))]]></sql>
-    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lookup/><sql_from_file/>
-    <GUI><xloc>96</xloc><yloc>320</yloc></GUI>
+ORDER BY source_city_code, COALESCE(NULLIF(BTRIM(short_name),''), NULLIF(BTRIM(gbfs_station_id),''))</sql>
+    <limit>0</limit>
+    <execute_each_row>N</execute_each_row>
+    <variables_active>N</variables_active>
+    <connection>dw-staging</connection>
+    <lookup/>
+    <sql_from_file/>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>224</xloc>
+      <yloc>320</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
     <type>ScriptValueMod</type>
     <name>Cast GBFS clean rows</name>
-    <jsScripts><jsScript><jsScript_type>0</jsScript_type><jsScript_name>process</jsScript_name><jsScript_script>function blankToNull(v) { if (v == null) return null; var s = String(v).trim(); return s.length == 0 ? null : s; }
+    <jsScripts>
+      <jsScript>
+        <jsScript_type>0</jsScript_type>
+        <jsScript_name>process</jsScript_name>
+        <jsScript_script>function blankToNull(v) { if (v == null) return null; var s = String(v).trim(); return s.length == 0 ? null : s; }
 function toNumber(v) { var s = blankToNull(v); return s == null ? null : java.lang.Double.valueOf(s); }
 function toInteger(v) { var s = blankToNull(v); return s == null ? null : java.lang.Integer.valueOf(s); }
 gbfs_station_id = blankToNull(gbfs_station_id);
@@ -206,56 +511,251 @@ station_type = blankToNull(station_type);
 region_id = blankToNull(region_id);
 var station_status = "open";
 var operation = "INSERT";
-var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script></jsScript></jsScripts>
+var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script>
+      </jsScript>
+    </jsScripts>
     <fields>
-      <field><name>gbfs_station_id</name><rename>gbfs_station_id</rename><type>String</type><length>-1</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>short_name</name><rename>short_name</rename><type>String</type><length>-1</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>station_name</name><rename>station_name</rename><type>String</type><length>500</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>latitude</name><rename>latitude</rename><type>Number</type><length>12</length><precision>8</precision><replace>Y</replace></field>
-      <field><name>longitude</name><rename>longitude</rename><type>Number</type><length>12</length><precision>8</precision><replace>Y</replace></field>
-      <field><name>capacity</name><rename>capacity</rename><type>Integer</type><length>-1</length><precision>0</precision><replace>Y</replace></field>
-      <field><name>station_type</name><rename>station_type</rename><type>String</type><length>50</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>region_id</name><rename>region_id</rename><type>String</type><length>20</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>station_status</name><rename>station_status</rename><type>String</type><length>30</length><precision>-1</precision><replace>N</replace></field>
-      <field><name>operation</name><rename>operation</rename><type>String</type><length>10</length><precision>-1</precision><replace>N</replace></field>
-      <field><name>loaded_at</name><rename>loaded_at</rename><type>Timestamp</type><length>-1</length><precision>-1</precision><replace>N</replace></field>
+      <field>
+        <name>gbfs_station_id</name>
+        <rename>gbfs_station_id</rename>
+        <type>String</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>short_name</name>
+        <rename>short_name</rename>
+        <type>String</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>station_name</name>
+        <rename>station_name</rename>
+        <type>String</type>
+        <length>500</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>latitude</name>
+        <rename>latitude</rename>
+        <type>Number</type>
+        <length>12</length>
+        <precision>8</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>longitude</name>
+        <rename>longitude</rename>
+        <type>Number</type>
+        <length>12</length>
+        <precision>8</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>capacity</name>
+        <rename>capacity</rename>
+        <type>Integer</type>
+        <length>-1</length>
+        <precision>0</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>station_type</name>
+        <rename>station_type</rename>
+        <type>String</type>
+        <length>50</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>region_id</name>
+        <rename>region_id</rename>
+        <type>String</type>
+        <length>20</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>station_status</name>
+        <rename>station_status</rename>
+        <type>String</type>
+        <length>30</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>operation</name>
+        <rename>operation</rename>
+        <type>String</type>
+        <length>10</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>loaded_at</name>
+        <rename>loaded_at</rename>
+        <type>Timestamp</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
     </fields>
-    <optimizationLevel>9</optimizationLevel><GUI><xloc>384</xloc><yloc>320</yloc></GUI>
+    <optimizationLevel>9</optimizationLevel>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>480</xloc>
+      <yloc>320</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
     <type>InsertUpdate</type>
     <name>Upsert staging.stg_gbfs_station</name>
     <lookup>
-      <key><name>source_city_code</name><field>source_city_code</field><condition>=</condition><name2/></key>
-      <key><name>short_name</name><field>short_name</field><condition>=</condition><name2/></key>
-      <value><name>source_city_code</name><rename>source_city_code</rename><update>Y</update></value>
-      <value><name>gbfs_station_id</name><rename>gbfs_station_id</rename><update>Y</update></value>
-      <value><name>short_name</name><rename>short_name</rename><update>Y</update></value>
-      <value><name>station_name</name><rename>station_name</rename><update>Y</update></value>
-      <value><name>latitude</name><rename>latitude</rename><update>Y</update></value>
-      <value><name>longitude</name><rename>longitude</rename><update>Y</update></value>
-      <value><name>capacity</name><rename>capacity</rename><update>Y</update></value>
-      <value><name>station_type</name><rename>station_type</rename><update>Y</update></value>
-      <value><name>region_id</name><rename>region_id</rename><update>Y</update></value>
-      <value><name>station_status</name><rename>station_status</rename><update>Y</update></value>
-      <value><name>operation</name><rename>operation</rename><update>Y</update></value>
-      <value><name>loaded_at</name><rename>loaded_at</rename><update>Y</update></value>
-      <schema>staging</schema><table>stg_gbfs_station</table>
+      <key>
+        <name>source_city_code</name>
+        <field>source_city_code</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <key>
+        <name>short_name</name>
+        <field>short_name</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <value>
+        <name>source_city_code</name>
+        <rename>source_city_code</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>gbfs_station_id</name>
+        <rename>gbfs_station_id</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>short_name</name>
+        <rename>short_name</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>station_name</name>
+        <rename>station_name</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>latitude</name>
+        <rename>latitude</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>longitude</name>
+        <rename>longitude</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>capacity</name>
+        <rename>capacity</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>station_type</name>
+        <rename>station_type</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>region_id</name>
+        <rename>region_id</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>station_status</name>
+        <rename>station_status</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>operation</name>
+        <rename>operation</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>loaded_at</name>
+        <rename>loaded_at</rename>
+        <update>Y</update>
+      </value>
+      <schema>staging</schema>
+      <table>stg_gbfs_station</table>
     </lookup>
-    <commit>1000</commit><update_bypassed>N</update_bypassed><connection>dw-staging</connection>
-    <GUI><xloc>720</xloc><yloc>320</yloc></GUI>
+    <commit>1000</commit>
+    <update_bypassed>N</update_bypassed>
+    <connection>dw-staging</connection>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>720</xloc>
+      <yloc>320</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
-
   <order>
-    <hop><from>Read GBFS reject row details</from><to>Write GBFS DQ row details</to><enabled>Y</enabled></hop>
-    <hop><from>Read GBFS raw DQ rule counts</from><to>Write GBFS DQ rule stream evidence</to><enabled>Y</enabled></hop>
-    <hop><from>Read GBFS clean rows</from><to>Cast GBFS clean rows</to><enabled>Y</enabled></hop>
-    <hop><from>Cast GBFS clean rows</from><to>Upsert staging.stg_gbfs_station</to><enabled>Y</enabled></hop>
+    <hop>
+      <from>Read GBFS reject row details</from>
+      <to>Write GBFS DQ row details</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Read GBFS raw DQ rule counts</from>
+      <to>Write GBFS DQ rule stream evidence</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Read GBFS clean rows</from>
+      <to>Cast GBFS clean rows</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Cast GBFS clean rows</from>
+      <to>Upsert staging.stg_gbfs_station</to>
+      <enabled>Y</enabled>
+    </hop>
   </order>
   <notepads>
-    <notepad><note>Stream A → etl_dq_rule_result_details (row-level rejects; no warnings for GBFS)
+    <notepad>
+      <note>Stream A → etl_dq_rule_result_details (row-level rejects; no warnings for GBFS)
 Stream B → etl_dq_rule_result_analysis (aggregate counts per rule)
-Stream C → stg_gbfs_station (coordinate-valid rows, numeric cast, short_name fallback to gbfs_station_id)</note><xloc>96</xloc><yloc>440</yloc><width>760</width><heigth>80</heigth></notepad>
+Stream C → stg_gbfs_station (coordinate-valid rows, numeric cast, short_name fallback to gbfs_station_id)</note>
+      <fontsize>-1</fontsize>
+      <fontbold>N</fontbold>
+      <fontitalic>N</fontitalic>
+      <fontcolorred>14</fontcolorred>
+      <fontcolorgreen>58</fontcolorgreen>
+      <fontcolorblue>90</fontcolorblue>
+      <backgroundcolorred>201</backgroundcolorred>
+      <backgroundcolorgreen>232</backgroundcolorgreen>
+      <backgroundcolorblue>251</backgroundcolorblue>
+      <bordercolorred>14</bordercolorred>
+      <bordercolorgreen>58</bordercolorgreen>
+      <bordercolorblue>90</bordercolorblue>
+      <xloc>128</xloc>
+      <yloc>432</yloc>
+      <width>760</width>
+      <height>-1</height>
+    </notepad>
   </notepads>
-  <attributes/><transform_error_handling/>
+  <attributes/>
+  <transform_error_handling/>
 </pipeline>

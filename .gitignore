@@ -45,6 +45,8 @@ Thumbs.db
 
 # Local tool artifacts
 .understand-anything/
+.idea/
+vendor/
 
 # Official Hop Project — A_datasets (tải lại bằng A_datasets/download_datasets.sh)
 4_Official_Hop_Project/development_configs.json

@@ -645,10 +645,10 @@ var source_row_number = _row_counter;</jsScript_script>
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>96</xloc>
-      <yloc>200</yloc>
-      <width>760</width>
-      <height>-1</height>
+      <xloc>64</xloc>
+      <yloc>176</yloc>
+      <width>768</width>
+      <height>32</height>
     </notepad>
   </notepads>
   <attributes/>

@@ -39,7 +39,7 @@ ORDER BY source_name, rule_type</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>96</xloc>
+      <xloc>160</xloc>
       <yloc>96</yloc>
     </GUI>
     <partitioning>
@@ -56,7 +56,14 @@ ORDER BY source_name, rule_type</sql>
         <jsScript_type>0</jsScript_type>
         <jsScript_name>process</jsScript_name>
         <jsScript_script>var job_name = "etl_source_to_stagingdb_dq_validation";
-var status = failed_count > 0 ? "DQ_FAILED" : "DQ_PASSED";
+var status;
+if (failed_count === 0) {
+  status = "DQ_PASSED";
+} else if (passed_count + warning_count === 0) {
+  status = "DQ_FAILED";
+} else {
+  status = "DQ_PARTIAL_PASSED";
+}
 var finished_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());
 var started_at;
 try {
@@ -200,7 +207,7 @@ var failed_rows_count  = failed_count;</jsScript_script>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>672</xloc>
+      <xloc>608</xloc>
       <yloc>96</yloc>
     </GUI>
     <partitioning>
@@ -224,7 +231,7 @@ var failed_rows_count  = failed_count;</jsScript_script>
   <notepads>
     <notepad>
       <note>DQ audit: one etl_job_log row per (source_name, rule_type) group.
-status = DQ_PASSED when failed_count = 0 for that group, DQ_FAILED otherwise.
+status = DQ_PASSED (failed=0), DQ_PARTIAL_PASSED (failed>0 but passed+warning>0), DQ_FAILED (100% failed).
 success_rows_count = passed + warning (both go to stg_*); failed_rows_count = rejected only.
 started_at comes from ETL_STARTED_AT workflow variable set by 00_start_etl_source_to_staging.</note>
       <fontsize>-1</fontsize>

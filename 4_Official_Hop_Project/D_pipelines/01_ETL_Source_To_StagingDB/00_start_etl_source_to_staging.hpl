@@ -43,14 +43,15 @@
       <jsScript>
         <jsScript_type>0</jsScript_type>
         <jsScript_name>process</jsScript_name>
-        <jsScript_script>var etl_started_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script>
+        <jsScript_script>var _fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+var etl_started_at = _fmt.format(new java.util.Date());</jsScript_script>
       </jsScript>
     </jsScripts>
     <fields>
       <field>
         <name>etl_started_at</name>
         <rename>etl_started_at</rename>
-        <type>Timestamp</type>
+        <type>String</type>
         <length>-1</length>
         <precision>-1</precision>
         <replace>N</replace>

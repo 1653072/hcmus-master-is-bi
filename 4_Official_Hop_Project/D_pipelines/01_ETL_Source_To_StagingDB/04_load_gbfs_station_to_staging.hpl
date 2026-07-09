@@ -1,27 +1,258 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <pipeline>
-  <info><pipeline_type>Normal</pipeline_type><pipeline_status>-1</pipeline_status><parameters/><name>04_load_gbfs_station_to_staging</name><name_sync_with_filename>Y</name_sync_with_filename><description>Flow 1: parse GBFS station JSON, keep all fields as STRING (no numeric cast), truncate-and-load into staging.raw_gbfs_station.</description></info>
+  <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>04_load_gbfs_station_to_staging</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Flow 1: parse GBFS station JSON, keep all fields as STRING (no numeric cast), truncate-and-load into staging.raw_gbfs_station.</description>
+    <created_user>-</created_user>
+    <modified_user>-</modified_user>
+    <created_date>2026/07/09 22:18:11.733</created_date>
+    <modified_date>2026/07/09 22:18:11.733</modified_date>
+  </info>
   <transform>
-    <type>TextFileInput2</type><name>Read GBFS station_information JSON files</name><file_type>CSV</file_type><compression>None</compression><separator>$[01]</separator><header>N</header><noempty>Y</noempty><include>Y</include><include_field>source_file</include_field><format>UNIX</format><encoding>UTF-8</encoding><limit>0</limit><date_format_lenient>Y</date_format_lenient><date_format_locale>en_US</date_format_locale>
-    <files><file><name>${GBFS_STATION_DIR}/</name><filemask>.*station_information\.json</filemask><exclude_filemask/><file_required>Y</file_required><include_subfolders>N</include_subfolders></file></files>
-    <fields><field><name>json_line</name><type>String</type><position>-1</position><length>2000000</length><precision>-1</precision><trim_type>none</trim_type><repeat>N</repeat></field></fields><GUI><xloc>96</xloc><yloc>80</yloc></GUI>
+    <type>GetFileNames</type>
+    <name>List GBFS JSON files</name>
+    <file>
+      <name>${GBFS_STATION_DIR}/</name>
+      <filemask>.*station_information\.json</filemask>
+      <exclude_filemask/>
+      <file_required>Y</file_required>
+      <include_subfolders>N</include_subfolders>
+    </file>
+    <filter>
+      <filterfiletype>all_files</filterfiletype>
+    </filter>
+    <rownum>N</rownum>
+    <filename_Field>filename</filename_Field>
+    <filefield>N</filefield>
+    <dynamic_include_subfolders>N</dynamic_include_subfolders>
+    <isaddresult>N</isaddresult>
+    <limit>0</limit>
+    <doNotFailIfNoFile>N</doNotFailIfNoFile>
+    <raiseAnExceptionIfNoFile>N</raiseAnExceptionIfNoFile>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>192</xloc>
+      <yloc>96</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
-    <type>JsonInput</type><name>Parse GBFS stations</name><valueField>json_line</valueField><IsInFields>Y</IsInFields><IsAFile>N</IsAFile><removeSourceField>Y</removeSourceField><ignoreMissingPath>Y</ignoreMissingPath>
+    <type>TextFileInput2</type>
+    <name>Read GBFS station_information JSON files</name>
+    <file_type>CSV</file_type>
+    <compression>None</compression>
+    <separator>$[01]</separator>
+    <enclosure/>
+    <enclosure_breaks>N</enclosure_breaks>
+    <escapechar/>
+    <header>N</header>
+    <prependFileName>N</prependFileName>
+    <nr_headerlines>-1</nr_headerlines>
+    <footer>N</footer>
+    <nr_footerlines>-1</nr_footerlines>
+    <line_wrapped>N</line_wrapped>
+    <nr_wraps>-1</nr_wraps>
+    <layout_paged>N</layout_paged>
+    <nr_lines_per_page>-1</nr_lines_per_page>
+    <nr_lines_doc_header>-1</nr_lines_doc_header>
+    <noempty>Y</noempty>
+    <include>N</include>
+    <include_field/>
+    <rownum>N</rownum>
+    <rownum_field/>
+    <rownumByFile>N</rownumByFile>
+    <format>UNIX</format>
+    <encoding>UTF-8</encoding>
+    <limit>0</limit>
+    <date_format_lenient>Y</date_format_lenient>
+    <date_format_locale>en_US</date_format_locale>
+    <length/>
+    <filters/>
+    <error_count_field/>
+    <error_fields_field/>
+    <error_text_field/>
+    <error_line_skipped>N</error_line_skipped>
+    <schema_definition/>
+    <ignore_fields>N</ignore_fields>
+    <shortFileFieldName/>
+    <extensionFieldName/>
+    <pathFieldName/>
+    <sizeFieldName/>
+    <hiddenFieldName/>
+    <lastModificationTimeFieldName/>
+    <uriNameFieldName/>
+    <rootUriNameFieldName/>
+    <files/>
+    <accept_filenames>Y</accept_filenames>
+    <accept_transform_name>List GBFS JSON files</accept_transform_name>
+    <passing_through_fields>Y</passing_through_fields>
+    <accept_field>filename</accept_field>
+    <add_to_result_filenames>N</add_to_result_filenames>
+    <error_ignored>N</error_ignored>
+    <file_error_field/>
+    <file_error_message_field/>
+    <skip_bad_files>N</skip_bad_files>
+    <bad_line_files_destination_directory/>
+    <bad_line_files_extension/>
+    <error_line_files_destination_directory/>
+    <error_line_files_extension/>
+    <line_number_files_destination_directory/>
+    <line_number_files_extension/>
     <fields>
-      <field><name>gbfs_station_id</name><path>$.data.stations[*].station_id</path><type>2</type></field>
-      <field><name>station_name</name><path>$.data.stations[*].name</path><type>2</type></field>
-      <field><name>short_name</name><path>$.data.stations[*].short_name</path><type>2</type></field>
-      <field><name>longitude</name><path>$.data.stations[*].lon</path><type>2</type></field>
-      <field><name>latitude</name><path>$.data.stations[*].lat</path><type>2</type></field>
-      <field><name>capacity</name><path>$.data.stations[*].capacity</path><type>2</type></field>
-      <field><name>station_type</name><path>$.data.stations[*].station_type</path><type>2</type></field>
-      <field><name>region_id</name><path>$.data.stations[*].region_id</path><type>2</type></field>
-    </fields><GUI><xloc>352</xloc><yloc>80</yloc></GUI>
+      <field>
+        <name>json_line</name>
+        <position>-1</position>
+        <length>100000000</length>
+        <type>String</type>
+        <ignore>N</ignore>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <null_string/>
+        <if_null_value/>
+      </field>
+    </fields>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>192</xloc>
+      <yloc>224</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
-    <type>ScriptValueMod</type><name>Prepare GBFS raw fields</name>
-    <jsScripts><jsScript><jsScript_type>0</jsScript_type><jsScript_name>process</jsScript_name><jsScript_script>var source_city_code = String(source_file).indexOf("divvy") &gt;= 0 ? "CHI" : "NYC";
+    <type>JsonInput</type>
+    <name>Parse GBFS stations</name>
+    <include>N</include>
+    <include_field/>
+    <rownum>N</rownum>
+    <rownum_field/>
+    <limit>0</limit>
+    <valueField>json_line</valueField>
+    <IsInFields>Y</IsInFields>
+    <IsAFile>N</IsAFile>
+    <addresultfile>N</addresultfile>
+    <IsIgnoreEmptyFile>N</IsIgnoreEmptyFile>
+    <doNotFailIfNoFile>N</doNotFailIfNoFile>
+    <ignoreMissingPath>Y</ignoreMissingPath>
+    <readurl>N</readurl>
+    <removeSourceField>Y</removeSourceField>
+    <defaultPathLeafToNull>Y</defaultPathLeafToNull>
+    <files/>
+    <fields>
+      <field>
+        <name>gbfs_station_id</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].station_id</path>
+      </field>
+      <field>
+        <name>station_name</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].name</path>
+      </field>
+      <field>
+        <name>short_name</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].short_name</path>
+      </field>
+      <field>
+        <name>longitude</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].lon</path>
+      </field>
+      <field>
+        <name>latitude</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].lat</path>
+      </field>
+      <field>
+        <name>capacity</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].capacity</path>
+      </field>
+      <field>
+        <name>station_type</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].station_type</path>
+      </field>
+      <field>
+        <name>region_id</name>
+        <length>-1</length>
+        <type>None</type>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <repeat>N</repeat>
+        <path>$.data.stations[*].region_id</path>
+      </field>
+    </fields>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>192</xloc>
+      <yloc>368</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Prepare GBFS raw fields</name>
+    <jsScripts>
+      <jsScript>
+        <jsScript_type>0</jsScript_type>
+        <jsScript_name>process</jsScript_name>
+        <jsScript_script>var source_city_code = String(filename).indexOf("divvy") >= 0 ? "CHI" : "NYC";
 var load_run_id = "bootstrap_202601_202605";
 var raw_loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());
 function blankToNull(v) { if (v == null) return null; var s = String(v).trim(); return s.length == 0 ? null : s; }
@@ -32,45 +263,259 @@ longitude = blankToNull(longitude);
 latitude = blankToNull(latitude);
 capacity = blankToNull(capacity);
 station_type = blankToNull(station_type);
-region_id = blankToNull(region_id);</jsScript_script></jsScript></jsScripts>
+region_id = blankToNull(region_id);
+if (typeof _last_file === 'undefined' || _last_file !== String(filename)) {
+  _last_file = String(filename);
+  _row_counter = 1;
+} else {
+  _row_counter++;
+}
+var source_row_number = _row_counter;</jsScript_script>
+      </jsScript>
+    </jsScripts>
     <fields>
-      <field><name>source_city_code</name><rename>source_city_code</rename><type>String</type><length>10</length><precision>-1</precision><replace>N</replace></field>
-      <field><name>load_run_id</name><rename>load_run_id</rename><type>String</type><length>80</length><precision>-1</precision><replace>N</replace></field>
-      <field><name>raw_loaded_at</name><rename>raw_loaded_at</rename><type>Timestamp</type><length>-1</length><precision>-1</precision><replace>N</replace></field>
-      <field><name>gbfs_station_id</name><rename>gbfs_station_id</rename><type>String</type><length>-1</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>station_name</name><rename>station_name</rename><type>String</type><length>500</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>short_name</name><rename>short_name</rename><type>String</type><length>-1</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>longitude</name><rename>longitude</rename><type>String</type><length>50</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>latitude</name><rename>latitude</rename><type>String</type><length>50</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>capacity</name><rename>capacity</rename><type>String</type><length>20</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>station_type</name><rename>station_type</rename><type>String</type><length>50</length><precision>-1</precision><replace>Y</replace></field>
-      <field><name>region_id</name><rename>region_id</rename><type>String</type><length>20</length><precision>-1</precision><replace>Y</replace></field>
+      <field>
+        <name>source_row_number</name>
+        <rename>source_row_number</rename>
+        <type>Integer</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>source_city_code</name>
+        <rename>source_city_code</rename>
+        <type>String</type>
+        <length>10</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>load_run_id</name>
+        <rename>load_run_id</rename>
+        <type>String</type>
+        <length>80</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>raw_loaded_at</name>
+        <rename>raw_loaded_at</rename>
+        <type>Timestamp</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>gbfs_station_id</name>
+        <rename>gbfs_station_id</rename>
+        <type>String</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>station_name</name>
+        <rename>station_name</rename>
+        <type>String</type>
+        <length>500</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>short_name</name>
+        <rename>short_name</rename>
+        <type>String</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>longitude</name>
+        <rename>longitude</rename>
+        <type>String</type>
+        <length>50</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>latitude</name>
+        <rename>latitude</rename>
+        <type>String</type>
+        <length>50</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>capacity</name>
+        <rename>capacity</rename>
+        <type>String</type>
+        <length>20</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>station_type</name>
+        <rename>station_type</rename>
+        <type>String</type>
+        <length>50</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>region_id</name>
+        <rename>region_id</rename>
+        <type>String</type>
+        <length>20</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
     </fields>
-    <optimizationLevel>9</optimizationLevel><GUI><xloc>608</xloc><yloc>80</yloc></GUI>
+    <optimizationLevel>9</optimizationLevel>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>192</xloc>
+      <yloc>512</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
-    <type>TableOutput</type><name>Load to raw_gbfs_station</name><connection>dw-staging</connection><schema>staging</schema><table>raw_gbfs_station</table><commit>1000</commit><truncate>Y</truncate><only_when_have_rows>N</only_when_have_rows><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>Y</specify_fields>
+    <type>TableOutput</type>
+    <name>Load to raw_gbfs_station</name>
+    <connection>dw-staging</connection>
+    <schema>staging</schema>
+    <table>raw_gbfs_station</table>
+    <commit>1000</commit>
+    <truncate>Y</truncate>
+    <only_when_have_rows>N</only_when_have_rows>
+    <ignore_errors>N</ignore_errors>
+    <use_batch>Y</use_batch>
+    <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_daily>N</partitioning_daily>
+    <partitioning_monthly>N</partitioning_monthly>
+    <tablename_in_field>N</tablename_in_field>
+    <tablename_in_table>N</tablename_in_table>
+    <return_keys>N</return_keys>
+    <specify_fields>Y</specify_fields>
+    <auto_update_table_structure>N</auto_update_table_structure>
+    <always_drop_and_recreate>N</always_drop_and_recreate>
+    <add_columns>N</add_columns>
+    <drop_columns>N</drop_columns>
+    <change_column_types>N</change_column_types>
     <fields>
-      <field><stream_name>load_run_id</stream_name><column_name>load_run_id</column_name></field>
-      <field><stream_name>source_file</stream_name><column_name>source_file</column_name></field>
-      <field><stream_name>gbfs_station_id</stream_name><column_name>gbfs_station_id</column_name></field>
-      <field><stream_name>station_name</stream_name><column_name>station_name</column_name></field>
-      <field><stream_name>short_name</stream_name><column_name>short_name</column_name></field>
-      <field><stream_name>longitude</stream_name><column_name>longitude</column_name></field>
-      <field><stream_name>latitude</stream_name><column_name>latitude</column_name></field>
-      <field><stream_name>capacity</stream_name><column_name>capacity</column_name></field>
-      <field><stream_name>station_type</stream_name><column_name>station_type</column_name></field>
-      <field><stream_name>region_id</stream_name><column_name>region_id</column_name></field>
-      <field><stream_name>source_city_code</stream_name><column_name>source_city_code</column_name></field>
-      <field><stream_name>raw_loaded_at</stream_name><column_name>raw_loaded_at</column_name></field>
+      <field>
+        <stream_name>load_run_id</stream_name>
+        <column_name>load_run_id</column_name>
+      </field>
+      <field>
+        <stream_name>filename</stream_name>
+        <column_name>source_file</column_name>
+      </field>
+      <field>
+        <stream_name>source_row_number</stream_name>
+        <column_name>source_row_number</column_name>
+      </field>
+      <field>
+        <stream_name>gbfs_station_id</stream_name>
+        <column_name>gbfs_station_id</column_name>
+      </field>
+      <field>
+        <stream_name>station_name</stream_name>
+        <column_name>station_name</column_name>
+      </field>
+      <field>
+        <stream_name>short_name</stream_name>
+        <column_name>short_name</column_name>
+      </field>
+      <field>
+        <stream_name>longitude</stream_name>
+        <column_name>longitude</column_name>
+      </field>
+      <field>
+        <stream_name>latitude</stream_name>
+        <column_name>latitude</column_name>
+      </field>
+      <field>
+        <stream_name>capacity</stream_name>
+        <column_name>capacity</column_name>
+      </field>
+      <field>
+        <stream_name>station_type</stream_name>
+        <column_name>station_type</column_name>
+      </field>
+      <field>
+        <stream_name>region_id</stream_name>
+        <column_name>region_id</column_name>
+      </field>
+      <field>
+        <stream_name>source_city_code</stream_name>
+        <column_name>source_city_code</column_name>
+      </field>
+      <field>
+        <stream_name>raw_loaded_at</stream_name>
+        <column_name>raw_loaded_at</column_name>
+      </field>
     </fields>
-    <GUI><xloc>1120</xloc><yloc>80</yloc></GUI>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>192</xloc>
+      <yloc>656</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <order>
-    <hop><from>Read GBFS station_information JSON files</from><to>Parse GBFS stations</to><enabled>Y</enabled></hop>
-    <hop><from>Parse GBFS stations</from><to>Prepare GBFS raw fields</to><enabled>Y</enabled></hop>
-    <hop><from>Prepare GBFS raw fields</from><to>Load to raw_gbfs_station</to><enabled>Y</enabled></hop>
+    <hop>
+      <from>List GBFS JSON files</from>
+      <to>Read GBFS station_information JSON files</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Read GBFS station_information JSON files</from>
+      <to>Parse GBFS stations</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Parse GBFS stations</from>
+      <to>Prepare GBFS raw fields</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Prepare GBFS raw fields</from>
+      <to>Load to raw_gbfs_station</to>
+      <enabled>Y</enabled>
+    </hop>
   </order>
-  <notepads><notepad><note>Flow 1 — all JSON fields kept as STRING. DQ validation and transformation to stg_gbfs_station happen in 04_validate_gbfs_raw_to_staging.hpl.</note><xloc>96</xloc><yloc>200</yloc><width>760</width><heigth>60</heigth></notepad></notepads>
-  <attributes/><transform_error_handling/>
+  <notepads>
+    <notepad>
+      <note>Flow 1 — all JSON fields kept as STRING. DQ validation and transformation to stg_gbfs_station happen in 04_validate_gbfs_raw_to_staging.hpl.</note>
+      <fontsize>-1</fontsize>
+      <fontbold>N</fontbold>
+      <fontitalic>N</fontitalic>
+      <fontcolorred>14</fontcolorred>
+      <fontcolorgreen>58</fontcolorgreen>
+      <fontcolorblue>90</fontcolorblue>
+      <backgroundcolorred>201</backgroundcolorred>
+      <backgroundcolorgreen>232</backgroundcolorgreen>
+      <backgroundcolorblue>251</backgroundcolorblue>
+      <bordercolorred>14</bordercolorred>
+      <bordercolorgreen>58</bordercolorgreen>
+      <bordercolorblue>90</bordercolorblue>
+      <xloc>64</xloc>
+      <yloc>736</yloc>
+      <width>880</width>
+      <height>32</height>
+    </notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
 </pipeline>
