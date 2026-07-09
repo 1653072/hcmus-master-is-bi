@@ -69,7 +69,7 @@ JOIN (
         <jsScript_type>0</jsScript_type>
         <jsScript_name>process</jsScript_name>
         <jsScript_script>var job_name = "etl_source_to_stagingdb_stg_result";
-var status = (total_rows_count > 0 &amp;&amp; success_rows_count == 0) ? "FAILED" : "SUCCESS";
+var status = (total_rows_count > 0 &amp;&amp; failed_rows_count > 0 &amp;&amp; success_rows_count == 0) ? "FAILED" : "SUCCESS";
 var finished_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());
 var started_at;
 try {
