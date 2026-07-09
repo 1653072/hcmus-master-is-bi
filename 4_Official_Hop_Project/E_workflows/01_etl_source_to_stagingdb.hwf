@@ -333,6 +333,16 @@
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
+    <action>
+      <name>Success</name>
+      <description/>
+      <type>SUCCESS</type>
+      <attributes/>
+      <xloc>1584</xloc>
+      <yloc>480</yloc>
+      <parallel>N</parallel>
+      <attributes_hac/>
+    </action>
   </actions>
   <hops>
     <hop>
@@ -443,6 +453,13 @@
     <hop>
       <from>Join</from>
       <to>05_audit_dq_rule_results.hpl</to>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>05_audit_staging_load_counts.hpl</from>
+      <to>Success</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
