@@ -18,66 +18,153 @@
   <transform>
     <type>TableInput</type>
     <name>Read Divvy reject+warning row details</name>
-    <sql>SELECT load_run_id, 'divvy_trips' AS source_name, 'raw_divvy_trips' AS source_table,
-       source_file, source_row_number,
-       COALESCE(NULLIF(BTRIM(ride_id),''), '(null)') AS business_key,
-       'DIVVY_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS dq_verdict,
-       'Required field(s) null or blank: ride_id/started_at/source_city_code' AS reason,
-       NULL::JSONB AS raw_payload
-FROM staging.raw_divvy_trips
-WHERE NULLIF(BTRIM(ride_id),'') IS NULL
-   OR NULLIF(BTRIM(started_at),'') IS NULL
-   OR NULLIF(BTRIM(source_city_code),'') IS NULL
+    <sql>WITH src AS (
+    SELECT
+        r.load_run_id,
+        r.source_file,
+        r.source_row_number,
+        r.ride_id,
+        r.started_at,
+        r.trip_month,
+        COALESCE(NULLIF(BTRIM(r.ride_id), ''), '(null)') AS business_key,
+        NULLIF(BTRIM(r.ride_id), '')                     AS ride_id_norm,
+        NULLIF(BTRIM(r.started_at), '')                  AS started_at_norm,
+        NULLIF(BTRIM(r.source_city_code), '')            AS source_city_code_norm,
+        NULLIF(BTRIM(r.start_station_id), '')            AS start_station_id_norm,
+        NULLIF(BTRIM(r.end_station_id), '')              AS end_station_id_norm,
+        jsonb_build_object(
+            'ride_id',            r.ride_id,
+            'rideable_type',      r.rideable_type,
+            'started_at',         r.started_at,
+            'ended_at',           r.ended_at,
+            'start_station_name', r.start_station_name,
+            'start_station_id',   r.start_station_id,
+            'end_station_name',   r.end_station_name,
+            'end_station_id',     r.end_station_id,
+            'start_lat',          r.start_lat,
+            'start_lng',          r.start_lng,
+            'end_lat',            r.end_lat,
+            'end_lng',            r.end_lng,
+            'member_casual',      r.member_casual,
+            'source_city_code',   r.source_city_code,
+            'trip_month',         r.trip_month
+        ) AS raw_payload
+    FROM staging.raw_divvy_trips AS r
+),
+
+dup_keys AS (
+    SELECT
+        source_city_code,
+        ride_id
+    FROM staging.raw_divvy_trips
+    GROUP BY
+        source_city_code,
+        ride_id
+    HAVING COUNT(*) > 1
+)
+
+-- Rule 1: required fields
+SELECT
+    load_run_id,
+    'divvy_trips'     AS source_name,
+    'raw_divvy_trips' AS source_table,
+    source_file,
+    source_row_number,
+    business_key,
+    'DIVVY_NULL_REQUIRED' AS rule_code,
+    'null'                AS rule_type,
+    'reject'              AS dq_verdict,
+    'Required field(s) null or blank: ride_id/started_at/source_city_code' AS reason,
+    raw_payload
+FROM src
+WHERE ride_id_norm IS NULL
+   OR started_at_norm IS NULL
+   OR source_city_code_norm IS NULL
 
 UNION ALL
 
-SELECT r.load_run_id, 'divvy_trips', 'raw_divvy_trips',
-       r.source_file, r.source_row_number,
-       COALESCE(NULLIF(BTRIM(r.ride_id),''), '(null)'),
-       'DIVVY_DUPLICATE_RIDE', 'duplicate', 'reject',
-       'Duplicate (source_city_code, ride_id) in this load run', NULL::JSONB
-FROM staging.raw_divvy_trips r
-JOIN (SELECT source_city_code, ride_id FROM staging.raw_divvy_trips
-      GROUP BY source_city_code, ride_id HAVING COUNT(*) > 1) d
-  ON r.source_city_code = d.source_city_code AND r.ride_id = d.ride_id
+-- Rule 2: duplicate (source_city_code, ride_id)
+SELECT
+    s.load_run_id,
+    'divvy_trips',
+    'raw_divvy_trips',
+    s.source_file,
+    s.source_row_number,
+    s.business_key,
+    'DIVVY_DUPLICATE_RIDE',
+    'duplicate',
+    'reject',
+    'Duplicate (source_city_code, ride_id) in this load run',
+    s.raw_payload
+FROM src AS s
+INNER JOIN dup_keys AS d
+    ON  s.source_city_code_norm = NULLIF(BTRIM(d.source_city_code), '')
+    AND s.ride_id_norm          = NULLIF(BTRIM(d.ride_id), '')
 
 UNION ALL
 
-SELECT load_run_id, 'divvy_trips', 'raw_divvy_trips',
-       source_file, source_row_number,
-       COALESCE(NULLIF(BTRIM(ride_id),''), '(null)'),
-       'DIVVY_DATATYPE_TIMESTAMP', 'datatype', 'reject',
-       'started_at not parseable as yyyy-MM-dd HH:mm:ss', NULL::JSONB
-FROM staging.raw_divvy_trips
-WHERE NULLIF(BTRIM(ride_id),'') IS NOT NULL
-  AND NULLIF(BTRIM(started_at),'') IS NOT NULL
+-- Rule 3: started_at timestamp format
+SELECT
+    load_run_id,
+    'divvy_trips',
+    'raw_divvy_trips',
+    source_file,
+    source_row_number,
+    business_key,
+    'DIVVY_DATATYPE_TIMESTAMP',
+    'datatype',
+    'reject',
+    'started_at not parseable as yyyy-MM-dd HH:mm:ss',
+    raw_payload
+FROM src
+WHERE ride_id_norm IS NOT NULL
+  AND started_at_norm IS NOT NULL
   AND started_at !~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
 
 UNION ALL
 
-SELECT load_run_id, 'divvy_trips', 'raw_divvy_trips',
-       source_file, source_row_number,
-       COALESCE(NULLIF(BTRIM(ride_id),''), '(null)'),
-       'DIVVY_FORMAT_TRIP_MONTH', 'format', 'reject',
-       'trip_month null or not YYYYMM', NULL::JSONB
-FROM staging.raw_divvy_trips
-WHERE NULLIF(BTRIM(ride_id),'') IS NOT NULL
+-- Rule 4: trip_month YYYYMM
+SELECT
+    load_run_id,
+    'divvy_trips',
+    'raw_divvy_trips',
+    source_file,
+    source_row_number,
+    business_key,
+    'DIVVY_FORMAT_TRIP_MONTH',
+    'format',
+    'reject',
+    'trip_month null or not YYYYMM',
+    raw_payload
+FROM src
+WHERE ride_id_norm IS NOT NULL
   AND (trip_month IS NULL OR trip_month !~ '^[0-9]{6}$')
 
 UNION ALL
 
-SELECT r.load_run_id, 'divvy_trips', 'raw_divvy_trips',
-       r.source_file, r.source_row_number,
-       COALESCE(NULLIF(BTRIM(r.ride_id),''), '(null)'),
-       'DIVVY_WARN_STATION_ID', 'null', 'warning',
-       'Missing start_station_id or end_station_id', NULL::JSONB
-FROM staging.raw_divvy_trips r
-WHERE NULLIF(BTRIM(r.ride_id),'') IS NOT NULL
-  AND NULLIF(BTRIM(r.started_at),'') IS NOT NULL
-  AND r.started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
-  AND (r.trip_month IS NOT NULL AND r.trip_month ~ '^[0-9]{6}$')
-  AND (NULLIF(BTRIM(r.start_station_id),'') IS NULL
-       OR NULLIF(BTRIM(r.end_station_id),'') IS NULL)</sql>
+-- Rule 5: missing station ids (warning)
+SELECT
+    load_run_id,
+    'divvy_trips',
+    'raw_divvy_trips',
+    source_file,
+    source_row_number,
+    business_key,
+    'DIVVY_WARN_STATION_ID',
+    'null',
+    'warning',
+    'Missing start_station_id or end_station_id',
+    raw_payload
+FROM src
+WHERE ride_id_norm IS NOT NULL
+  AND started_at_norm IS NOT NULL
+  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+  AND (
+        start_station_id_norm IS NULL
+     OR end_station_id_norm IS NULL
+      );</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
     <variables_active>N</variables_active>
@@ -108,11 +195,14 @@ WHERE NULLIF(BTRIM(r.ride_id),'') IS NOT NULL
     <ignore_errors>N</ignore_errors>
     <use_batch>Y</use_batch>
     <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_field/>
     <partitioning_daily>N</partitioning_daily>
     <partitioning_monthly>N</partitioning_monthly>
     <tablename_in_field>N</tablename_in_field>
+    <tablename_field/>
     <tablename_in_table>N</tablename_in_table>
     <return_keys>N</return_keys>
+    <return_field/>
     <specify_fields>Y</specify_fields>
     <auto_update_table_structure>N</auto_update_table_structure>
     <always_drop_and_recreate>N</always_drop_and_recreate>
@@ -181,54 +271,99 @@ WHERE NULLIF(BTRIM(r.ride_id),'') IS NOT NULL
     <type>TableInput</type>
     <name>Read Divvy raw DQ rule counts</name>
     <sql>WITH src AS (
-  SELECT * FROM staging.raw_divvy_trips
+    SELECT
+        r.*,
+        NULLIF(BTRIM(r.ride_id), '')          AS ride_id_norm,
+        NULLIF(BTRIM(r.started_at), '')       AS started_at_norm,
+        NULLIF(BTRIM(r.source_city_code), '') AS source_city_code_norm,
+        NULLIF(BTRIM(r.start_station_id), '') AS start_station_id_norm,
+        NULLIF(BTRIM(r.end_station_id), '')   AS end_station_id_norm
+    FROM staging.raw_divvy_trips AS r
 ),
-dup AS (
-  SELECT source_city_code, ride_id, COUNT(*) AS duplicate_count
-  FROM src GROUP BY source_city_code, ride_id HAVING COUNT(*) > 1
+
+enriched AS (
+    SELECT
+        s.*,
+        COUNT(*) OVER (
+            PARTITION BY s.source_city_code, s.ride_id
+        ) AS ride_key_count
+    FROM src AS s
 ),
+
+metrics AS (
+    SELECT
+        COUNT(*)::BIGINT AS total_count,
+
+        COUNT(*) FILTER (
+            WHERE ride_id_norm IS NULL
+               OR started_at_norm IS NULL
+               OR source_city_code_norm IS NULL
+        )::BIGINT AS null_required_count,
+
+        COUNT(*) FILTER (
+            WHERE ride_key_count > 1
+        )::BIGINT AS duplicate_ride_count,
+
+        COUNT(*) FILTER (
+            WHERE ride_id_norm IS NOT NULL
+              AND started_at_norm IS NOT NULL
+              AND started_at !~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+        )::BIGINT AS bad_timestamp_count,
+
+        COUNT(*) FILTER (
+            WHERE trip_month IS NULL
+               OR trip_month !~ '^[0-9]{6}$'
+        )::BIGINT AS bad_trip_month_count,
+
+        COUNT(*) FILTER (
+            WHERE ride_id_norm IS NOT NULL
+              AND started_at_norm IS NOT NULL
+              AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+              AND trip_month IS NOT NULL
+              AND trip_month ~ '^[0-9]{6}$'
+              AND (
+                    start_station_id_norm IS NULL
+                 OR end_station_id_norm IS NULL
+              )
+        )::BIGINT AS missing_station_id_count
+    FROM enriched
+),
+
 rules AS (
-  SELECT 'DIVVY_NULL_REQUIRED' AS rule_code, 'null' AS rule_type, 'reject' AS severity,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(ride_id),'') IS NULL
-                           OR NULLIF(BTRIM(started_at),'') IS NULL
-                           OR NULLIF(BTRIM(source_city_code),'') IS NULL) AS failed_count,
-         0::BIGINT AS warning_count, COUNT(*) AS total_count
-  FROM src
-  UNION ALL
-  SELECT 'DIVVY_DUPLICATE_RIDE', 'duplicate', 'reject',
-         COALESCE(SUM(duplicate_count), 0), 0::BIGINT, (SELECT COUNT(*) FROM src)
-  FROM dup
-  UNION ALL
-  SELECT 'DIVVY_DATATYPE_TIMESTAMP', 'datatype', 'reject',
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(ride_id),'') IS NOT NULL
-                           AND NULLIF(BTRIM(started_at),'') IS NOT NULL
-                           AND started_at !~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'),
-         0::BIGINT, COUNT(*)
-  FROM src
-  UNION ALL
-  SELECT 'DIVVY_FORMAT_TRIP_MONTH', 'format', 'reject',
-         COUNT(*) FILTER (WHERE trip_month IS NULL OR trip_month !~ '^[0-9]{6}$'),
-         0::BIGINT, COUNT(*)
-  FROM src
-  UNION ALL
-  SELECT 'DIVVY_WARN_STATION_ID', 'null', 'warning',
-         0::BIGINT,
-         COUNT(*) FILTER (WHERE NULLIF(BTRIM(ride_id),'') IS NOT NULL
-                           AND NULLIF(BTRIM(started_at),'') IS NOT NULL
-                           AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
-                           AND (trip_month IS NOT NULL AND trip_month ~ '^[0-9]{6}$')
-                           AND (NULLIF(BTRIM(start_station_id),'') IS NULL
-                                OR NULLIF(BTRIM(end_station_id),'') IS NULL)),
-         COUNT(*)
-  FROM src
+    SELECT
+        rule_code,
+        rule_type,
+        severity,
+        failed_count,
+        warning_count,
+        m.total_count
+    FROM metrics AS m
+    CROSS JOIN LATERAL (
+        VALUES
+            ('DIVVY_NULL_REQUIRED',      'null',      'reject',  m.null_required_count,      0::BIGINT),
+            ('DIVVY_DUPLICATE_RIDE',     'duplicate', 'reject',  m.duplicate_ride_count,     0::BIGINT),
+            ('DIVVY_DATATYPE_TIMESTAMP', 'datatype',  'reject',  m.bad_timestamp_count,      0::BIGINT),
+            ('DIVVY_FORMAT_TRIP_MONTH',  'format',    'reject',  m.bad_trip_month_count,     0::BIGINT),
+            ('DIVVY_WARN_STATION_ID',    'null',      'warning', 0::BIGINT,                  m.missing_station_id_count)
+    ) AS rule_def (
+        rule_code,
+        rule_type,
+        severity,
+        failed_count,
+        warning_count
+    )
 )
-SELECT 'divvy_trips' AS source_name,
-       'bootstrap_202601_202605' AS load_run_id,
-       rule_code, rule_type, severity,
-       GREATEST(total_count - failed_count - warning_count, 0)::INTEGER AS passed_count,
-       failed_count::INTEGER AS failed_count,
-       warning_count::INTEGER AS warning_count
-FROM rules</sql>
+
+SELECT
+    'divvy_trips'             AS source_name,
+    'bootstrap_202601_202605' AS load_run_id,
+    rule_code,
+    rule_type,
+    severity,
+    GREATEST(total_count - failed_count - warning_count, 0)::INTEGER AS passed_count,
+    failed_count::INTEGER,
+    warning_count::INTEGER
+FROM rules;</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
     <variables_active>N</variables_active>
@@ -320,18 +455,33 @@ FROM rules</sql>
     <type>TableInput</type>
     <name>Read Divvy clean rows</name>
     <sql>SELECT DISTINCT ON (source_city_code, ride_id)
-       load_run_id, source_file,
-       ride_id, rideable_type, started_at, ended_at,
-       start_station_name, start_station_id, end_station_name, end_station_id,
-       start_lat, start_lng, end_lat, end_lng,
-       member_casual, source_city_code, trip_month
+       load_run_id,
+       source_file,
+       ride_id,
+       rideable_type,
+       started_at,
+       ended_at,
+       start_station_name,
+       start_station_id,
+       end_station_name,
+       end_station_id,
+       start_lat,
+       start_lng,
+       end_lat,
+       end_lng,
+       member_casual,
+       source_city_code,
+       trip_month
 FROM staging.raw_divvy_trips
-WHERE NULLIF(BTRIM(ride_id),'') IS NOT NULL
-  AND NULLIF(BTRIM(started_at),'') IS NOT NULL
-  AND NULLIF(BTRIM(source_city_code),'') IS NOT NULL
+WHERE NULLIF(BTRIM(ride_id), '')          IS NOT NULL
+  AND NULLIF(BTRIM(started_at), '')       IS NOT NULL
+  AND NULLIF(BTRIM(source_city_code), '') IS NOT NULL
   AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
-  AND (trip_month IS NOT NULL AND trip_month ~ '^[0-9]{6}$')
-ORDER BY source_city_code, ride_id</sql>
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+ORDER BY
+    source_city_code,
+    ride_id;</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
     <variables_active>N</variables_active>
@@ -481,7 +631,7 @@ var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now(
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>464</xloc>
+      <xloc>384</xloc>
       <yloc>320</yloc>
     </GUI>
     <partitioning>
@@ -600,7 +750,7 @@ var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now(
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>800</xloc>
+      <xloc>592</xloc>
       <yloc>320</yloc>
     </GUI>
     <partitioning>
@@ -648,10 +798,10 @@ Stream C → stg_divvy_trips (clean rows, cast, deduplicated)</note>
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>176</xloc>
+      <xloc>80</xloc>
       <yloc>432</yloc>
-      <width>760</width>
-      <height>-1</height>
+      <width>624</width>
+      <height>32</height>
     </notepad>
   </notepads>
   <attributes/>
