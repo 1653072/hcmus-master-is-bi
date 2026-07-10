@@ -6,10 +6,21 @@
     <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
-    <parameters/>
+    <parameters>
+      <parameter>
+        <name>CITIBIKE_VALIDATE_MONTH</name>
+        <default_value>ALL</default_value>
+        <description>Use ALL for full raw validation, or YYYYMM for a representative sample month.</description>
+      </parameter>
+      <parameter>
+        <name>CITIBIKE_RESULT_LOAD_RUN_ID</name>
+        <default_value>bootstrap_202601_202605</default_value>
+        <description>Control-table load_run_id for Citi Bike DQ result rows.</description>
+      </parameter>
+    </parameters>
     <name>02_validate_citibike_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 2 — DQ gate for Citi Bike: 3 parallel streams from raw_citibike_trips. Stream A: row-level reject/warning details to etl_dq_rule_result_details. Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: clean rows cast and upserted into stg_citibike_trips.</description>
+    <description>Flow 2 — DQ gate for Citi Bike: 3 parallel streams from raw_citibike_trips. Stream A: row-level reject/warning details to etl_dq_rule_result_details. Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: clean rows are cast and upserted into stg_citibike_trips with a set-based PostgreSQL statement.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 19:58:23.064</created_date>
@@ -18,9 +29,16 @@
   <transform>
     <type>TableInput</type>
     <name>Read Citi Bike reject+warning row details</name>
-    <sql>WITH src AS (
+    <sql>WITH filtered_raw AS (
+    SELECT *
+    FROM staging.raw_citibike_trips AS r
+    WHERE COALESCE(NULLIF('${CITIBIKE_VALIDATE_MONTH}', ''), 'ALL') = 'ALL'
+       OR r.trip_month = '${CITIBIKE_VALIDATE_MONTH}'
+),
+
+src AS (
     SELECT
-        r.load_run_id,
+        COALESCE(NULLIF('${CITIBIKE_RESULT_LOAD_RUN_ID}', ''), 'bootstrap_202601_202605') AS load_run_id,
         r.source_file,
         r.source_row_number,
         r.ride_id,
@@ -50,18 +68,18 @@
             'source_city_code',   r.source_city_code,
             'trip_month',         r.trip_month
         ) AS raw_payload
-    FROM staging.raw_citibike_trips AS r
+    FROM filtered_raw AS r
 ),
 
 dup_keys AS (
     SELECT
         source_city_code,
         ride_id
-    FROM staging.raw_citibike_trips
+    FROM filtered_raw
     GROUP BY
         source_city_code,
         ride_id
-    HAVING COUNT(*) > 1
+    HAVING COUNT(*) &gt; 1
 )
 
 -- Rule 1: required fields
@@ -168,7 +186,7 @@ WHERE ride_id_norm IS NOT NULL
       );</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
+    <variables_active>Y</variables_active>
     <connection>dw-staging</connection>
     <lookup/>
     <sql_from_file/>
@@ -190,7 +208,7 @@ WHERE ride_id_norm IS NOT NULL
     <connection>dw-control</connection>
     <schema>control</schema>
     <table>etl_dq_rule_result_details</table>
-    <commit>100</commit>
+    <commit>10000</commit>
     <truncate>N</truncate>
     <only_when_have_rows>N</only_when_have_rows>
     <ignore_errors>N</ignore_errors>
@@ -268,7 +286,14 @@ WHERE ride_id_norm IS NOT NULL
   <transform>
     <type>TableInput</type>
     <name>Read Citi Bike raw DQ rule counts</name>
-    <sql>WITH src AS (
+    <sql>WITH filtered_raw AS (
+    SELECT *
+    FROM staging.raw_citibike_trips AS r
+    WHERE COALESCE(NULLIF('${CITIBIKE_VALIDATE_MONTH}', ''), 'ALL') = 'ALL'
+       OR r.trip_month = '${CITIBIKE_VALIDATE_MONTH}'
+),
+
+src AS (
     SELECT
         r.*,
         NULLIF(BTRIM(r.ride_id), '')          AS ride_id_norm,
@@ -276,7 +301,7 @@ WHERE ride_id_norm IS NOT NULL
         NULLIF(BTRIM(r.source_city_code), '') AS source_city_code_norm,
         NULLIF(BTRIM(r.start_station_id), '') AS start_station_id_norm,
         NULLIF(BTRIM(r.end_station_id), '')   AS end_station_id_norm
-    FROM staging.raw_citibike_trips AS r
+    FROM filtered_raw AS r
 ),
 
 enriched AS (
@@ -299,7 +324,7 @@ metrics AS (
         )::BIGINT AS null_required_count,
 
         COUNT(*) FILTER (
-            WHERE ride_key_count > 1
+            WHERE ride_key_count &gt; 1
         )::BIGINT AS duplicate_ride_count,
 
         COUNT(*) FILTER (
@@ -353,8 +378,8 @@ rules AS (
 )
 
 SELECT
-    'citibike_trips'          AS source_name,
-    'bootstrap_202601_202605' AS load_run_id,
+    'citibike_trips' AS source_name,
+    COALESCE(NULLIF('${CITIBIKE_RESULT_LOAD_RUN_ID}', ''), 'bootstrap_202601_202605') AS load_run_id,
     rule_code,
     rule_type,
     severity,
@@ -364,7 +389,7 @@ SELECT
 FROM rules;</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
+    <variables_active>Y</variables_active>
     <connection>dw-staging</connection>
     <lookup/>
     <sql_from_file/>
@@ -450,299 +475,173 @@ FROM rules;</sql>
     <attributes/>
   </transform>
   <transform>
-    <type>TableInput</type>
-    <name>Read Citi Bike clean rows</name>
-    <sql>SELECT DISTINCT ON (source_city_code, ride_id)
-       load_run_id,
-       source_file,
-       ride_id,
-       rideable_type,
-       started_at,
-       ended_at,
-       start_station_name,
-       start_station_id,
-       end_station_name,
-       end_station_id,
-       start_lat,
-       start_lng,
-       end_lat,
-       end_lng,
-       member_casual,
-       source_city_code,
-       trip_month
-FROM staging.raw_citibike_trips
-WHERE NULLIF(BTRIM(ride_id), '')          IS NOT NULL
-  AND NULLIF(BTRIM(started_at), '')       IS NOT NULL
-  AND NULLIF(BTRIM(source_city_code), '') IS NOT NULL
-  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
-  AND trip_month IS NOT NULL
-  AND trip_month ~ '^[0-9]{6}$'
-ORDER BY
-    source_city_code,
-    ride_id;</sql>
-    <limit>0</limit>
-    <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
+    <type>ExecSql</type>
+    <name>Set-based upsert staging.stg_citibike_trips</name>
     <connection>dw-staging</connection>
-    <lookup/>
-    <sql_from_file/>
+    <sql>WITH filtered_raw AS (
+    SELECT
+        r.*,
+        NULLIF(BTRIM(r.ride_id), '')            AS ride_id_norm,
+        NULLIF(BTRIM(r.source_city_code), '')   AS source_city_code_norm,
+        NULLIF(BTRIM(r.started_at), '')         AS started_at_norm,
+        NULLIF(BTRIM(r.ended_at), '')           AS ended_at_norm,
+        NULLIF(BTRIM(r.rideable_type), '')      AS rideable_type_norm,
+        NULLIF(BTRIM(r.start_station_name), '') AS start_station_name_norm,
+        NULLIF(BTRIM(r.start_station_id), '')   AS start_station_id_norm,
+        NULLIF(BTRIM(r.end_station_name), '')   AS end_station_name_norm,
+        NULLIF(BTRIM(r.end_station_id), '')     AS end_station_id_norm,
+        NULLIF(BTRIM(r.start_lat), '')          AS start_lat_norm,
+        NULLIF(BTRIM(r.start_lng), '')          AS start_lng_norm,
+        NULLIF(BTRIM(r.end_lat), '')            AS end_lat_norm,
+        NULLIF(BTRIM(r.end_lng), '')            AS end_lng_norm,
+        NULLIF(BTRIM(r.member_casual), '')      AS member_casual_norm,
+        NULLIF(BTRIM(r.trip_month), '')         AS trip_month_norm,
+        NULLIF(BTRIM(r.source_file), '')        AS source_file_norm
+    FROM staging.raw_citibike_trips AS r
+    WHERE COALESCE(NULLIF('${CITIBIKE_VALIDATE_MONTH}', ''), 'ALL') = 'ALL'
+       OR r.trip_month = '${CITIBIKE_VALIDATE_MONTH}'
+),
+
+accepted AS (
+    SELECT DISTINCT ON (source_city_code_norm, ride_id_norm)
+        *
+    FROM filtered_raw
+    WHERE ride_id_norm IS NOT NULL
+      AND started_at_norm IS NOT NULL
+      AND source_city_code_norm IS NOT NULL
+      AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+      AND trip_month IS NOT NULL
+      AND trip_month ~ '^[0-9]{6}$'
+    ORDER BY
+        source_city_code_norm,
+        ride_id_norm,
+        source_file,
+        source_row_number
+),
+
+typed AS (
+    SELECT
+        ride_id_norm::VARCHAR(64) AS ride_id,
+        rideable_type_norm::VARCHAR(50) AS rideable_type,
+        split_part(started_at_norm, '.', 1)::TIMESTAMP AS started_at,
+        CASE
+            WHEN ended_at_norm IS NULL THEN NULL
+            ELSE split_part(ended_at_norm, '.', 1)::TIMESTAMP
+        END AS ended_at,
+        start_station_name_norm::VARCHAR(500) AS start_station_name,
+        start_station_id_norm AS start_station_id,
+        end_station_name_norm::VARCHAR(500) AS end_station_name,
+        end_station_id_norm AS end_station_id,
+        start_lat_norm::NUMERIC(12, 8) AS start_lat,
+        start_lng_norm::NUMERIC(12, 8) AS start_lng,
+        end_lat_norm::NUMERIC(12, 8) AS end_lat,
+        end_lng_norm::NUMERIC(12, 8) AS end_lng,
+        member_casual_norm::VARCHAR(20) AS member_casual,
+        source_city_code_norm::VARCHAR(10) AS source_city_code,
+        trip_month_norm::CHAR(6) AS trip_month,
+        source_file_norm::VARCHAR(500) AS source_file
+    FROM accepted
+)
+
+INSERT INTO staging.stg_citibike_trips AS target (
+    ride_id,
+    rideable_type,
+    started_at,
+    ended_at,
+    start_station_name,
+    start_station_id,
+    end_station_name,
+    end_station_id,
+    start_lat,
+    start_lng,
+    end_lat,
+    end_lng,
+    member_casual,
+    source_city_code,
+    trip_month,
+    source_file,
+    loaded_at
+)
+SELECT
+    ride_id,
+    rideable_type,
+    started_at,
+    ended_at,
+    start_station_name,
+    start_station_id,
+    end_station_name,
+    end_station_id,
+    start_lat,
+    start_lng,
+    end_lat,
+    end_lng,
+    member_casual,
+    source_city_code,
+    trip_month,
+    source_file,
+    statement_timestamp() AS loaded_at
+FROM typed
+ON CONFLICT (source_city_code, ride_id) DO UPDATE SET
+    rideable_type = EXCLUDED.rideable_type,
+    started_at = EXCLUDED.started_at,
+    ended_at = EXCLUDED.ended_at,
+    start_station_name = EXCLUDED.start_station_name,
+    start_station_id = EXCLUDED.start_station_id,
+    end_station_name = EXCLUDED.end_station_name,
+    end_station_id = EXCLUDED.end_station_id,
+    start_lat = EXCLUDED.start_lat,
+    start_lng = EXCLUDED.start_lng,
+    end_lat = EXCLUDED.end_lat,
+    end_lng = EXCLUDED.end_lng,
+    member_casual = EXCLUDED.member_casual,
+    trip_month = EXCLUDED.trip_month,
+    source_file = EXCLUDED.source_file,
+    loaded_at = EXCLUDED.loaded_at
+WHERE ROW(
+        target.rideable_type,
+        target.started_at,
+        target.ended_at,
+        target.start_station_name,
+        target.start_station_id,
+        target.end_station_name,
+        target.end_station_id,
+        target.start_lat,
+        target.start_lng,
+        target.end_lat,
+        target.end_lng,
+        target.member_casual,
+        target.trip_month,
+        target.source_file
+    ) IS DISTINCT FROM ROW(
+        EXCLUDED.rideable_type,
+        EXCLUDED.started_at,
+        EXCLUDED.ended_at,
+        EXCLUDED.start_station_name,
+        EXCLUDED.start_station_id,
+        EXCLUDED.end_station_name,
+        EXCLUDED.end_station_id,
+        EXCLUDED.start_lat,
+        EXCLUDED.start_lng,
+        EXCLUDED.end_lat,
+        EXCLUDED.end_lng,
+        EXCLUDED.member_casual,
+        EXCLUDED.trip_month,
+        EXCLUDED.source_file
+    );</sql>
+    <execute_each_row>N</execute_each_row>
+    <update_field/>
+    <insert_field/>
+    <delete_field/>
+    <read_field/>
+    <single_statement>Y</single_statement>
+    <replace_variables>Y</replace_variables>
+    <quoteString>N</quoteString>
+    <set_params>N</set_params>
+    <arguments/>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
       <xloc>160</xloc>
-      <yloc>464</yloc>
-    </GUI>
-    <partitioning>
-      <method>none</method>
-      <schema_name/>
-    </partitioning>
-    <attributes/>
-  </transform>
-  <transform>
-    <type>ScriptValueMod</type>
-    <name>Cast Citi Bike clean rows</name>
-    <jsScripts>
-      <jsScript>
-        <jsScript_type>0</jsScript_type>
-        <jsScript_name>process</jsScript_name>
-        <jsScript_script>function blankToNull(v) { if (v == null) return null; var s = String(v).trim(); return s.length == 0 ? null : s; }
-function toTimestamp(v) {
-  var s = blankToNull(v); if (s == null) return null;
-  var p = s.split("."); var fmt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-  return new Packages.java.sql.Timestamp(fmt.parse(p[0]).getTime());
-}
-function toNumber(v) { var s = blankToNull(v); return s == null ? null : java.lang.Double.valueOf(s); }
-started_at = toTimestamp(started_at); ended_at = toTimestamp(ended_at);
-start_lat = toNumber(start_lat); start_lng = toNumber(start_lng);
-end_lat = toNumber(end_lat); end_lng = toNumber(end_lng);
-start_station_name = blankToNull(start_station_name); start_station_id = blankToNull(start_station_id);
-end_station_name = blankToNull(end_station_name); end_station_id = blankToNull(end_station_id);
-member_casual = blankToNull(member_casual);
-var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script>
-      </jsScript>
-    </jsScripts>
-    <fields>
-      <field>
-        <name>started_at</name>
-        <rename>started_at</rename>
-        <type>Timestamp</type>
-        <length>-1</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>ended_at</name>
-        <rename>ended_at</rename>
-        <type>Timestamp</type>
-        <length>-1</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>start_lat</name>
-        <rename>start_lat</rename>
-        <type>Number</type>
-        <length>12</length>
-        <precision>8</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>start_lng</name>
-        <rename>start_lng</rename>
-        <type>Number</type>
-        <length>12</length>
-        <precision>8</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>end_lat</name>
-        <rename>end_lat</rename>
-        <type>Number</type>
-        <length>12</length>
-        <precision>8</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>end_lng</name>
-        <rename>end_lng</rename>
-        <type>Number</type>
-        <length>12</length>
-        <precision>8</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>start_station_name</name>
-        <rename>start_station_name</rename>
-        <type>String</type>
-        <length>500</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>start_station_id</name>
-        <rename>start_station_id</rename>
-        <type>String</type>
-        <length>100</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>end_station_name</name>
-        <rename>end_station_name</rename>
-        <type>String</type>
-        <length>500</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>end_station_id</name>
-        <rename>end_station_id</rename>
-        <type>String</type>
-        <length>100</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>member_casual</name>
-        <rename>member_casual</rename>
-        <type>String</type>
-        <length>20</length>
-        <precision>-1</precision>
-        <replace>Y</replace>
-      </field>
-      <field>
-        <name>loaded_at</name>
-        <rename>loaded_at</rename>
-        <type>Timestamp</type>
-        <length>-1</length>
-        <precision>-1</precision>
-        <replace>N</replace>
-      </field>
-    </fields>
-    <optimizationLevel>9</optimizationLevel>
-    <distribute>N</distribute>
-    <copies>1</copies>
-    <GUI>
-      <xloc>368</xloc>
-      <yloc>464</yloc>
-    </GUI>
-    <partitioning>
-      <method>none</method>
-      <schema_name/>
-    </partitioning>
-    <attributes/>
-  </transform>
-  <transform>
-    <type>InsertUpdate</type>
-    <name>Upsert staging.stg_citibike_trips</name>
-    <lookup>
-      <key>
-        <name>source_city_code</name>
-        <field>source_city_code</field>
-        <condition>=</condition>
-        <name2/>
-      </key>
-      <key>
-        <name>ride_id</name>
-        <field>ride_id</field>
-        <condition>=</condition>
-        <name2/>
-      </key>
-      <value>
-        <name>ride_id</name>
-        <rename>ride_id</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>rideable_type</name>
-        <rename>rideable_type</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>started_at</name>
-        <rename>started_at</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>ended_at</name>
-        <rename>ended_at</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>start_station_name</name>
-        <rename>start_station_name</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>start_station_id</name>
-        <rename>start_station_id</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>end_station_name</name>
-        <rename>end_station_name</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>end_station_id</name>
-        <rename>end_station_id</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>start_lat</name>
-        <rename>start_lat</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>start_lng</name>
-        <rename>start_lng</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>end_lat</name>
-        <rename>end_lat</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>end_lng</name>
-        <rename>end_lng</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>member_casual</name>
-        <rename>member_casual</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>source_city_code</name>
-        <rename>source_city_code</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>trip_month</name>
-        <rename>trip_month</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>source_file</name>
-        <rename>source_file</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>loaded_at</name>
-        <rename>loaded_at</rename>
-        <update>Y</update>
-      </value>
-      <schema>staging</schema>
-      <table>stg_citibike_trips</table>
-    </lookup>
-    <commit>1000</commit>
-    <update_bypassed>N</update_bypassed>
-    <connection>dw-staging</connection>
-    <distribute>N</distribute>
-    <copies>1</copies>
-    <GUI>
-      <xloc>576</xloc>
       <yloc>464</yloc>
     </GUI>
     <partitioning>
@@ -762,22 +661,12 @@ var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now(
       <to>Write Citi Bike DQ rule stream evidence</to>
       <enabled>Y</enabled>
     </hop>
-    <hop>
-      <from>Read Citi Bike clean rows</from>
-      <to>Cast Citi Bike clean rows</to>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>Cast Citi Bike clean rows</from>
-      <to>Upsert staging.stg_citibike_trips</to>
-      <enabled>Y</enabled>
-    </hop>
   </order>
   <notepads>
     <notepad>
       <note>Stream A → etl_dq_rule_result_details (row-level rejects + warnings)
 Stream B → etl_dq_rule_result_analysis (aggregate counts per rule)
-Stream C → stg_citibike_trips (clean rows, cast, deduplicated)</note>
+Stream C → stg_citibike_trips (set-based clean row cast + upsert, deduplicated)</note>
       <fontsize>-1</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>

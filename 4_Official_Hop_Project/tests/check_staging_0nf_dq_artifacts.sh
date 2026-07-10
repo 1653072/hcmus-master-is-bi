@@ -18,7 +18,7 @@ assert_no_shell_blackbox() {
 
 assert_has_real_transform() {
   local path="$1"
-  if ! grep -Eq '<type>(TableInput|TableOutput|InsertUpdate|DBLookup|FilterRows|SelectValues|Constant|RowGenerator|ScriptValueMod|TextFileInput2|JsonInput)</type>' "$path"; then
+  if ! grep -Eq '<type>(TableInput|TableOutput|InsertUpdate|ExecSql|DBLookup|FilterRows|SelectValues|Constant|RowGenerator|ScriptValueMod|TextFileInput2|JsonInput)</type>' "$path"; then
     echo "Expected a real transform in $path" >&2
     exit 1
   fi
@@ -64,6 +64,14 @@ done
 grep -q "CREATE TABLE control.etl_dq_rule_result_details" "$CONTROL_SQL"
 grep -q "CREATE TABLE control.etl_dq_rule_result_analysis" "$CONTROL_SQL"
 grep -q "CREATE TABLE control.dq_rule_catalog" "$CONTROL_SQL"
+grep -q "ALTER TABLE control.etl_dq_rule_result_analysis OWNER TO hop_control_user" "$CONTROL_SQL"
+grep -q "ALTER TABLE control.etl_dq_rule_result_details OWNER TO hop_control_user" "$CONTROL_SQL"
+grep -q "ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_analysis_result_id_seq OWNER TO hop_control_user" "$CONTROL_SQL"
+grep -q "ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_details_detail_id_seq OWNER TO hop_control_user" "$CONTROL_SQL"
+grep -q "ALTER TABLE IF EXISTS control.etl_dq_rule_result_analysis OWNER TO hop_control_user" "$RUNTIME_SCRIPT"
+grep -q "ALTER TABLE IF EXISTS control.etl_dq_rule_result_details OWNER TO hop_control_user" "$RUNTIME_SCRIPT"
+grep -q "ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_analysis_result_id_seq OWNER TO hop_control_user" "$RUNTIME_SCRIPT"
+grep -q "ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_details_detail_id_seq OWNER TO hop_control_user" "$RUNTIME_SCRIPT"
 
 grep -q "DIVVY_NULL_REQUIRED" "$CONTROL_SQL"
 grep -q "CITI_DUPLICATE_RIDE" "$CONTROL_SQL"

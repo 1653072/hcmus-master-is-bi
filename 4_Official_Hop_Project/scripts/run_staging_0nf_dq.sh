@@ -23,7 +23,7 @@ insert_rule_result() {
   local failed_count="$4"
   local warning_count="$5"
   psql_control -c "
-INSERT INTO control.etl_dq_rule_result (
+INSERT INTO control.etl_dq_rule_result_analysis (
     load_run_id, source_name, rule_code, rule_type, severity,
     passed_count, failed_count, warning_count
 )
@@ -32,6 +32,30 @@ SELECT
     ${passed_count}, ${failed_count}, ${warning_count}
 FROM control.dq_rule_catalog
 WHERE rule_code = '${rule_code}';
+"
+}
+
+insert_detail_result() {
+  local source_name="$1"
+  local source_table="$2"
+  local rule_code="$3"
+  local rule_type="$4"
+  local dq_verdict="$5"
+  local reason="$6"
+  local row_count="$7"
+  if [ "${row_count:-0}" -le 0 ]; then
+    return
+  fi
+  psql_control -c "
+INSERT INTO control.etl_dq_rule_result_details (
+    load_run_id, source_name, source_table, source_file, source_row_number,
+    business_key, rule_code, rule_type, dq_verdict, reason, raw_payload
+)
+VALUES (
+    '${LOAD_RUN_ID}', '${source_name}', '${source_table}', NULL, NULL,
+    'summary_count=${row_count}', '${rule_code}', '${rule_type}', '${dq_verdict}',
+    '${reason}', jsonb_build_object('row_count', ${row_count})
+);
 "
 }
 
@@ -45,7 +69,7 @@ CREATE TABLE IF NOT EXISTS control.dq_rule_catalog (
     is_active         BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE IF NOT EXISTS control.etl_dq_rule_result (
+CREATE TABLE IF NOT EXISTS control.etl_dq_rule_result_analysis (
     result_id         SERIAL PRIMARY KEY,
     load_run_id       VARCHAR(80) NOT NULL,
     source_name       VARCHAR(100) NOT NULL,
@@ -56,6 +80,22 @@ CREATE TABLE IF NOT EXISTS control.etl_dq_rule_result (
     failed_count      INTEGER NOT NULL DEFAULT 0,
     warning_count     INTEGER NOT NULL DEFAULT 0,
     checked_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS control.etl_dq_rule_result_details (
+    detail_id         BIGSERIAL PRIMARY KEY,
+    load_run_id       VARCHAR(80) NOT NULL,
+    source_name       VARCHAR(100) NOT NULL,
+    source_table      VARCHAR(100) NOT NULL,
+    source_file       TEXT,
+    source_row_number BIGINT,
+    business_key      TEXT,
+    rule_code         VARCHAR(80) NOT NULL,
+    rule_type         VARCHAR(30) NOT NULL,
+    dq_verdict        VARCHAR(10) NOT NULL,
+    reason            TEXT NOT NULL,
+    raw_payload       JSONB,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO control.dq_rule_catalog (rule_code, source_name, rule_type, severity, rule_description) VALUES
@@ -83,6 +123,21 @@ ON CONFLICT (rule_code) DO UPDATE SET
     severity = EXCLUDED.severity,
     rule_description = EXCLUDED.rule_description,
     is_active = TRUE;
+
+-- The fallback runs as postgres and may create/migrate control tables on an
+-- older dev DB. Keep the Hop control connection as owner for native DQ writes.
+ALTER TABLE IF EXISTS control.dq_rule_catalog OWNER TO hop_control_user;
+ALTER TABLE IF EXISTS control.etl_dq_rule_result OWNER TO hop_control_user;
+ALTER TABLE IF EXISTS control.etl_dq_rule_result_analysis OWNER TO hop_control_user;
+ALTER TABLE IF EXISTS control.etl_dq_rule_result_details OWNER TO hop_control_user;
+ALTER TABLE IF EXISTS control.etl_extraction_control OWNER TO hop_control_user;
+ALTER TABLE IF EXISTS control.etl_job_log OWNER TO hop_control_user;
+
+ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_result_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_analysis_result_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_details_detail_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_extraction_control_control_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_job_log_log_id_seq OWNER TO hop_control_user;
 SQL
 
 psql_stg <<'SQL'
@@ -123,6 +178,14 @@ CREATE TABLE IF NOT EXISTS staging.dq_warning_row (
     warning_reason TEXT NOT NULL, raw_payload JSONB,
     warned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- The fallback runs as postgres and may create raw tables on an older dev DB.
+-- Keep the Hop staging connection as their owner so native cleanup can TRUNCATE them.
+ALTER TABLE staging.raw_divvy_trips OWNER TO hop_staging_user;
+ALTER TABLE staging.raw_citibike_trips OWNER TO hop_staging_user;
+ALTER TABLE staging.raw_noaa_weather OWNER TO hop_staging_user;
+ALTER TABLE staging.raw_gbfs_station OWNER TO hop_staging_user;
+
 TRUNCATE TABLE
     staging.raw_divvy_trips,
     staging.raw_citibike_trips,
@@ -133,7 +196,13 @@ TRUNCATE TABLE
 SQL
 
 psql_stg -v load_run_id="$LOAD_RUN_ID" <<'SQL'
-INSERT INTO staging.raw_divvy_trips
+INSERT INTO staging.raw_divvy_trips (
+    load_run_id, source_file, source_row_number,
+    ride_id, rideable_type, started_at, ended_at,
+    start_station_name, start_station_id, end_station_name, end_station_id,
+    start_lat, start_lng, end_lat, end_lng,
+    member_casual, source_city_code, trip_month, raw_loaded_at
+)
 SELECT :'load_run_id', source_file, ROW_NUMBER() OVER (ORDER BY source_file, ride_id),
        ride_id::TEXT, rideable_type::TEXT, started_at::TEXT, ended_at::TEXT,
        start_station_name::TEXT, start_station_id::TEXT, end_station_name::TEXT, end_station_id::TEXT,
@@ -141,7 +210,13 @@ SELECT :'load_run_id', source_file, ROW_NUMBER() OVER (ORDER BY source_file, rid
        member_casual::TEXT, source_city_code::TEXT, trip_month::TEXT, loaded_at
 FROM staging.stg_divvy_trips;
 
-INSERT INTO staging.raw_citibike_trips
+INSERT INTO staging.raw_citibike_trips (
+    load_run_id, source_file, source_row_number,
+    ride_id, rideable_type, started_at, ended_at,
+    start_station_name, start_station_id, end_station_name, end_station_id,
+    start_lat, start_lng, end_lat, end_lng,
+    member_casual, source_city_code, trip_month, raw_loaded_at
+)
 SELECT :'load_run_id', source_file, ROW_NUMBER() OVER (ORDER BY source_file, ride_id),
        ride_id::TEXT, rideable_type::TEXT, started_at::TEXT, ended_at::TEXT,
        start_station_name::TEXT, start_station_id::TEXT, end_station_name::TEXT, end_station_id::TEXT,
@@ -149,14 +224,24 @@ SELECT :'load_run_id', source_file, ROW_NUMBER() OVER (ORDER BY source_file, rid
        member_casual::TEXT, source_city_code::TEXT, trip_month::TEXT, loaded_at
 FROM staging.stg_citibike_trips;
 
-INSERT INTO staging.raw_noaa_weather
+INSERT INTO staging.raw_noaa_weather (
+    load_run_id, source_file, source_row_number,
+    source_city_code, noaa_station_id, observation_ts, report_type,
+    hourly_dry_bulb_temperature, hourly_precipitation, hourly_wind_speed,
+    hourly_present_weather_type, raw_loaded_at
+)
 SELECT :'load_run_id', NULL::TEXT, ROW_NUMBER() OVER (ORDER BY source_city_code, observation_ts),
        source_city_code::TEXT, noaa_station_id::TEXT, observation_ts::TEXT, report_type::TEXT,
        hourly_dry_bulb_temperature::TEXT, hourly_precipitation::TEXT, hourly_wind_speed::TEXT,
        hourly_present_weather_type::TEXT, loaded_at
 FROM staging.stg_weather;
 
-INSERT INTO staging.raw_gbfs_station
+INSERT INTO staging.raw_gbfs_station (
+    load_run_id, source_file, source_row_number,
+    source_city_code, gbfs_station_id, short_name, station_name,
+    latitude, longitude, capacity, station_type, region_id,
+    station_status, operation, raw_loaded_at
+)
 SELECT :'load_run_id', NULL::TEXT, ROW_NUMBER() OVER (ORDER BY source_city_code, short_name),
        source_city_code::TEXT, gbfs_station_id::TEXT, short_name::TEXT, station_name::TEXT,
        latitude::TEXT, longitude::TEXT, capacity::TEXT, station_type::TEXT, region_id::TEXT,
@@ -190,7 +275,8 @@ FROM staging.raw_citibike_trips r
 WHERE NULLIF(BTRIM(start_station_id), '') IS NULL OR NULLIF(BTRIM(end_station_id), '') IS NULL;
 SQL
 
-psql_control -c "DELETE FROM control.etl_dq_rule_result WHERE load_run_id = '${LOAD_RUN_ID}';"
+psql_control -c "DELETE FROM control.etl_dq_rule_result_details WHERE load_run_id = '${LOAD_RUN_ID}';"
+psql_control -c "DELETE FROM control.etl_dq_rule_result_analysis WHERE load_run_id = '${LOAD_RUN_ID}';"
 
 divvy_total="$(scalar_stg "SELECT COUNT(*) FROM staging.raw_divvy_trips;")"
 divvy_null="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_reject_row WHERE rule_code = 'DIVVY_NULL_REQUIRED';")"
@@ -236,6 +322,22 @@ insert_rule_result "gbfs_station" "GBFS_NULL_REQUIRED" "$((gbfs_total - gbfs_nul
 insert_rule_result "gbfs_station" "GBFS_DUPLICATE_STATION" "$((gbfs_total - gbfs_dup))" "$gbfs_dup" 0
 insert_rule_result "gbfs_station" "GBFS_DATATYPE_CAPACITY" "$((gbfs_total - gbfs_bad_capacity))" "$gbfs_bad_capacity" 0
 insert_rule_result "gbfs_station" "GBFS_FORMAT_COORDINATE" "$((gbfs_total - gbfs_bad_coord))" "$gbfs_bad_coord" 0
+
+insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_NULL_REQUIRED" "null" "reject" "ride_id, started_at, and source_city_code are required" "$divvy_null"
+insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_DUPLICATE_RIDE" "duplicate" "reject" "duplicate source rows by source_city_code and ride_id" "$divvy_dup"
+insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_FORMAT_TRIP_MONTH" "format" "reject" "trip_month must match YYYYMM" "$divvy_bad_month"
+insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_WARN_STATION_ID" "null" "warning" "start_station_id or end_station_id is missing" "$divvy_warn"
+insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_NULL_REQUIRED" "null" "reject" "ride_id, started_at, and source_city_code are required" "$citi_null"
+insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_DUPLICATE_RIDE" "duplicate" "reject" "duplicate source rows by source_city_code and ride_id" "$citi_dup"
+insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_FORMAT_TRIP_MONTH" "format" "reject" "trip_month must match YYYYMM" "$citi_bad_month"
+insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_WARN_STATION_ID" "null" "warning" "start_station_id or end_station_id is missing" "$citi_warn"
+insert_detail_result "noaa_lcd" "raw_noaa_weather" "NOAA_NULL_REQUIRED" "null" "reject" "station id, observation timestamp, and city are required" "$noaa_null"
+insert_detail_result "noaa_lcd" "raw_noaa_weather" "NOAA_DUPLICATE_HOUR" "duplicate" "reject" "duplicate source rows by source_city_code and observation_ts" "$noaa_dup"
+insert_detail_result "noaa_lcd" "raw_noaa_weather" "NOAA_FORMAT_REPORT_TYPE" "format" "reject" "report_type must be FM-15, FM-16, or FM-12" "$noaa_bad_report"
+insert_detail_result "gbfs_station" "raw_gbfs_station" "GBFS_NULL_REQUIRED" "null" "reject" "source_city_code and short_name are required" "$gbfs_null"
+insert_detail_result "gbfs_station" "raw_gbfs_station" "GBFS_DUPLICATE_STATION" "duplicate" "reject" "duplicate source rows by source_city_code and short_name" "$gbfs_dup"
+insert_detail_result "gbfs_station" "raw_gbfs_station" "GBFS_DATATYPE_CAPACITY" "datatype" "reject" "capacity must be an integer when present" "$gbfs_bad_capacity"
+insert_detail_result "gbfs_station" "raw_gbfs_station" "GBFS_FORMAT_COORDINATE" "format" "reject" "latitude and longitude must be in valid coordinate ranges" "$gbfs_bad_coord"
 
 printf 'load_run_id=%s\n' "$LOAD_RUN_ID"
 printf 'raw_divvy=%s raw_citibike=%s raw_noaa=%s raw_gbfs=%s\n' "$divvy_total" "$citi_total" "$noaa_total" "$gbfs_total"

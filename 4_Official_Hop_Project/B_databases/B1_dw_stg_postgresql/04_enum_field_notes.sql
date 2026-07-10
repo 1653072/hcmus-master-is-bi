@@ -48,4 +48,4 @@ COMMENT ON COLUMN control.etl_extraction_control.last_run_status IS
     'Enum: SUCCESS, FAILED, RUNNING, SKIPPED.';
 
 COMMENT ON COLUMN control.etl_job_log.status IS
-    'Enum: SUCCESS, FAILED, RUNNING, SKIPPED.';
+    'Enum: SUCCESS, FAILED, RUNNING, SKIPPED, DQ_PASSED, DQ_PARTIAL_PASSED, DQ_FAILED.';

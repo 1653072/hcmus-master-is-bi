@@ -102,3 +102,8 @@ ALTER TABLE control.etl_job_log OWNER TO hop_control_user;
 ALTER TABLE control.dq_rule_catalog OWNER TO hop_control_user;
 ALTER TABLE control.etl_dq_rule_result_analysis OWNER TO hop_control_user;
 ALTER TABLE control.etl_dq_rule_result_details OWNER TO hop_control_user;
+
+ALTER SEQUENCE IF EXISTS control.etl_extraction_control_control_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_job_log_log_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_analysis_result_id_seq OWNER TO hop_control_user;
+ALTER SEQUENCE IF EXISTS control.etl_dq_rule_result_details_detail_id_seq OWNER TO hop_control_user;

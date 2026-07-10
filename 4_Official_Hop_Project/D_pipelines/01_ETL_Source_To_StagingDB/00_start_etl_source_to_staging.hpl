@@ -321,6 +321,36 @@ WHERE source_name = 'gbfs_station' AND table_name = 'stg_gbfs_station'</sql>
     </partitioning>
     <attributes/>
   </transform>
+  <transform>
+    <type>ExecSql</type>
+    <name>Reset DQ result rows for load run</name>
+    <connection>dw-control</connection>
+    <sql>DELETE FROM control.etl_dq_rule_result_details
+WHERE load_run_id = 'bootstrap_202601_202605';
+DELETE FROM control.etl_dq_rule_result_analysis
+WHERE load_run_id = 'bootstrap_202601_202605';</sql>
+    <execute_each_row>N</execute_each_row>
+    <update_field/>
+    <insert_field/>
+    <delete_field/>
+    <read_field/>
+    <single_statement>N</single_statement>
+    <replace_variables>N</replace_variables>
+    <quoteString>N</quoteString>
+    <set_params>N</set_params>
+    <arguments/>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>688</xloc>
+      <yloc>544</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
   <order>
     <hop>
       <from>Generate single start row</from>
@@ -355,12 +385,13 @@ WHERE source_name = 'gbfs_station' AND table_name = 'stg_gbfs_station'</sql>
   </order>
   <notepads>
     <notepad>
-      <note>5 parallel branches (all run simultaneously, pipeline waits for all to finish):
+      <note>6 parallel branches (all run simultaneously, pipeline waits for all to finish):
 1. RowGenerator → Compute ETL_STARTED_AT → Set ETL_STARTED_AT
 2. Read divvy_trips watermarks   → Set LSET_DIVVY_TRIPS,   CET_DIVVY_TRIPS
 3. Read citibike_trips watermarks → Set LSET_CITIBIKE_TRIPS, CET_CITIBIKE_TRIPS
 4. Read noaa_lcd watermarks      → Set LSET_NOAA_LCD,      CET_NOAA_LCD
 5. Read gbfs_station watermarks  → Set LSET_GBFS_STATION,  CET_GBFS_STATION
+6. Reset current load_run_id rows in control.etl_dq_rule_result_* before DQ validation appends fresh evidence
 
 All variables are JVM-level → available to all downstream pipelines via getVariable().
 Load pipelines use LSET_*/CET_* for incremental filtering (WHERE raw_loaded_at BETWEEN LSET AND CET).
