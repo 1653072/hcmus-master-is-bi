@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>05_cleanup_staging_after_nds</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Clears raw and accepted staging tables after StagingDB to NDS has loaded and audit logging has succeeded.</description>
+  </info>
+  <transform>
+    <type>ExecSql</type>
+    <name>Truncate raw and staging tables</name>
+    <connection>dw-staging</connection>
+    <sql>TRUNCATE TABLE
+  staging.raw_divvy_trips,
+  staging.raw_citibike_trips,
+  staging.raw_noaa_weather,
+  staging.raw_gbfs_station,
+  staging.stg_divvy_trips,
+  staging.stg_citibike_trips,
+  staging.stg_weather,
+  staging.stg_gbfs_station;</sql>
+    <execute_each_row>N</execute_each_row>
+    <update_field/>
+    <insert_field/>
+    <delete_field/>
+    <read_field/>
+    <single_statement>N</single_statement>
+    <replace_variables>N</replace_variables>
+    <quoteString>N</quoteString>
+    <set_params>N</set_params>
+    <arguments/>
+    <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
+  </transform>
+  <order/>
+  <notepads>
+    <notepad><note>Post-NDS cleanup only clears the listed raw and accepted staging tables after audit logging succeeds.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>

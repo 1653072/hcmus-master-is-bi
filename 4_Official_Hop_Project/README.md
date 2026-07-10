@@ -114,17 +114,29 @@ Lát cắt ETL đầu tiên triển khai trong `D_pipelines/01_ETL_Source_To_Sta
 - NOAA LCD v2: đọc hai file `NOAA_LCD_CHICAGO` và `NOAA_LCD_NYC`; chỉ giữ hourly `REPORT_TYPE` dạng `FM-*`, loại daily/monthly summary như `SOD`.
 - GBFS JSON: parse `data.stations[*]`, dùng `short_name` làm khóa trạm nghiệp vụ; nếu nguồn thiếu `short_name` thì fallback bằng `gbfs_station_id` để không mất master row, nhưng các dòng fallback này cần được xem là dữ liệu cần review khi join với trip.
 - Staging không dùng `batch_id`; audit qua `loaded_at`, `control.etl_extraction_control`, và `control.etl_job_log`. Vì `dw_staging` và `dw_control` là hai database riêng, workflow chạy pipeline `05_audit_staging_load_counts.hpl` sau các load để đọc count từ staging rồi ghi status/count sang control DB.
-- Upsert bằng Hop `InsertUpdate` theo business key staging để workflow chạy lại không nhân đôi dữ liệu.
+- Upsert bằng Hop `InsertUpdate` theo business key staging để workflow chạy lại không nhân đôi dữ liệu. Riêng Citi Bike dùng nhánh accepted-row set-based trong PostgreSQL (`INSERT ... ON CONFLICT ... DO UPDATE`) vì dữ liệu lớn; DQ detail/summary vẫn là Hop-visible cross-DB streams.
 
 ### 2.2 Pipeline 2: StagingDB → NDS
 
-Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không phải shell blackbox. `E_workflows/01_etl_source_to_stagingdb.hwf` gọi tuần tự các `.hpl` source load, raw/DQ validation, DQ audit và staging audit. `E_workflows/02_etl_stagingdb_to_nds.hwf` gọi tuần tự 3 `.hpl` load NDS:
+Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không phải shell blackbox. `E_workflows/01_etl_source_to_stagingdb.hwf` gọi tuần tự các `.hpl` source load, raw/DQ validation, DQ audit và staging audit. `E_workflows/02_etl_stagingdb_to_nds.hwf` gọi tuần tự các `.hpl` StagingDB → NDS, audit, rồi cleanup staging:
 
+- `D_pipelines/02_ETL_StagingDB_To_NDS/00_start_etl_stagingdb_to_nds.hpl`: set biến `ETL_STAGINGDB_TO_NDS_STARTED_AT` cho audit log
+- `D_pipelines/02_ETL_StagingDB_To_NDS/00_check_staging_dq_before_nds.hpl`: chặn NDS/cleanup nếu một source-to-staging result không `SUCCESS`; `DQ_PARTIAL_PASSED` vẫn load accepted rows
+- `D_pipelines/02_ETL_StagingDB_To_NDS/01_load_city_calendar_to_nds.hpl`: city code xuất hiện trong staging → `nds.city`; khoảng ngày staging trip/weather → `nds.calendar_day`
 - `D_pipelines/02_ETL_StagingDB_To_NDS/01_load_gbfs_station_to_nds.hpl`: `stg_gbfs_station` → `nds.station`
 - `D_pipelines/02_ETL_StagingDB_To_NDS/02_load_weather_to_nds.hpl`: `stg_weather` → `nds.weather`, derive `weather_category`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl`: `stg_divvy_trips` + `stg_citibike_trips` → `nds.trip`, derive `duration_minutes`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/03_prepare_trip_buffer.hpl`: truncate transient `import.stg_trip` trong NDS trước mỗi lần nạp trip
+- `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl`: batch copy accepted `stg_divvy_trips` + `stg_citibike_trips` → `import.stg_trip`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/03_merge_trip_buffer_to_nds.hpl`: set-based join city/station, derive `duration_minutes`, rồi upsert vào `nds.trip` theo `(city_sk, ride_id)`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/04_audit_stagingdb_to_nds_job_log.hpl`: ghi `control.etl_job_log` với `job_name = "etl_stagingdb_to_nds"`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/05_cleanup_nds_trip_buffer.hpl`: sau audit thành công, truncate transient `import.stg_trip`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/05_cleanup_staging_after_nds.hpl`: sau khi NDS load và audit thành công, truncate 4 `staging.raw_*` và 4 `staging.stg_*` tables
+
+`import.stg_trip` là bảng làm việc transient trong DB NDS, không phải output nghiệp vụ. Bảng này là `UNLOGGED`, không có PK/index, có thể tái tạo từ Staging nếu workflow lỗi/crash; output chính thức vẫn là `nds.trip`.
 
 **DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
+
+**Citi Bike validation runtime:** `02_validate_citibike_raw_to_staging.hpl` có 2 parameter optional: `CITIBIKE_VALIDATE_MONTH` mặc định `ALL` và `CITIBIKE_RESULT_LOAD_RUN_ID` mặc định `bootstrap_202601_202605`. Khi cần proof nhanh, chạy pipeline Citi trực tiếp với `CITIBIKE_VALIDATE_MONTH=202602` và một `CITIBIKE_RESULT_LOAD_RUN_ID` riêng; workflow 01 không truyền gì thêm nên vẫn validate full kỳ 202601–202605.
 
 **Lệnh chạy nhanh:**
 
@@ -259,7 +271,7 @@ Lệnh này sinh lại `development_configs.json` từ `development_configs.loca
 | Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                               |
 | Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines |
 | Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification |
-| ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.station`, `nds.weather`, `nds.trip` qua `D_pipelines/02_ETL_StagingDB_To_NDS`, `E_workflows/02_etl_stagingdb_to_nds.hwf`; script chỉ là fallback/manual verification |
+| ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.city`, `nds.calendar_day`, `nds.station`, `nds.weather`, `nds.trip`, sau đó audit và cleanup 8 bảng staging; script chỉ là fallback/manual verification |
 | Hop ETL end-to-end                     | `D_pipelines/03_ETL_NDS_To_DDS`, `E_workflows/03_etl_nds_to_dds.hwf` hiện là skeleton/placeholder; DDS load làm sau |
 
 
@@ -566,7 +578,7 @@ bash download_datasets.sh --from 202603 --to 202604
 | Trip         | `DIVVY_TRIPS_DIR`, `CITIBIKE_TRIPS_DIR`                    | Thư mục `extracted/{YYYYMM}/`                    |
 | NOAA         | `NOAA_LCD_DIR`, `NOAA_LCD_CHICAGO`, `NOAA_LCD_NYC`         | File `*_01-05.csv`                               |
 | GBFS / MDM   | `GBFS_STATION_DIR`, `HOP_MDM_STATION_STAGING_TABLE`        | Push → `stg_gbfs_station`                        |
-| DB STG       | `STAGING_DB_*`, `CONTROL_DB_*`, `METADATA_DB_*`            | Port **5434**                                    |
+| DB STG       | `STAGING_DB_*`, `CONTROL_DB_*`                              | Port **5434**                                    |
 | DB NDS / DDS | `NDS_DB_*` (5435), `DDS_DB_*` (5436)                       | User `*_user`, password `*@123`                  |
 | Power BI     | `POWERBI_DDS_*`                                            | `analytics_reader_user` / `analytics_reader@123` |
 
@@ -592,7 +604,7 @@ File lớn **gitignore**; mỗi thành viên chạy `download_datasets.sh` local
 
 ## 8. Schema DW — Staging, NDS, DDS
 
-Thiết kế schema cho bike-share DW (Chicago Divvy + NYC Citi Bike, kỳ mẫu **202601–202605**). SQL init: `B_databases/`; Docker: `make db-up` (ports **5434** STG+Control+Metadata, **5435** NDS, **5436** DDS).
+Thiết kế schema cho bike-share DW (Chicago Divvy + NYC Citi Bike, kỳ mẫu **202601–202605**). SQL init: `B_databases/`; Docker: `make db-up` (ports **5434** STG+Control, **5435** NDS, **5436** DDS).
 
 ### 8.1. Tổng quan 3 tầng
 
@@ -815,6 +827,8 @@ erDiagram
 
 Port **5435** · SQL: `B2_dw_nds_postgresql/02_nds_schema.sql`
 
+Migration `B2_dw_nds_postgresql/05_import_trip_buffer.sql` tạo thêm `import.stg_trip` làm buffer transient cho trip bulk load. Buffer này nằm cùng DB NDS để Hop có thể batch copy từ Staging rồi PostgreSQL merge set-based vào `nds.trip`; nó không thuộc mô hình 3NF nghiệp vụ.
+
 ```mermaid
 erDiagram
   nds_city ||--o{ nds_station : city_sk
@@ -997,8 +1011,8 @@ erDiagram
 | `dds.dim_city`              | CHI + NYC                                                           |
 | `dds.dim_weather_condition` | Clear, Rain, Snow, Fog                                              |
 | `dds.dim_datetime`          | Mọi giờ **2026-01-01 → 2026-05-31** + `is_weekend` + `is_peak_hour` |
-| `nds.city`                  | CHI + NYC (mirror) — `B2_dw_nds_postgresql/03_seed_nds.sql`         |
-| `nds.calendar_day`          | Mọi ngày 2026-01-01 → 2026-05-31                                    |
+| `nds.city`                  | CHI + NYC (mirror) — bootstrap bằng seed, refresh/upsert trong StagingDB → NDS workflow |
+| `nds.calendar_day`          | Mọi ngày 2026-01-01 → 2026-05-31 — bootstrap bằng seed, refresh/upsert theo khoảng ngày staging trong StagingDB → NDS workflow |
 
 
 **Không seed** US federal holidays.
@@ -1084,14 +1098,14 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 
 
 
-#### Control + Metadata
+#### Control
 
 
 | Bảng / cột                               | Giá trị hợp lệ                                              |
 | ---------------------------------------- | ----------------------------------------------------------- |
 | `etl_extraction_control.source_name`     | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
 | `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
-| `etl_job_log.status`                     | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
+| `etl_job_log.status`                     | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`, `DQ_PASSED`, `DQ_PARTIAL_PASSED`, `DQ_FAILED` |
 
 
 

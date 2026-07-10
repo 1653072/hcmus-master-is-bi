@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>00_check_staging_dq_before_nds</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Stops the NDS workflow when any source-to-staging control row is not successful. DQ partial passes remain eligible because they retain accepted staging rows and the source control status is SUCCESS.</description>
+  </info>
+  <transform>
+    <type>ExecSql</type>
+    <name>Block failed source-to-staging results</name>
+    <connection>dw-control</connection>
+    <sql><![CDATA[DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM control.etl_extraction_control
+    WHERE source_name IN ('divvy_trips', 'citibike_trips', 'noaa_lcd', 'gbfs_station')
+      AND COALESCE(last_run_status, 'FAILED') <> 'SUCCESS'
+  ) THEN
+    RAISE EXCEPTION 'NDS load blocked: a source-to-staging result is not SUCCESS';
+  END IF;
+END $$;]]></sql>
+    <execute_each_row>N</execute_each_row>
+    <update_field/>
+    <insert_field/>
+    <delete_field/>
+    <read_field/>
+    <single_statement>Y</single_statement>
+    <replace_variables>N</replace_variables>
+    <quoteString>N</quoteString>
+    <set_params>N</set_params>
+    <arguments/>
+    <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
+  </transform>
+  <order/>
+  <notepads>
+    <notepad><note>Precondition for the NDS workflow: every source control row must be SUCCESS. A source with DQ_PARTIAL_PASSED still has accepted stg_* rows, so its staging audit remains SUCCESS and may continue. A completely rejected source is FAILED and blocks NDS before cleanup.</note><xloc>96</xloc><yloc>224</yloc><width>840</width><heigth>80</heigth></notepad>
+  </notepads>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>
