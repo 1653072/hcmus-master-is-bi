@@ -20,7 +20,8 @@
     <name>List Citi Bike CSV files</name>
     <file>
       <name>${CITIBIKE_TRIPS_DIR}/</name>
-      <filemask>[0-9]{6}.*\.csv</filemask>
+      <!-- <filemask>[0-9]{6}.*\.csv</filemask>   -->
+      <filemask>202601.*\.csv</filemask>
       <exclude_filemask/>
       <file_required>Y</file_required>
       <include_subfolders>Y</include_subfolders>

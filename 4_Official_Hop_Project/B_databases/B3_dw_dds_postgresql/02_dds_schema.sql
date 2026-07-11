@@ -51,7 +51,6 @@ CREATE TABLE dds.dim_weather_condition (
 
 CREATE TABLE dds.fact_station_hour_balance (
     station_hour_balance_sk  BIGSERIAL PRIMARY KEY,
-    city_sk                  INTEGER NOT NULL REFERENCES dds.dim_city (city_sk),
     station_sk               BIGINT NOT NULL REFERENCES dds.dim_station (station_sk),
     datetime_sk              INTEGER NOT NULL REFERENCES dds.dim_datetime (datetime_sk),
     weather_condition_sk     INTEGER NOT NULL REFERENCES dds.dim_weather_condition (weather_condition_sk),
@@ -69,10 +68,10 @@ CREATE TABLE dds.fact_station_hour_balance (
     precipitation            NUMERIC(10, 2),
     wind_speed               NUMERIC(8, 2),
     loaded_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_fact_grain UNIQUE (city_sk, station_sk, datetime_sk)
+    CONSTRAINT uq_fact_grain UNIQUE (station_sk, datetime_sk)
 );
 
-CREATE INDEX idx_fact_city_datetime ON dds.fact_station_hour_balance (city_sk, datetime_sk);
+CREATE INDEX idx_fact_datetime ON dds.fact_station_hour_balance (datetime_sk);
 CREATE INDEX idx_fact_station ON dds.fact_station_hour_balance (station_sk);
 
 GRANT CONNECT ON DATABASE dw_dds TO analytics_reader_user;

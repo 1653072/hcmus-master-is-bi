@@ -33,5 +33,5 @@ SELECT
         WHEN EXTRACT(MONTH FROM d) IN (6, 7, 8) THEN 'summer'
         ELSE 'fall'
     END AS season
-FROM generate_series('2026-01-01'::DATE, '2026-05-31'::DATE, INTERVAL '1 day') AS d
+FROM generate_series('2025-12-01'::DATE, '2026-06-30'::DATE, INTERVAL '1 day') AS d
 CROSS JOIN generate_series(0, 23) AS h;

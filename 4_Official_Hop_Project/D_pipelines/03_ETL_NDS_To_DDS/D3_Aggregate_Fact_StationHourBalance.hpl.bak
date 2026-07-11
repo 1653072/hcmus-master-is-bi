@@ -262,6 +262,12 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
       <schema>dds</schema>
       <table>fact_station_hour_balance</table>
       <key>
+        <name>city_sk</name>
+        <field>city_sk</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <key>
         <name>station_sk</name>
         <field>station_sk</field>
         <condition>=</condition>
@@ -273,6 +279,11 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
         <condition>=</condition>
         <name2/>
       </key>
+      <value>
+        <name>city_sk</name>
+        <rename>city_sk</rename>
+        <update>N</update>
+      </value>
       <value>
         <name>station_sk</name>
         <rename>station_sk</rename>
