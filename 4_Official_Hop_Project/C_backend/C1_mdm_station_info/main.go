@@ -118,9 +118,41 @@ func buildPushURL() string {
 func inferCityCode(path string) string {
 	lower := strings.ToLower(path)
 	switch {
-	case strings.Contains(lower, "divvy") || strings.Contains(lower, "chi") || strings.Contains(lower, "chicago"):
+	case strings.Contains(lower, "divvy") || strings.Contains(lower, "chicago"):
 		return "CHI"
-	case strings.Contains(lower, "citibike") || strings.Contains(lower, "nyc") || strings.Contains(lower, "new_york"):
+	case strings.Contains(lower, "citibike") || strings.Contains(lower, "new_york"):
+		return "NYC"
+	default:
+		return ""
+	}
+}
+
+// inferCityCodeFromStations uses short_name / station_id prefixes (CHI… / NYC…)
+// so the default new_mdm_station_information.json demo file works without -city.
+func inferCityCodeFromStations(stations []gbfsStation) string {
+	hasCHI, hasNYC := false, false
+	for _, st := range stations {
+		for _, raw := range []string{st.ShortName, st.StationID} {
+			u := strings.ToUpper(strings.TrimSpace(raw))
+			if strings.HasPrefix(u, "CHI") || strings.Contains(u, "CHI-") || strings.Contains(u, "-CHI-") {
+				hasCHI = true
+			}
+			if strings.HasPrefix(u, "NYC") || strings.Contains(u, "NYC-") || strings.Contains(u, "-NYC-") {
+				hasNYC = true
+			}
+			lower := strings.ToLower(raw)
+			if strings.Contains(lower, "divvy") || strings.Contains(lower, "chicago") {
+				hasCHI = true
+			}
+			if strings.Contains(lower, "citibike") || strings.Contains(lower, "new_york") {
+				hasNYC = true
+			}
+		}
+	}
+	switch {
+	case hasCHI && !hasNYC:
+		return "CHI"
+	case hasNYC && !hasCHI:
 		return "NYC"
 	default:
 		return ""
@@ -248,6 +280,9 @@ func main() {
 	city := strings.ToUpper(strings.TrimSpace(*cityFlag))
 	if city == "" || city == "ALL" {
 		city = inferCityCode(path)
+	}
+	if city == "" || city == "ALL" {
+		city = inferCityCodeFromStations(stations)
 	}
 	if city != "CHI" && city != "NYC" {
 		fmt.Fprintf(os.Stderr, "ERROR: set -city CHI|NYC (could not infer from %s)\n", path)

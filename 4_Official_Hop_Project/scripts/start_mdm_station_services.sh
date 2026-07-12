@@ -107,5 +107,10 @@ fi
 
 cd "$PROJECT_ROOT/C_backend/C1_mdm_station_info"
 echo "Starting Go MDM station pusher (go run .)"
-echo "Tip: use flags -city CHI -operation INSERT -limit 5 for smoke tests."
+if [[ "$#" -eq 0 ]]; then
+  echo "No flags passed — default smoke: -city CHI -operation INSERT"
+  set -- -city CHI -operation INSERT
+else
+  echo "Args: $*"
+fi
 go run . "$@"
