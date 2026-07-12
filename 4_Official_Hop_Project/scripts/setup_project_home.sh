@@ -6,14 +6,15 @@
 #
 # Usage:
 #   make setup-project-home
-#   ./setup_project_home.sh
+#   ./scripts/setup_project_home.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCAL_CONFIG="${SCRIPT_DIR}/development_configs.local.json"
-OUT_CONFIG="${SCRIPT_DIR}/development_configs.json"
-PROJECT_HOME_ABS="$(cd "$SCRIPT_DIR" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOCAL_CONFIG="${PROJECT_ROOT}/development_configs.local.json"
+OUT_CONFIG="${PROJECT_ROOT}/development_configs.json"
+PROJECT_HOME_ABS="$PROJECT_ROOT"
 
 python_works() {
   local out
@@ -94,7 +95,7 @@ PY
 main() {
   case "${1:-}" in
     --help|-h)
-      echo "Usage: make setup-project-home  OR  ./setup_project_home.sh"
+      echo "Usage: make setup-project-home  OR  ./scripts/setup_project_home.sh"
       ;;
     *)
       generate_config

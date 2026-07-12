@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <pipeline>
   <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
     <parameters/>
     <name>02_load_weather_to_nds</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
     <description>Visible Hop load from staging.stg_weather into nds.weather with weather_category and city/hour dedupe.</description>
+    <created_user>-</created_user>
+    <modified_user>-</modified_user>
+    <created_date>2026/07/12 21:52:02.772</created_date>
+    <modified_date>2026/07/12 21:52:02.772</modified_date>
   </info>
   <transform>
     <type>TableInput</type>
     <name>Read staging.stg_weather deduped</name>
-    <connection>dw-staging</connection>
-    <sql><![CDATA[WITH weather_ranked AS (
+    <sql>WITH weather_ranked AS (
   SELECT
     source_city_code,
     date_trunc('hour', observation_ts) AS observation_hour,
@@ -49,55 +55,211 @@
 SELECT source_city_code, observation_hour, report_type, temperature_c,
        precipitation_mm, wind_speed_ms, present_weather, weather_category
 FROM weather_ranked
-WHERE rn = 1]]></sql>
+WHERE rn = 1</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
     <variables_active>N</variables_active>
+    <connection>dw-staging</connection>
     <lookup/>
     <sql_from_file/>
-    <GUI><xloc>96</xloc><yloc>96</yloc></GUI>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>96</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
     <type>DBLookup</type>
     <name>Lookup nds.city by source_city_code</name>
     <connection>dw-nds</connection>
     <cache>N</cache>
+    <cache_size>0</cache_size>
+    <cache_load_all>N</cache_load_all>
     <lookup>
       <schema>nds</schema>
       <table>city</table>
-      <key><name>source_city_code</name><field>city_code</field><condition>=</condition><name2/></key>
-      <value><name>city_sk</name><rename>city_sk</rename><default/><type>Integer</type></value>
+      <key>
+        <name>source_city_code</name>
+        <name2/>
+        <condition>=</condition>
+        <field>city_code</field>
+      </key>
+      <value>
+        <name>city_sk</name>
+        <rename>city_sk</rename>
+        <default/>
+        <type>Integer</type>
+      </value>
+      <fail_on_multiple>N</fail_on_multiple>
+      <eat_row_on_failure>N</eat_row_on_failure>
     </lookup>
-    <GUI><xloc>384</xloc><yloc>96</yloc></GUI>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>240</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Set loaded_at NOW</name>
+    <jsScripts>
+      <jsScript>
+        <jsScript_type>0</jsScript_type>
+        <jsScript_name>process</jsScript_name>
+        <jsScript_script>var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script>
+      </jsScript>
+    </jsScripts>
+    <fields>
+      <field>
+        <name>loaded_at</name>
+        <rename>loaded_at</rename>
+        <type>Timestamp</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+    </fields>
+    <optimizationLevel>9</optimizationLevel>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>384</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <transform>
     <type>InsertUpdate</type>
     <name>Upsert nds.weather</name>
-    <connection>dw-nds</connection>
     <lookup>
-      <key><name>city_sk</name><field>city_sk</field><condition>=</condition><name2/></key>
-      <key><name>observation_hour</name><field>observation_hour</field><condition>=</condition><name2/></key>
-      <value><name>city_sk</name><rename>city_sk</rename><update>N</update></value>
-      <value><name>observation_hour</name><rename>observation_hour</rename><update>N</update></value>
-      <value><name>report_type</name><rename>report_type</rename><update>Y</update></value>
-      <value><name>temperature_c</name><rename>temperature_c</rename><update>Y</update></value>
-      <value><name>precipitation_mm</name><rename>precipitation_mm</rename><update>Y</update></value>
-      <value><name>wind_speed_ms</name><rename>wind_speed_ms</rename><update>Y</update></value>
-      <value><name>present_weather</name><rename>present_weather</rename><update>Y</update></value>
-      <value><name>weather_category</name><rename>weather_category</rename><update>Y</update></value>
+      <key>
+        <name>city_sk</name>
+        <field>city_sk</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <key>
+        <name>observation_hour</name>
+        <field>observation_hour</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <value>
+        <name>city_sk</name>
+        <rename>city_sk</rename>
+        <update>N</update>
+      </value>
+      <value>
+        <name>observation_hour</name>
+        <rename>observation_hour</rename>
+        <update>N</update>
+      </value>
+      <value>
+        <name>report_type</name>
+        <rename>report_type</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>temperature_c</name>
+        <rename>temperature_c</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>precipitation_mm</name>
+        <rename>precipitation_mm</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>wind_speed_ms</name>
+        <rename>wind_speed_ms</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>present_weather</name>
+        <rename>present_weather</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>weather_category</name>
+        <rename>weather_category</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>loaded_at</name>
+        <rename>loaded_at</rename>
+        <update>Y</update>
+      </value>
       <schema>nds</schema>
       <table>weather</table>
     </lookup>
     <commit>1000</commit>
     <update_bypassed>N</update_bypassed>
-    <GUI><xloc>672</xloc><yloc>96</yloc></GUI>
+    <connection>dw-nds</connection>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>160</xloc>
+      <yloc>528</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
   </transform>
   <order>
-    <hop><from>Read staging.stg_weather deduped</from><to>Lookup nds.city by source_city_code</to><enabled>Y</enabled></hop>
-    <hop><from>Lookup nds.city by source_city_code</from><to>Upsert nds.weather</to><enabled>Y</enabled></hop>
+    <hop>
+      <from>Read staging.stg_weather deduped</from>
+      <to>Lookup nds.city by source_city_code</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Lookup nds.city by source_city_code</from>
+      <to>Set loaded_at NOW</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Set loaded_at NOW</from>
+      <to>Upsert nds.weather</to>
+      <enabled>Y</enabled>
+    </hop>
   </order>
   <notepads>
-    <notepad><note>Target: nds.weather. Idempotent key: city_sk + observation_hour. weather_category is derived before upsert.</note><xloc>96</xloc><yloc>224</yloc><width>760</width><heigth>80</heigth></notepad>
+    <notepad>
+      <note>Target: nds.weather. Idempotent key: city_sk + observation_hour. weather_category is derived before upsert.</note>
+      <fontsize>-1</fontsize>
+      <fontbold>N</fontbold>
+      <fontitalic>N</fontitalic>
+      <fontcolorred>14</fontcolorred>
+      <fontcolorgreen>58</fontcolorgreen>
+      <fontcolorblue>90</fontcolorblue>
+      <backgroundcolorred>201</backgroundcolorred>
+      <backgroundcolorgreen>232</backgroundcolorgreen>
+      <backgroundcolorblue>251</backgroundcolorblue>
+      <bordercolorred>14</bordercolorred>
+      <bordercolorgreen>58</bordercolorgreen>
+      <bordercolorblue>90</bordercolorblue>
+      <xloc>64</xloc>
+      <yloc>624</yloc>
+      <width>760</width>
+      <height>-1</height>
+    </notepad>
   </notepads>
   <attributes/>
   <transform_error_handling/>

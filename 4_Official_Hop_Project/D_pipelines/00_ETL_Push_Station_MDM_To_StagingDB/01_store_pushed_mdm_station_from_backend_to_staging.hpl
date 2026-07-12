@@ -1,0 +1,872 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters/>
+    <name>01_store_pushed_mdm_station_from_backend_to_staging</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Validate MDM station push, reconcile INSERT/UPDATE/DELETE against nds.station (active current), upsert staging.stg_gbfs_station.</description>
+    <created_user>-</created_user>
+    <modified_user>-</modified_user>
+    <created_date>2026/07/12 20:00:00.000</created_date>
+    <modified_date>2026/07/12 20:00:00.000</modified_date>
+  </info>
+  <transform>
+    <type>RowGenerator</type>
+    <name>Generate 1 row</name>
+    <never_ending>N</never_ending>
+    <interval_in_ms>5000</interval_in_ms>
+    <row_time_field>now</row_time_field>
+    <last_time_field>FiveSecondsAgo</last_time_field>
+    <limit>1</limit>
+    <fields>
+      <field>
+        <name>dummy</name>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif/>
+        <set_empty_string>N</set_empty_string>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>32</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>GetVariable</type>
+    <name>Get MDM request body</name>
+    <fields>
+      <field>
+        <name>mdm_request_body</name>
+        <variable>${MDM_REQUEST_BODY}</variable>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <trim_type>both</trim_type>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>144</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>JsonInput</type>
+    <name>Parse MDM JSON body</name>
+    <include>N</include>
+    <include_field/>
+    <rownum>N</rownum>
+    <rownum_field/>
+    <limit>0</limit>
+    <valueField>mdm_request_body</valueField>
+    <IsInFields>Y</IsInFields>
+    <IsAFile>N</IsAFile>
+    <addresultfile>N</addresultfile>
+    <IsIgnoreEmptyFile>N</IsIgnoreEmptyFile>
+    <doNotFailIfNoFile>N</doNotFailIfNoFile>
+    <ignoreMissingPath>Y</ignoreMissingPath>
+    <readurl>N</readurl>
+    <removeSourceField>Y</removeSourceField>
+    <defaultPathLeafToNull>Y</defaultPathLeafToNull>
+    <files/>
+    <fields>
+      <field>
+        <name>be_operation</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.operation</path>
+      </field>
+      <field>
+        <name>sent_at</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.sent_at</path>
+      </field>
+      <field>
+        <name>source_city_code</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.source_city_code</path>
+      </field>
+      <field>
+        <name>gbfs_station_id</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.gbfs_station_id</path>
+      </field>
+      <field>
+        <name>short_name</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.short_name</path>
+      </field>
+      <field>
+        <name>station_name</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.station_name</path>
+      </field>
+      <field>
+        <name>latitude</name>
+        <length>-1</length>
+        <type>Number</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.latitude</path>
+      </field>
+      <field>
+        <name>longitude</name>
+        <length>-1</length>
+        <type>Number</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.longitude</path>
+      </field>
+      <field>
+        <name>capacity</name>
+        <length>-1</length>
+        <type>Integer</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>0</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.capacity</path>
+      </field>
+      <field>
+        <name>station_type</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.station_type</path>
+      </field>
+      <field>
+        <name>region_id</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.region_id</path>
+      </field>
+      <field>
+        <name>station_status</name>
+        <length>-1</length>
+        <type>String</type>
+        <format/>
+        <trim_type>none</trim_type>
+        <precision>-1</precision>
+        <currency/>
+        <decimal/>
+        <group/>
+        <repeat>N</repeat>
+        <path>$.data.station_status</path>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>256</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>DBLookup</type>
+    <name>Lookup nds.city</name>
+    <connection>dw-nds</connection>
+    <cache>N</cache>
+    <cache_size>0</cache_size>
+    <cache_load_all>N</cache_load_all>
+    <lookup>
+      <schema>nds</schema>
+      <table>city</table>
+      <key>
+        <name>source_city_code</name>
+        <name2/>
+        <condition>=</condition>
+        <field>city_code</field>
+      </key>
+      <value>
+        <name>city_sk</name>
+        <rename>city_sk</rename>
+        <default/>
+        <type>Integer</type>
+      </value>
+      <fail_on_multiple>N</fail_on_multiple>
+      <eat_row_on_failure>N</eat_row_on_failure>
+    </lookup>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>368</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>Constant</type>
+    <name>Add is_current lookup flag</name>
+    <fields>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>Y</nullif>
+        <name>lookup_is_current</name>
+        <type>Boolean</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>464</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>DBLookup</type>
+    <name>Lookup active nds.station</name>
+    <connection>dw-nds</connection>
+    <cache>N</cache>
+    <cache_size>0</cache_size>
+    <cache_load_all>N</cache_load_all>
+    <lookup>
+      <schema>nds</schema>
+      <table>station</table>
+      <key>
+        <name>city_sk</name>
+        <name2/>
+        <condition>=</condition>
+        <field>city_sk</field>
+      </key>
+      <key>
+        <name>short_name</name>
+        <name2/>
+        <condition>=</condition>
+        <field>source_station_id</field>
+      </key>
+      <key>
+        <name>lookup_is_current</name>
+        <name2/>
+        <condition>=</condition>
+        <field>is_current</field>
+      </key>
+      <value>
+        <name>station_sk</name>
+        <rename>nds_station_sk</rename>
+        <default/>
+        <type>Integer</type>
+      </value>
+      <fail_on_multiple>N</fail_on_multiple>
+      <eat_row_on_failure>N</eat_row_on_failure>
+    </lookup>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>560</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Validate reconcile and build response</name>
+    <jsScripts>
+      <jsScript>
+        <jsScript_type>0</jsScript_type>
+        <jsScript_name>process</jsScript_name>
+        <jsScript_script>var http_status = 200;
+var response_json = "";
+var operation = be_operation;
+var loaded_at = null;
+var allowedOps = getVariable("HOP_MDM_ALLOWED_OPERATIONS", "INSERT,UPDATE,DELETE");
+
+function hasOp(op) {
+  return allowedOps.indexOf(op) >= 0;
+}
+
+function blank(v) {
+  return v == null || String(v).trim().length == 0;
+}
+
+if (!be_operation || !hasOp(String(be_operation))) {
+  http_status = 400;
+  response_json = JSON.stringify({ status: "ERROR", message: "Invalid operation" });
+} else if (blank(source_city_code) || (String(source_city_code) != "CHI" &amp;&amp; String(source_city_code) != "NYC")) {
+  http_status = 400;
+  response_json = JSON.stringify({ status: "ERROR", message: "Invalid source_city_code" });
+} else if (blank(short_name)) {
+  http_status = 400;
+  response_json = JSON.stringify({ status: "ERROR", message: "Invalid station's short_name" });
+} else if (city_sk == null || String(city_sk).length == 0) {
+  http_status = 400;
+  response_json = JSON.stringify({ status: "ERROR", message: "Unknown source_city_code in NDS city" });
+}
+
+if (http_status == 200 &amp;&amp; blank(station_status)) {
+  station_status = "open";
+}
+
+var exists_in_nds = (nds_station_sk != null &amp;&amp; nds_station_sk != undefined &amp;&amp; String(nds_station_sk).length > 0);
+
+if (http_status == 200) {
+  if (be_operation == "INSERT" || be_operation == "UPDATE") {
+    operation = exists_in_nds ? "UPDATE" : "INSERT";
+  } else if (be_operation == "DELETE") {
+    if (!exists_in_nds) {
+      http_status = 404;
+      response_json = JSON.stringify({ status: "ERROR", message: "Station not found in NDS" });
+    } else {
+      operation = "DELETE";
+    }
+  }
+}
+
+var Timestamp = Packages.java.sql.Timestamp;
+var Instant = Packages.java.time.Instant;
+
+if (http_status == 200) {
+  loaded_at = Timestamp.from(Instant.now());
+  response_json = JSON.stringify({
+    status: "ACCEPTED",
+    source_city_code: String(source_city_code),
+    short_name: String(short_name),
+    operation: String(operation)
+  });
+}</jsScript_script>
+      </jsScript>
+    </jsScripts>
+    <fields>
+      <field>
+        <name>operation</name>
+        <rename>operation</rename>
+        <type>String</type>
+        <length>10</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>station_status</name>
+        <rename>station_status</rename>
+        <type>String</type>
+        <length>30</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
+      </field>
+      <field>
+        <name>loaded_at</name>
+        <rename>loaded_at</rename>
+        <type>Timestamp</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>http_status</name>
+        <rename>http_status</rename>
+        <type>Integer</type>
+        <length>-1</length>
+        <precision>0</precision>
+        <replace>N</replace>
+      </field>
+      <field>
+        <name>response_json</name>
+        <rename>response_json</rename>
+        <type>String</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+    </fields>
+    <optimizationLevel>9</optimizationLevel>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>672</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>FilterRows</type>
+    <name>Validation OK</name>
+    <compare>
+      <condition>
+        <negated>N</negated>
+        <operator>-</operator>
+        <leftvalue>http_status</leftvalue>
+        <function>=</function>
+        <rightvalue/>
+        <value>
+          <name>constant</name>
+          <type>Integer</type>
+          <text>200</text>
+          <length>-1</length>
+          <precision>0</precision>
+          <isnull>N</isnull>
+          <mask>#</mask>
+        </value>
+        <conditions/>
+      </condition>
+    </compare>
+    <send_true_to>Upsert staging.stg_gbfs_station</send_true_to>
+    <send_false_to>Copy rows to result</send_false_to>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>784</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>InsertUpdate</type>
+    <name>Upsert staging.stg_gbfs_station</name>
+    <lookup>
+      <key>
+        <name>source_city_code</name>
+        <field>source_city_code</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <key>
+        <name>short_name</name>
+        <field>short_name</field>
+        <condition>=</condition>
+        <name2/>
+      </key>
+      <value>
+        <name>source_city_code</name>
+        <rename>source_city_code</rename>
+        <update>N</update>
+      </value>
+      <value>
+        <name>short_name</name>
+        <rename>short_name</rename>
+        <update>N</update>
+      </value>
+      <value>
+        <name>gbfs_station_id</name>
+        <rename>gbfs_station_id</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>station_name</name>
+        <rename>station_name</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>latitude</name>
+        <rename>latitude</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>longitude</name>
+        <rename>longitude</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>capacity</name>
+        <rename>capacity</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>station_type</name>
+        <rename>station_type</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>region_id</name>
+        <rename>region_id</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>station_status</name>
+        <rename>station_status</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>operation</name>
+        <rename>operation</rename>
+        <update>Y</update>
+      </value>
+      <value>
+        <name>loaded_at</name>
+        <rename>loaded_at</rename>
+        <update>Y</update>
+      </value>
+      <schema>staging</schema>
+      <table>stg_gbfs_station</table>
+    </lookup>
+    <commit>1</commit>
+    <update_bypassed>N</update_bypassed>
+    <connection>dw-staging</connection>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>496</xloc>
+      <yloc>784</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>Constant</type>
+    <name>Add audit constants</name>
+    <fields>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>push_station_mdm</nullif>
+        <name>job_name_const</name>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>gbfs_station</nullif>
+        <name>source_name_const</name>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>SUCCESS</nullif>
+        <name>status_const</name>
+        <type>String</type>
+        <format/>
+        <length>-1</length>
+        <precision>-1</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>1</nullif>
+        <name>total_rows_const</name>
+        <type>Integer</type>
+        <format/>
+        <length>-1</length>
+        <precision>0</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>1</nullif>
+        <name>success_rows_const</name>
+        <type>Integer</type>
+        <format/>
+        <length>-1</length>
+        <precision>0</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+      <field>
+        <currency/>
+        <decimal/>
+        <group/>
+        <nullif>0</nullif>
+        <name>failed_rows_const</name>
+        <type>Integer</type>
+        <format/>
+        <length>-1</length>
+        <precision>0</precision>
+        <set_empty_string>N</set_empty_string>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>496</xloc>
+      <yloc>896</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>TableOutput</type>
+    <name>Insert audit log</name>
+    <connection>dw-control</connection>
+    <schema>control</schema>
+    <table>etl_job_log</table>
+    <commit>1</commit>
+    <truncate>N</truncate>
+    <only_when_have_rows>N</only_when_have_rows>
+    <ignore_errors>N</ignore_errors>
+    <use_batch>N</use_batch>
+    <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_daily>N</partitioning_daily>
+    <partitioning_monthly>N</partitioning_monthly>
+    <tablename_in_field>N</tablename_in_field>
+    <tablename_in_table>N</tablename_in_table>
+    <return_keys>N</return_keys>
+    <specify_fields>Y</specify_fields>
+    <auto_update_table_structure>N</auto_update_table_structure>
+    <always_drop_and_recreate>N</always_drop_and_recreate>
+    <add_columns>N</add_columns>
+    <drop_columns>N</drop_columns>
+    <change_column_types>N</change_column_types>
+    <fields>
+      <field>
+        <stream_name>job_name_const</stream_name>
+        <column_name>job_name</column_name>
+      </field>
+      <field>
+        <stream_name>source_name_const</stream_name>
+        <column_name>source_name</column_name>
+      </field>
+      <field>
+        <stream_name>status_const</stream_name>
+        <column_name>status</column_name>
+      </field>
+      <field>
+        <stream_name>total_rows_const</stream_name>
+        <column_name>total_rows_count</column_name>
+      </field>
+      <field>
+        <stream_name>success_rows_const</stream_name>
+        <column_name>success_rows_count</column_name>
+      </field>
+      <field>
+        <stream_name>failed_rows_const</stream_name>
+        <column_name>failed_rows_count</column_name>
+      </field>
+      <field>
+        <stream_name>loaded_at</stream_name>
+        <column_name>finished_at</column_name>
+      </field>
+    </fields>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>496</xloc>
+      <yloc>1008</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>RowsToResult</type>
+    <name>Copy rows to result</name>
+    <distribute>Y</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>240</xloc>
+      <yloc>1008</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <order>
+    <hop>
+      <from>Generate 1 row</from>
+      <to>Get MDM request body</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Get MDM request body</from>
+      <to>Parse MDM JSON body</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Parse MDM JSON body</from>
+      <to>Lookup nds.city</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Lookup nds.city</from>
+      <to>Add is_current lookup flag</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Add is_current lookup flag</from>
+      <to>Lookup active nds.station</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Lookup active nds.station</from>
+      <to>Validate reconcile and build response</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Validate reconcile and build response</from>
+      <to>Validation OK</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Validation OK</from>
+      <to>Upsert staging.stg_gbfs_station</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Validation OK</from>
+      <to>Copy rows to result</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Upsert staging.stg_gbfs_station</from>
+      <to>Add audit constants</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Add audit constants</from>
+      <to>Insert audit log</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Insert audit log</from>
+      <to>Copy rows to result</to>
+      <enabled>Y</enabled>
+    </hop>
+  </order>
+  <notepads/>
+  <attributes/>
+  <transform_error_handling/>
+</pipeline>
