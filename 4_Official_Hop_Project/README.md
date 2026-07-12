@@ -1172,17 +1172,17 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 
 ## 9. Push MDM Station
 
-This flow lets the **Go MDM Station service** send GBFS master-data changes to Apache Hop in real time. The backend POSTs one station per request to Hop’s **Sync Web Service**. Hop validates the API key, reconciles `INSERT`/`UPDATE`/`DELETE` against `nds.station`, and upserts `staging.stg_gbfs_station` (including `operation`). Downstream Staging→NDS and NDS→DDS honor soft-delete / reactivation.
+Luồng này cho phép **Go MDM Station** gửi thay đổi master data GBFS (thông tin trạm) tới Apache Hop theo thời gian thực. Backend POST từng trạm một tới **Hop Sync Web Service**. Hop kiểm tra API key, đối chiếu `INSERT` / `UPDATE` / `DELETE` với `nds.station`, rồi upsert `staging.stg_gbfs_station` (kèm cột `operation`). Các bước Staging→NDS và NDS→DDS phía sau xử lý soft-delete / tái kích hoạt (reactivation).
 
-### What happens end-to-end
+### Diễn biến end-to-end
 
-1. **Backend** (`C_backend/C1_mdm_station_info`) reads JSON (default `A_datasets/A4_mdm_station_info/new_mdm_station_information.json`), builds `{operation, sent_at, data}`, POSTs with **HTTP Basic Auth** (`cluster`/`cluster`) and header **`X-API-Key`**.
-2. **Hop Server** receives `POST /hop/webService/?service=mdm-station`.
-3. **Hop** runs `00_mdm_service_redirection.hpl` then (via Pipeline Executor) `01_store_pushed_mdm_station_from_backend_to_staging.hpl`.
-4. **Staging** upserts one row in `staging.stg_gbfs_station` keyed by `(source_city_code, short_name)`.
-5. Later batch ETL: Staging→NDS soft-closes or reactivates `nds.station`; NDS→DDS updates `dds.dim_station` SCD2 / `row_status`.
+1. **Backend** (`C_backend/C1_mdm_station_info`) đọc JSON (mặc định `A_datasets/A4_mdm_station_info/new_mdm_station_information.json`), dựng payload `{operation, sent_at, data}`, POST kèm **HTTP Basic Auth** (`cluster`/`cluster`) và header **`X-API-Key`**.
+2. **Hop Server** nhận `POST /hop/webService/?service=mdm-station`.
+3. **Hop** chạy `00_mdm_service_redirection.hpl`, rồi (qua Pipeline Executor) chạy `01_store_pushed_mdm_station_from_backend_to_staging.hpl`.
+4. **Staging** upsert một dòng trong `staging.stg_gbfs_station` theo khóa `(source_city_code, short_name)`.
+5. ETL batch sau đó: Staging→NDS soft-close hoặc tái kích hoạt `nds.station`; NDS→DDS cập nhật `dds.dim_station` (SCD2 / `row_status`).
 
-**Do not** put these pipelines in `01_etl_source_to_stagingdb.hwf`. A workflow is batch (start→end); **Hop Server** is the listener.
+**Không** gắn các pipeline MDM vào `01_etl_source_to_stagingdb.hwf`. Workflow là batch (chạy xong rồi thoát); **Hop Server** mới là listener nhận HTTP.
 
 ```mermaid
 flowchart TB
@@ -1209,54 +1209,54 @@ flowchart TB
   NDS -->|"03 D2 Load Dim Station"| DDS
 ```
 
-| Step | Pipeline | Role |
-|------|----------|------|
-| 1 — Web Service entry | `D_pipelines/00_ETL_Push_Station_MDM_To_StagingDB/00_mdm_service_redirection.hpl` | API key gate; executor or 401 |
-| 2 — Store station | `…/01_store_pushed_mdm_station_from_backend_to_staging.hpl` | Parse JSON, NDS reconcile, upsert staging |
+| Bước | Pipeline | Vai trò |
+|------|----------|---------|
+| 1 — Entry Web Service | `D_pipelines/00_ETL_Push_Station_MDM_To_StagingDB/00_mdm_service_redirection.hpl` | Kiểm tra API key; gọi executor hoặc trả 401 |
+| 2 — Lưu trạm | `…/01_store_pushed_mdm_station_from_backend_to_staging.hpl` | Parse JSON, reconcile với NDS, upsert staging |
 
-Metadata: `metadata/web-service/mdm-station.json` points at step 1 only.
+Metadata: `metadata/web-service/mdm-station.json` chỉ trỏ tới bước 1.
 
-### Config keys
+### Biến cấu hình
 
-| Key | Example | Purpose |
-|-----|---------|---------|
-| `HOP_MDM_API_HOST` | `127.0.0.1` | Hop Server bind host |
-| `HOP_MDM_API_PORT` | `8080` | Hop Server port |
-| `HOP_MDM_API_URL` | `http://localhost:8080/hop/webService/?service=` | Base URL |
-| `HOP_MDM_STATION_API_KEY` | `local-dev-mdm-key` | Expected `X-API-Key` |
-| `HOP_MDM_STATION_SERVICE_ID` | `mdm-station` | `?service=` + metadata `name` |
-| `HOP_MDM_ALLOWED_OPERATIONS` | `INSERT,UPDATE,DELETE` | Allowed `operation` values |
+| Key | Ví dụ | Mục đích |
+|-----|-------|----------|
+| `HOP_MDM_API_HOST` | `127.0.0.1` | Host bind của Hop Server |
+| `HOP_MDM_API_PORT` | `8080` | Port Hop Server |
+| `HOP_MDM_API_URL` | `http://localhost:8080/hop/webService/?service=` | Base URL Web Service |
+| `HOP_MDM_STATION_API_KEY` | `local-dev-mdm-key` | Giá trị `X-API-Key` kỳ vọng |
+| `HOP_MDM_STATION_SERVICE_ID` | `mdm-station` | Tham số `?service=` và `name` trong metadata |
+| `HOP_MDM_ALLOWED_OPERATIONS` | `INSERT,UPDATE,DELETE` | Các giá trị `operation` được phép |
 
-### Auth (two layers)
+### Xác thực (hai lớp)
 
-1. Hop Server Jetty Basic Auth: `cluster` / `cluster`
-2. MDM `X-API-Key` checked in redirection pipeline
+1. Basic Auth của Hop Server (Jetty): `cluster` / `cluster`
+2. Header MDM `X-API-Key` — kiểm tra trong pipeline redirection
 
 ### `operation` vs `row_status` vs `station_status`
 
-| Field | Values | Meaning |
-|-------|--------|---------|
-| `stg_gbfs_station.operation` | `INSERT`, `UPDATE`, `DELETE` | MDM intent for this push |
-| `nds/dds.row_status` | `active`, `deleted` | Record lifecycle (SCD soft-delete) |
-| `station_status` | `open`, `closed`, `maintenance` | Operational state of the dock |
+| Trường | Giá trị | Ý nghĩa |
+|--------|---------|---------|
+| `stg_gbfs_station.operation` | `INSERT`, `UPDATE`, `DELETE` | Ý định MDM của lần push này |
+| `nds/dds.row_status` | `active`, `deleted` | Vòng đời bản ghi (SCD soft-delete) |
+| `station_status` | `open`, `closed`, `maintenance` | Trạng thái vận hành của trạm |
 
-NDS rules: active row + INSERT/UPDATE → **update in place**; DELETE → soft-close (`row_status=deleted`, `is_current=false`, set `effective_to`); reactivation after delete → **new** row with `effective_from=NOW()`.
+Quy tắc NDS: đã có dòng active + INSERT/UPDATE → **cập nhật tại chỗ**; DELETE → soft-close (`row_status=deleted`, `is_current=false`, gán `effective_to`); tái kích hoạt sau DELETE → **thêm dòng mới** với `effective_from=NOW()`.
 
-### How to start
+### Cách chạy
 
 ```bash
 cd 4_Official_Hop_Project
 make setup-project-home   # scripts/setup_project_home.sh
 make db-up
 make mdm-start            # scripts/start_mdm_station_services.sh
-# or Hop Server only: SKIP_GO_PUSH=1 make mdm-start
-# overrides: HOP_HOME, HOP_PROJECT_NAME=HCMUS_Master_IS_BI_Hop_ETL_Official,
-#            HOP_ENVIRONMENT_NAME=Hop_ETL_Official_Configs
+# chỉ Hop Server: SKIP_GO_PUSH=1 make mdm-start
+# ghi đè: HOP_HOME, HOP_PROJECT_NAME=HCMUS_Master_IS_BI_Hop_ETL_Official,
+#         HOP_ENVIRONMENT_NAME=Hop_ETL_Official_Configs
 ```
 
-Go smoke flags: `go run . -city CHI -operation INSERT -limit 5 -input A_datasets/A4_mdm_station_info/new_mdm_station_information.json`
+Smoke test Go: `go run . -city CHI -operation INSERT -limit 5 -input A_datasets/A4_mdm_station_info/new_mdm_station_information.json`
 
-Curl example:
+Ví dụ curl:
 
 ```bash
 curl -u cluster:cluster -H "Content-Type: application/json" -H "X-API-Key: local-dev-mdm-key" \
@@ -1264,7 +1264,7 @@ curl -u cluster:cluster -H "Content-Type: application/json" -H "X-API-Key: local
   "http://127.0.0.1:8080/hop/webService/?service=mdm-station"
 ```
 
-File bootstrap (`04_load_gbfs` → raw → validate → stg) remains for bulk load; MDM push is the online master-change path.
+Load file hàng loạt (`04_load_gbfs` → raw → validate → stg) vẫn dùng cho bootstrap; MDM push là đường online khi master data trạm thay đổi.
 
 ---
 
