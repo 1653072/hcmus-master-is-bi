@@ -7,10 +7,10 @@
 #
 # Env overrides:
 #   HOP_HOME / APACHE_HOP_HOME  — Hop install directory
-#   HOP_PROJECT_NAME           — Hop project name (default: folder name)
-#   HOP_ENVIRONMENT_NAME       — Hop env / lifecycle name (default: HOP_ENV or dev)
+#   HOP_PROJECT_NAME            — Hop project name (default: folder name)
+#   HOP_ENVIRONMENT_NAME        — Hop env / lifecycle name (default: HOP_ENV or dev)
 #   HOP_MDM_API_HOST / HOP_MDM_API_PORT
-#   SKIP_GO_PUSH=1             — start Hop Server only
+#   SKIP_GO_PUSH=1              — start Hop Server only
 
 set -euo pipefail
 
