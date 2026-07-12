@@ -1249,10 +1249,15 @@ cd 4_Official_Hop_Project
 make setup-project-home   # scripts/setup_project_home.sh
 make db-up
 make mdm-start            # scripts/start_mdm_station_services.sh
-# chỉ Hop Server: SKIP_GO_PUSH=1 make mdm-start
-# ghi đè: HOP_HOME, HOP_PROJECT_NAME=HCMUS_Master_IS_BI_Hop_ETL_Official,
-#         HOP_ENVIRONMENT_NAME=Hop_ETL_Official_Configs
+# chỉ Hop Server (không chạy Go push): SKIP_GO_PUSH=1 make mdm-start
 ```
+
+`make mdm-start` mặc định dùng project `HCMUS_Master_IS_BI_Hop_ETL_Official` và environment `Hop_ETL_Official_Configs` (khớp `hop-config.json`). Chỉ cần ghi đè khi máy bạn khác:
+
+| Biến | Khi nào cần |
+|------|-------------|
+| `HOP_HOME` | Hop không nằm ở các path tìm sẵn (script sẽ tìm `hop-server.sh`) |
+| `HOP_PROJECT_NAME` / `HOP_ENVIRONMENT_NAME` | Tên project / lifecycle trên Hop GUI của bạn khác default |
 
 Smoke test Go: `go run . -city CHI -operation INSERT -limit 5 -input A_datasets/A4_mdm_station_info/new_mdm_station_information.json`
 
