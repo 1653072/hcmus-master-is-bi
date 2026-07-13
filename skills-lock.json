@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "drawio-aws": {
+      "source": "sparklabx/drawio-ai-kit",
+      "sourceType": "github",
+      "skillPath": "skills/drawio-aws/SKILL.md",
+      "computedHash": "68b4b5c1abdf48bc5ed59c95bf4b467bf40c0745af45d104dd69e7301307bcd4"
+    },
+    "drawio-azure": {
+      "source": "sparklabx/drawio-ai-kit",
+      "sourceType": "github",
+      "skillPath": "skills/drawio-azure/SKILL.md",
+      "computedHash": "5e53949114a9f9d555189e9603edd09eca12e76551a0ecbbf1ae29c2d061db20"
+    },
+    "drawio-bpmn": {
+      "source": "sparklabx/drawio-ai-kit",
+      "sourceType": "github",
+      "skillPath": "skills/drawio-bpmn/SKILL.md",
+      "computedHash": "8c87b16ff6d42d313aeee2c3b372546d8d4283424a2654f32c911232c91ff19d"
+    },
+    "drawio-databricks": {
+      "source": "sparklabx/drawio-ai-kit",
+      "sourceType": "github",
+      "skillPath": "skills/drawio-databricks/SKILL.md",
+      "computedHash": "7ebfb3dc1a7d58f24cf6cab205b985d29a99b26d3b0ec4e08388557af11516c7"
+    },
+    "drawio-gcp": {
+      "source": "sparklabx/drawio-ai-kit",
+      "sourceType": "github",
+      "skillPath": "skills/drawio-gcp/SKILL.md",
+      "computedHash": "f90c14e83c0ef36f16121e54f265091c4bfd219943b99c6b1fc65d1a46e08c74"
+    }
+  }
+}
