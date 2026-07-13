@@ -12,7 +12,7 @@ A_DATASETS      := A_datasets
 DOWNLOAD_SCRIPT := $(A_DATASETS)/download_datasets.sh
 CONFIG_LOCAL    := development_configs.local.json
 CONFIG_FILE     := development_configs.json
-SETUP_SCRIPT    := setup_project_home.sh
+SETUP_SCRIPT    := scripts/setup_project_home.sh
 HOP_RUN         ?= $(shell command -v hop-run.sh 2>/dev/null || command -v hop-run 2>/dev/null)
 
 # Windows: dùng Git Bash thật, không dùng bash.exe stub của WSL
@@ -34,7 +34,7 @@ B_DATABASES := B_databases
 
 .PHONY: help setup-project-home datasets-check datasets-download datasets-full \
         datasets-extract datasets-gbfs datasets-noaa datasets-status \
-        db-up db-down db-status staging-dq nds-load runtime-checks
+        db-up db-down db-status staging-dq nds-load runtime-checks mdm-start
 
 help:
 	@echo "4_Official_Hop_Project — Makefile"
@@ -53,6 +53,7 @@ help:
 	@echo "  make staging-dq          Run visible Hop workflow 01; fallback script if Hop CLI is unavailable"
 	@echo "  make nds-load            Run visible Hop workflow 02; fallback script if Hop CLI is unavailable"
 	@echo "  make runtime-checks      Check XML/schema artifacts and DB runtime counts"
+	@echo "  make mdm-start           Find hop-server.sh, start Hop Server + Go MDM station pusher"
 	@echo ""
 	@echo "Windows (CMD/PowerShell): Git for Windows + make"
 	@echo "Bien: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
@@ -124,3 +125,7 @@ runtime-checks: $(CONFIG_FILE)
 	@bash tests/check_staging_0nf_dq_artifacts.sh
 	@bash tests/check_nds_etl_artifacts.sh
 	@bash tests/check_runtime_counts.sh
+
+mdm-start: $(CONFIG_FILE)
+	@"$(BASH)" -c 'chmod +x scripts/start_mdm_station_services.sh 2>/dev/null || true'
+	@"$(BASH)" scripts/start_mdm_station_services.sh

@@ -39,6 +39,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
   - [8.7 Khởi chạy PostgreSQL](#87-khởi-chạy-postgresql-local)
   - [8.8 Hop metadata & biến môi trường](#88-hop-metadata--biến-môi-trường)
   - [8.9 Enum / coded fields](#89-enum--coded-fields)
+9. [Push MDM Station](#9-push-mdm-station)
 
 ---
 
@@ -70,10 +71,19 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
 ├── C_backend/                     # MDM Push (Go)
 │   └── C1_mdm_station_info/
 │       ├── go.mod
-│       ├── main.go
-│       └── push_mdm_station_info.go
+│       └── main.go
 │
-├── D_pipelines/                   # Hop pipelines (.hpl) — nhóm tạo
+├── D_pipelines/
+│   ├── 00_ETL_Push_Station_MDM_To_StagingDB/   # Hop Web Service handlers (mdm-station)
+│   ├── 01_ETL_Source_To_StagingDB/
+│   ├── 02_ETL_StagingDB_To_NDS/
+│   └── 03_ETL_NDS_To_DDS/
+│
+├── scripts/
+│   ├── setup_project_home.sh
+│   ├── start_mdm_station_services.sh
+│   └── …
+│
 ├── E_workflows/                   # Hop workflows (.hwf) — nhóm tạo
 └── metadata/                      # Hop DB + Web Service metadata
     ├── rdbms/                     # dw-staging, dw-control, dw-nds, dw-dds
@@ -104,6 +114,8 @@ Chi tiết từng nguồn: [mục 7](#7-a_datasets--phân-tích-và-hướng-d�
 
 ---
 
+
+
 ### 2.1 Pipeline 1: Source Files → StagingDB
 
 Lát cắt ETL đầu tiên triển khai trong `D_pipelines/01_ETL_Source_To_StagingDB/` và `E_workflows/01_etl_source_to_stagingdb.hwf`: đây là nhóm pipeline logic cho luồng source files → raw 0NF → DQ validation → accepted staging → audit. Bên trong folder có thể có nhiều Hop `.hpl` step pipelines; `A_datasets/` vẫn là operational landing layer cho JSON/CSV files, Hop đọc file nguồn, chuẩn hóa kiểu dữ liệu, làm sạch giá trị rỗng/trace precipitation, derive `source_city_code`, `trip_month`, rồi upsert vào `dw_staging.staging.*`.
@@ -115,6 +127,8 @@ Lát cắt ETL đầu tiên triển khai trong `D_pipelines/01_ETL_Source_To_Sta
 - GBFS JSON: parse `data.stations[*]`, dùng `short_name` làm khóa trạm nghiệp vụ; nếu nguồn thiếu `short_name` thì fallback bằng `gbfs_station_id` để không mất master row, nhưng các dòng fallback này cần được xem là dữ liệu cần review khi join với trip.
 - Staging không dùng `batch_id`; audit qua `loaded_at`, `control.etl_extraction_control`, và `control.etl_job_log`. Vì `dw_staging` và `dw_control` là hai database riêng, workflow chạy pipeline `05_audit_staging_load_counts.hpl` sau các load để đọc count từ staging rồi ghi status/count sang control DB.
 - Upsert bằng Hop `InsertUpdate` theo business key staging để workflow chạy lại không nhân đôi dữ liệu. Riêng Citi Bike dùng nhánh accepted-row set-based trong PostgreSQL (`INSERT ... ON CONFLICT ... DO UPDATE`) vì dữ liệu lớn; DQ detail/summary vẫn là Hop-visible cross-DB streams.
+
+
 
 ### 2.2 Pipeline 2: StagingDB → NDS
 
@@ -142,6 +156,8 @@ make staging-dq
 make nds-load
 make runtime-checks
 ```
+
+
 
 ### 2.3 Pipeline 3: NDS → DDS
 
@@ -216,15 +232,15 @@ Sau khi chạy, kiểm tra `A_datasets/manifest.json`. Tùy chọn và biến Ho
 ## 4. Thành phần theo thư mục
 
 
-| Thư mục         | Trạng thái | Mô tả                                                                                              |
-| --------------- | ---------- | -------------------------------------------------------------------------------------------------- |
-| **A_datasets**  | Sẵn sàng   | Script + tài liệu LCD V2, trip 202601–202605 ([mục 7](#7-a_datasets--phân-tích-và-hướng-dẫn-tải))  |
-| **B_databases** | Sẵn sàng   | `docker-compose.yml` + init SQL B1/B2/B3; `make db-up` ([mục 8.7](#87-khởi-chạy-postgresql-local)) |
-| **C_backend**   | Khung      | Go MDM push GBFS → Hop Web Service (TODO)                                                          |
+| Thư mục         | Trạng thái      | Mô tả                                                                                                            |
+| --------------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **A_datasets**  | Sẵn sàng        | Script + tài liệu LCD V2, trip 202601–202605 ([mục 7](#7-a_datasets--phân-tích-và-hướng-dẫn-tải))                |
+| **B_databases** | Sẵn sàng        | `docker-compose.yml` + init SQL B1/B2/B3; `make db-up` ([mục 8.7](#87-khởi-chạy-postgresql-local))               |
+| **C_backend**   | Sẵn sàng        | Go MDM push GBFS → Hop Web Service ([mục 9](#9-push-mdm-station))                                                |
 | **D_pipelines** | Đang triển khai | 3 folder logic: `01_ETL_Source_To_StagingDB`, `02_ETL_StagingDB_To_NDS`, `03_ETL_NDS_To_DDS` (pipeline 3 để sau) |
-| **E_workflows** | Đang triển khai | `01_etl_source_to_stagingdb.hwf`, `02_etl_stagingdb_to_nds.hwf`, `03_etl_nds_to_dds.hwf` |
-| **scripts**     | Sẵn sàng   | Runtime scripts kiểm chứng được bằng Docker/PostgreSQL: raw 0NF + DQ, Staging → NDS                |
-| **metadata**    | Sẵn sàng   | RDBMS connections + `mdm-station` web service ([mục 8.8](#88-hop-metadata--biến-môi-trường))       |
+| **E_workflows** | Đang triển khai | `01_etl_source_to_stagingdb.hwf`, `02_etl_stagingdb_to_nds.hwf`, `03_etl_nds_to_dds.hwf`                         |
+| **scripts**     | Sẵn sàng        | Runtime scripts kiểm chứng được bằng Docker/PostgreSQL: raw 0NF + DQ, Staging → NDS                              |
+| **metadata**    | Sẵn sàng        | RDBMS connections + `mdm-station` web service ([mục 8.8](#88-hop-metadata--biến-môi-trường))                     |
 
 
 ---
@@ -259,17 +275,17 @@ Lệnh này sinh lại `development_configs.json` từ `development_configs.loca
 ## 6. Trạng thái triển khai
 
 
-| Hạng mục                               | Ghi chú                                                                   |
-| -------------------------------------- | ------------------------------------------------------------------------- |
-| Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01–2026-05** qua `download_datasets.sh`             |
-| NOAA LCD v1 → v2                       | V1 deprecated; V2 giữ cùng cột hourly cho Fact table                      |
-| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                             |
-| Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds) |
-| Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                               |
-| Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines |
-| Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification |
+| Hạng mục                               | Ghi chú                                                                                                                                                                                      |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01–2026-05** qua `download_datasets.sh`                                                                                                                                |
+| NOAA LCD v1 → v2                       | V1 deprecated; V2 giữ cùng cột hourly cho Fact table                                                                                                                                         |
+| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                                                                                                                                                |
+| Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds)                                                                                                                    |
+| Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                                                                                                                                                  |
+| Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines                             |
+| Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification                                             |
 | ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.city`, `nds.calendar_day`, `nds.station`, `nds.weather`, `nds.trip`, sau đó audit và cleanup 8 bảng staging; script chỉ là fallback/manual verification |
-| Hop ETL end-to-end                     | `D_pipelines/03_ETL_NDS_To_DDS`, `E_workflows/03_etl_nds_to_dds.hwf` hiện là skeleton/placeholder; DDS load làm sau |
+| Hop ETL end-to-end                     | `D_pipelines/03_ETL_NDS_To_DDS`, `E_workflows/03_etl_nds_to_dds.hwf` hiện là skeleton/placeholder; DDS load làm sau                                                                          |
 
 
 ---
@@ -523,16 +539,16 @@ Tải bằng `./download_datasets.sh --gbfs`.
 ### 7.7. Đối chiếu yêu cầu đề bài (PDF / official_topic.md)
 
 
-| Yêu cầu đề bài                                                                      | LCD v2 + trip 01–05/2026                        |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Dataset 3: NOAA NCEI **Local Climatological Data**                                  | **Đáp ứng** (v2 cùng sản phẩm LCD)              |
-| Pull theo giờ: `HourlyDryBulbTemperature`, `HourlyPrecipitation`, `HourlyWindSpeed` | **Có**                                          |
-| Join `city_code` + `date_hour`                                                      | **Có**                                          |
-| Fact grain City × Station × Hour                                                    | Trip aggregate + weather denormalize theo giờ   |
+| Yêu cầu đề bài                                                                      | LCD v2 + trip 01–05/2026                                                         |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Dataset 3: NOAA NCEI **Local Climatological Data**                                  | **Đáp ứng** (v2 cùng sản phẩm LCD)                                               |
+| Pull theo giờ: `HourlyDryBulbTemperature`, `HourlyPrecipitation`, `HourlyWindSpeed` | **Có**                                                                           |
+| Join `city_code` + `date_hour`                                                      | **Có**                                                                           |
+| Fact grain City × Station × Hour                                                    | Trip aggregate + weather denormalize theo giờ                                    |
 | `Dim_WeatherCondition` (Clear/Rain/Snow/Fog)                                        | Rule ETL ưu tiên `HourlyPresentWeatherType`; precip > 0 chỉ là fallback cho Rain |
-| Phân tích tuần / cuối tuần (`is_weekend`)                                           | Lịch **2026**; weather **2026 thật**            |
-| KPI `Weather_Sensitivity_Score`                                                     | **Hợp lệ** với quan sát thật                    |
-| Chicago + NYC so sánh công bằng                                                     | Cùng kỳ 5 tháng 2026                            |
+| Phân tích tuần / cuối tuần (`is_weekend`)                                           | Lịch **2026**; weather **2026 thật**                                             |
+| KPI `Weather_Sensitivity_Score`                                                     | **Hợp lệ** với quan sát thật                                                     |
+| Chicago + NYC so sánh công bằng                                                     | Cùng kỳ 5 tháng 2026                                                             |
 
 
 
@@ -575,7 +591,7 @@ bash download_datasets.sh --from 202603 --to 202604
 | Trip         | `DIVVY_TRIPS_DIR`, `CITIBIKE_TRIPS_DIR`                    | Thư mục `extracted/{YYYYMM}/`                    |
 | NOAA         | `NOAA_LCD_DIR`, `NOAA_LCD_CHICAGO`, `NOAA_LCD_NYC`         | File `*_01-05.csv`                               |
 | GBFS / MDM   | `GBFS_STATION_DIR`, `HOP_MDM_STATION_STAGING_TABLE`        | Push → `stg_gbfs_station`                        |
-| DB STG       | `STAGING_DB_*`, `CONTROL_DB_*`                              | Port **5434**                                    |
+| DB STG       | `STAGING_DB_*`, `CONTROL_DB_*`                             | Port **5434**                                    |
 | DB NDS / DDS | `NDS_DB_*` (5435), `DDS_DB_*` (5436)                       | User `*_user`, password `*@123`                  |
 | Power BI     | `POWERBI_DDS_*`                                            | `analytics_reader_user` / `analytics_reader@123` |
 
@@ -609,7 +625,7 @@ Thiết kế schema cho bike-share DW (Chicago Divvy + NYC Citi Bike, kỳ mẫu
 - **1 fact:** `Fact_StationHourBalance` — Periodic Snapshot, grain **City × Station × Hour**.
 - **DDS layout:** **Snowflake schema** — `dim_station.city_sk` → `dim_city` (hierarchy City → Station); fact FK trực tiếp tới cả `city_sk` và `station_sk`.
 - **Không** `batch_id` trên staging — chỉ `loaded_at`; upsert theo business key.
-- **Raw 0NF:** `staging.raw_*` giữ giá trị dạng `TEXT`, không PK, có `load_run_id`, `source_file`, `source_row_number`, `raw_loaded_at` để kiểm DQ/duplicate.
+- **Raw 0NF:** `staging.raw_`* giữ giá trị dạng `TEXT`, không PK, có `load_run_id`, `source_file`, `source_row_number`, `raw_loaded_at` để kiểm DQ/duplicate.
 
 **Source mapping:**
 
@@ -1003,12 +1019,12 @@ erDiagram
 ### 8.6. Seed data (DDL)
 
 
-| Đối tượng                   | Nội dung seed                                                       |
-| --------------------------- | ------------------------------------------------------------------- |
-| `dds.dim_city`              | CHI + NYC                                                           |
-| `dds.dim_weather_condition` | Clear, Rain, Snow, Fog                                              |
-| `dds.dim_datetime`          | Mọi giờ **2026-01-01 → 2026-05-31** + `is_weekend` + `is_peak_hour` |
-| `nds.city`                  | CHI + NYC (mirror) — bootstrap bằng seed, refresh/upsert trong StagingDB → NDS workflow |
+| Đối tượng                   | Nội dung seed                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `dds.dim_city`              | CHI + NYC                                                                                                                      |
+| `dds.dim_weather_condition` | Clear, Rain, Snow, Fog                                                                                                         |
+| `dds.dim_datetime`          | Mọi giờ **2026-01-01 → 2026-05-31** + `is_weekend` + `is_peak_hour`                                                            |
+| `nds.city`                  | CHI + NYC (mirror) — bootstrap bằng seed, refresh/upsert trong StagingDB → NDS workflow                                        |
 | `nds.calendar_day`          | Mọi ngày 2026-01-01 → 2026-05-31 — bootstrap bằng seed, refresh/upsert theo khoảng ngày staging trong StagingDB → NDS workflow |
 
 
@@ -1024,11 +1040,11 @@ make db-down        # dừng containers
 ```
 
 
-| Service           | Port | Databases                                 |
-| ----------------- | ---- | ----------------------------------------- |
+| Service           | Port | Databases                  |
+| ----------------- | ---- | -------------------------- |
 | `dw-stg-postgres` | 5434 | `dw_staging`, `dw_control` |
-| `dw-nds-postgres` | 5435 | `dw_nds`                                  |
-| `dw-dds-postgres` | 5436 | `dw_dds`                                  |
+| `dw-nds-postgres` | 5435 | `dw_nds`                   |
+| `dw-dds-postgres` | 5436 | `dw_dds`                   |
 
 
 
@@ -1098,10 +1114,10 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 #### Control
 
 
-| Bảng / cột                               | Giá trị hợp lệ                                              |
-| ---------------------------------------- | ----------------------------------------------------------- |
-| `etl_extraction_control.source_name`     | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station` |
-| `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                   |
+| Bảng / cột                               | Giá trị hợp lệ                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `etl_extraction_control.source_name`     | `divvy_trips`, `citibike_trips`, `noaa_lcd`, `gbfs_station`                              |
+| `etl_extraction_control.last_run_status` | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`                                                |
 | `etl_job_log.status`                     | `SUCCESS`, `FAILED`, `RUNNING`, `SKIPPED`, `DQ_PASSED`, `DQ_PARTIAL_PASSED`, `DQ_FAILED` |
 
 
@@ -1110,18 +1126,18 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 #### NDS (`nds.*`)
 
 
-| Bảng / cột                 | Giá trị hợp lệ                       | Ghi chú                                                                                                     |
-| -------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `city.city_code`           | `CHI`, `NYC`                         |                                                                                                             |
-| `city.gbfs_system_id`      | `divvy`, `citibike`                  |                                                                                                             |
-| `station.station_status`   | `open`, `closed`, `maintenance`      | Ví dụ: trạm đang mở vs tạm đóng                                                                             |
-| `station.row_status`       | `active`, `deleted`                  | SCD2 — `active` = phiên bản hiện tại                                                                        |
-| `calendar_day.day_of_week` | `1`–`7`                              | ISO: 1=Thứ Hai … 7=Chủ Nhật                                                                                 |
-| `calendar_day.season`      | `winter`, `spring`, `summer`, `fall` | Theo tháng Bắc bán cầu: T12–T2 / T3–T5 / T6–T8 / T9–T11. Kỳ mẫu 202601–202605 chỉ có **winter**, **spring** |
-| `weather.report_type`      | `FM-15`, `FM-16`, `FM-12`            | Giống staging                                                                                               |
+| Bảng / cột                 | Giá trị hợp lệ                       | Ghi chú                                                                                                                         |
+| -------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `city.city_code`           | `CHI`, `NYC`                         |                                                                                                                                 |
+| `city.gbfs_system_id`      | `divvy`, `citibike`                  |                                                                                                                                 |
+| `station.station_status`   | `open`, `closed`, `maintenance`      | Ví dụ: trạm đang mở vs tạm đóng                                                                                                 |
+| `station.row_status`       | `active`, `deleted`                  | SCD2 — `active` = phiên bản hiện tại                                                                                            |
+| `calendar_day.day_of_week` | `1`–`7`                              | ISO: 1=Thứ Hai … 7=Chủ Nhật                                                                                                     |
+| `calendar_day.season`      | `winter`, `spring`, `summer`, `fall` | Theo tháng Bắc bán cầu: T12–T2 / T3–T5 / T6–T8 / T9–T11. Kỳ mẫu 202601–202605 chỉ có **winter**, **spring**                     |
+| `weather.report_type`      | `FM-15`, `FM-16`, `FM-12`            | Giống staging                                                                                                                   |
 | `weather.weather_category` | `Clear`, `Rain`, `Snow`, `Fog`       | Rule ETL ưu tiên `HourlyPresentWeatherType`: SN/SG/PL → Snow; FG/BR/HZ → Fog; RA/DZ/TS/GR hoặc precip > 0 → Rain; còn lại Clear |
-| `trip.rideable_type`       | `classic_bike`, `electric_bike`      |                                                                                                             |
-| `trip.member_casual`       | `member`, `casual`                   |                                                                                                             |
+| `trip.rideable_type`       | `classic_bike`, `electric_bike`      |                                                                                                                                 |
+| `trip.member_casual`       | `member`, `casual`                   |                                                                                                                                 |
 
 
 
@@ -1154,6 +1170,174 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 | 6, 7, 8   | `summer` |
 | 9, 10, 11 | `fall`   |
 
+
+---
+
+
+
+## 9. Push MDM Station
+
+Luồng này cho phép **Go MDM Station** gửi thay đổi master data GBFS (thông tin trạm) tới Apache Hop theo thời gian thực. Backend POST từng trạm một tới **Hop Sync Web Service**. Hop kiểm tra API key, đối chiếu `INSERT` / `UPDATE` / `DELETE` với `nds.station`, rồi upsert `staging.stg_gbfs_station` (kèm cột `operation`). Các bước Staging→NDS và NDS→DDS phía sau xử lý soft-delete / tái kích hoạt (reactivation).
+
+### Diễn biến end-to-end
+
+1. **Backend** (`C_backend/C1_mdm_station_info`) đọc JSON (mặc định `A_datasets/A4_mdm_station_info/new_mdm_station_information.json`), dựng payload `{operation, sent_at, data}`, POST kèm **HTTP Basic Auth** (`cluster`/`cluster`) và header `X-API-Key`.
+2. **Hop Server** nhận `POST /hop/webService/?service=mdm-station`.
+3. **Hop** chạy `00_mdm_service_redirection.hpl`, rồi (qua Pipeline Executor) chạy `01_store_pushed_mdm_station_from_backend_to_staging.hpl`.
+4. **Staging** upsert một dòng trong `staging.stg_gbfs_station` theo khóa `(source_city_code, short_name)`.
+5. ETL batch sau đó: Staging→NDS soft-close hoặc tái kích hoạt `nds.station`; NDS→DDS cập nhật `dds.dim_station` (SCD2 / `row_status`).
+
+**Không** gắn các pipeline MDM vào `01_etl_source_to_stagingdb.hwf`. Workflow là batch (chạy xong rồi thoát); **Hop Server** mới là listener nhận HTTP.
+
+```mermaid
+flowchart TB
+  subgraph BE [Go Backend]
+    GoPush["C1_mdm_station_info go run ."]
+    JSON["A_datasets/A4_mdm_station_info/new_mdm_station_information.json"]
+  end
+  subgraph HopServer [Hop Server :8080]
+    WS["/hop/webService/?service=mdm-station"]
+    Entry["00_mdm_service_redirection.hpl"]
+    Store["01_store_pushed_mdm_station_from_backend_to_staging.hpl"]
+  end
+  subgraph DW [Data Warehouse]
+    STG[(staging.stg_gbfs_station)]
+    NDS[(nds.station)]
+    DDS[(dds.dim_station)]
+  end
+  JSON --> GoPush
+  GoPush -->|"POST + Basic Auth + X-API-Key"| WS
+  WS --> Entry
+  Entry -->|PipelineExecutor| Store
+  Store --> STG
+  STG -->|"02 ETL Staging to NDS"| NDS
+  NDS -->|"03 D2 Load Dim Station"| DDS
+```
+
+
+
+
+| Bước                  | Pipeline                                                                          | Vai trò                                       |
+| --------------------- | --------------------------------------------------------------------------------- | --------------------------------------------- |
+| 1 — Entry Web Service | `D_pipelines/00_ETL_Push_Station_MDM_To_StagingDB/00_mdm_service_redirection.hpl` | Kiểm tra API key; gọi executor hoặc trả 401   |
+| 2 — Lưu trạm          | `…/01_store_pushed_mdm_station_from_backend_to_staging.hpl`                       | Parse JSON, reconcile với NDS, upsert staging |
+
+
+Metadata: `metadata/web-service/mdm-station.json` chỉ trỏ tới bước 1.
+
+### Biến cấu hình
+
+
+| Key                          | Ví dụ                                            | Mục đích                                     |
+| ---------------------------- | ------------------------------------------------ | -------------------------------------------- |
+| `HOP_MDM_API_HOST`           | `127.0.0.1`                                      | Host bind của Hop Server                     |
+| `HOP_MDM_API_PORT`           | `8080`                                           | Port Hop Server                              |
+| `HOP_MDM_API_URL`            | `http://localhost:8080/hop/webService/?service=` | Base URL Web Service                         |
+| `HOP_MDM_STATION_API_KEY`    | `local-dev-mdm-key`                              | Giá trị `X-API-Key` kỳ vọng                  |
+| `HOP_MDM_STATION_SERVICE_ID` | `mdm-station`                                    | Tham số `?service=` và `name` trong metadata |
+| `HOP_MDM_ALLOWED_OPERATIONS` | `INSERT,UPDATE,DELETE`                           | Các giá trị `operation` được phép            |
+
+
+
+
+### Xác thực (hai lớp)
+
+1. Basic Auth của Hop Server (Jetty): `cluster` / `cluster`
+2. Header MDM `X-API-Key` — kiểm tra trong pipeline redirection
+
+
+
+### `operation` vs `row_status` vs `station_status`
+
+
+| Trường                       | Giá trị                         | Ý nghĩa                            |
+| ---------------------------- | ------------------------------- | ---------------------------------- |
+| `stg_gbfs_station.operation` | `INSERT`, `UPDATE`, `DELETE`    | Ý định MDM của lần push này        |
+| `nds/dds.row_status`         | `active`, `deleted`             | Vòng đời bản ghi (SCD soft-delete) |
+| `station_status`             | `open`, `closed`, `maintenance` | Trạng thái vận hành của trạm       |
+
+
+Quy tắc NDS: đã có dòng active + INSERT/UPDATE → **cập nhật tại chỗ**; DELETE → soft-close (`row_status=deleted`, `is_current=false`, gán `effective_to`); tái kích hoạt sau DELETE → **thêm dòng mới** với `effective_from=NOW()`.
+
+### Cách chạy
+
+```bash
+cd 4_Official_Hop_Project
+make setup-project-home   # scripts/setup_project_home.sh
+make db-up
+make mdm-start            # scripts/start_mdm_station_services.sh
+# Chỉ chạy Hop Server mà không chạy Go service để push station: SKIP_GO_PUSH=1 make mdm-start
+```
+
+`make mdm-start` mặc định dùng project `HCMUS_Master_IS_BI_Hop_ETL_Official` và environment `Hop_ETL_Official_Configs` (khớp `hop-config.json` trên máy đã đăng ký project Official).
+
+Trên máy khác, nếu script **không tìm thấy** `hop-server.sh` hoặc tên project / lifecycle trên Hop GUI khác default, hãy export biến trước khi `make mdm-start`:
+
+
+| Biến                   | Khi nào cần                                                | Giá trị mặc định trong script         |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------------- |
+| `HOP_HOME`             | Thư mục cài Apache Hop không nằm trong danh sách tìm sẵn   | (auto-find)                           |
+| `HOP_PROJECT_NAME`     | Tên project trong Hop GUI / `hop-config.json` khác default | `HCMUS_Master_IS_BI_Hop_ETL_Official` |
+| `HOP_ENVIRONMENT_NAME` | Tên lifecycle environment khác default                     | `Hop_ETL_Official_Configs`            |
+
+
+**Checklist trên máy mới**:
+
+1. Cài Apache Hop và mở Hop GUI → đăng ký project trỏ tới thư mục `4_Official_Hop_Project`, gắn lifecycle environment (tên khớp hai biến trên, hoặc ghi đè bằng export).
+2. `HOP_HOME` = thư mục chứa `hop-server.sh` (không phải path tới file script).
+
+Ví dụ macOS / Linux (zsh/bash) — export tạm trong session:
+
+```bash
+# Path tới thư mục cài Hop (chứa hop-server.sh)
+export HOP_HOME="/path/to/apache-hop"
+
+# Chỉ cần nếu tên trên Hop GUI của bạn khác default
+export HOP_PROJECT_NAME="HCMUS_Master_IS_BI_Hop_ETL_Official"
+export HOP_ENVIRONMENT_NAME="Hop_ETL_Official_Configs"
+
+cd 4_Official_Hop_Project
+make setup-project-home
+make db-up
+make mdm-start
+```
+
+Hoặc một dòng:
+
+```bash
+HOP_HOME="/path/to/apache-hop" make mdm-start
+```
+
+Gắn cố định (tùy chọn) — thêm vào `~/.zshrc` hoặc `~/.bashrc`:
+
+```bash
+export HOP_HOME="/path/to/apache-hop"
+# export HOP_PROJECT_NAME="..."          # nếu khác default
+# export HOP_ENVIRONMENT_NAME="..."      # nếu khác default
+```
+
+Windows (Git Bash / WSL) — cùng biến; ví dụ Git Bash:
+
+```bash
+export HOP_HOME="/c/Apache/hop"
+make mdm-start
+```
+
+Path tìm sẵn trong `scripts/start_mdm_station_services.sh` (không cần `HOP_HOME` nếu Hop đã nằm một trong các chỗ này): `$HOP_HOME`, `$APACHE_HOP_HOME`, `~/Documents/7_External_Tools/apache_hop_etl_engine`, `~/apache-hop`, `/opt/hop`, `/usr/local/hop`, hoặc `hop-server.sh` trên `PATH`.
+
+**Hướng dẫn test push station với Golang Backend service**:
+
+Smoke test Go: `go run . -city CHI -operation INSERT -limit 5 -input A_datasets/A4_mdm_station_info/new_mdm_station_information.json`
+
+Ví dụ curl:
+
+```bash
+curl -u cluster:cluster -H "Content-Type: application/json" -H "X-API-Key: local-dev-mdm-key" \
+  -d '{"operation":"INSERT","sent_at":"2026-07-12T12:00:00Z","data":{"source_city_code":"CHI","gbfs_station_id":"1","short_name":"CHI02042","station_name":"Demo","latitude":41.88,"longitude":-87.62,"capacity":10,"station_status":"open"}}' \
+  "http://127.0.0.1:8080/hop/webService/?service=mdm-station"
+```
+
+Load file hàng loạt (`04_load_gbfs` → raw → validate → stg) vẫn dùng cho bootstrap; MDM push là đường online khi master data trạm thay đổi.
 
 ---
 

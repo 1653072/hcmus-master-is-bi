@@ -1,7 +1,7 @@
 {
   "name": "mdm-station",
   "enabled": true,
-  "filename": "${PROJECT_HOME}/D_pipelines/09_Push_MDM_Station_To_ETL_Hop/00_mdm_service_redirection.hpl",
+  "filename": "${PROJECT_HOME}/D_pipelines/00_ETL_Push_Station_MDM_To_StagingDB/00_mdm_service_redirection.hpl",
   "transformName": "Build JSON response",
   "fieldName": "response_json",
   "statusCode": "http_status",

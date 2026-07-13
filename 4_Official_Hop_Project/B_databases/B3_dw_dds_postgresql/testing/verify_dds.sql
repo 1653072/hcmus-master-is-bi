@@ -11,8 +11,7 @@ SELECT 'fact_station_hour_balance', COUNT(*) FROM dds.fact_station_hour_balance;
 
 -- 2. Check for NULL foreign keys in fact_station_hour_balance
 SELECT * FROM dds.fact_station_hour_balance
-WHERE city_sk IS NULL
-   OR station_sk IS NULL
+WHERE station_sk IS NULL
    OR datetime_sk IS NULL
    OR weather_condition_sk IS NULL;
 
