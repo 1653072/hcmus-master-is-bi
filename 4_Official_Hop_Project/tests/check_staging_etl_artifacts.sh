@@ -9,7 +9,7 @@ STAGING_SQL="$ROOT/B_databases/B1_dw_stg_postgresql/02_staging_schema.sql"
 DPIPE_ROOT="$ROOT/D_pipelines"
 DDS_DIR="$ROOT/D_pipelines/03_ETL_NDS_To_DDS"
 
-expected_pipeline_dirs=$'01_ETL_Source_To_StagingDB\n02_ETL_StagingDB_To_NDS\n03_ETL_NDS_To_DDS'
+expected_pipeline_dirs=$'00_ETL_Push_Station_MDM_To_StagingDB\n01_ETL_Source_To_StagingDB\n02_ETL_StagingDB_To_NDS\n03_ETL_NDS_To_DDS'
 actual_pipeline_dirs="$(
   find "$DPIPE_ROOT" -mindepth 1 -maxdepth 1 -type d | sed 's|.*/||' | sort
 )"
