@@ -4,7 +4,7 @@
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
     <parameters/>
-    <name>05_cleanup_staging_after_nds</name>
+    <name>06_cleanup_staging_after_nds</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
     <description>Clears raw and accepted staging tables after StagingDB to NDS has loaded and audit logging has succeeded.</description>
   </info>

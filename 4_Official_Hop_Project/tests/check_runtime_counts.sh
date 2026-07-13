@@ -60,22 +60,7 @@ assert_zero "invalid nds.trip.rideable_type" "$(nds_query "SELECT COUNT(*) FROM 
 assert_zero "invalid nds.trip.member_casual" "$(nds_query "SELECT COUNT(*) FROM nds.trip WHERE member_casual IS NULL OR member_casual NOT IN ('member','casual');")"
 assert_zero "invalid nds.weather.report_type" "$(nds_query "SELECT COUNT(*) FROM nds.weather WHERE report_type IS NULL OR report_type NOT IN ('FM-15','FM-16','FM-12');")"
 
-assert_zero "invalid import.stg_trip owner/unlogged state" "$(nds_query "
-SELECT COUNT(*)
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'import'
-  AND c.relname = 'stg_trip'
-  AND (pg_get_userbyid(n.nspowner) <> 'hop_nds_user'
-       OR pg_get_userbyid(c.relowner) <> 'hop_nds_user'
-       OR c.relpersistence <> 'u');
-")"
-
-assert_equals "import.stg_trip exists" "$(nds_query "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'import' AND c.relname = 'stg_trip';")" "1"
-assert_equals "hop_nds_user import.stg_trip insert privilege" "$(nds_query "SELECT has_table_privilege('hop_nds_user', 'import.stg_trip', 'INSERT');")" "t"
-assert_equals "hop_nds_user import.stg_trip truncate privilege" "$(nds_query "SELECT has_table_privilege('hop_nds_user', 'import.stg_trip', 'TRUNCATE');")" "t"
-assert_equals "hop_nds_user import schema usage privilege" "$(nds_query "SELECT has_schema_privilege('hop_nds_user', 'import', 'USAGE');")" "t"
-assert_zero "post-NDS import.stg_trip rows" "$(nds_query "SELECT COUNT(*) FROM import.stg_trip;")"
+assert_zero "obsolete import.stg_trip still exists" "$(nds_query "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'import' AND c.relname = 'stg_trip';")"
 
 nds_trip_count="$(nds_query "SELECT COUNT(*) FROM nds.trip;")"
 nds_trip_distinct_count="$(nds_query "SELECT COUNT(DISTINCT (city_sk, ride_id)) FROM nds.trip;")"
@@ -108,29 +93,6 @@ WHERE (
     (ended_at IS NULL OR ended_at < started_at)
     AND duration_minutes IS NOT NULL
   );
-")"
-
-assert_zero "import.stg_trip rows after successful workflow" "$(nds_query "SELECT COUNT(*) FROM import.stg_trip;")"
-assert_equals "import.stg_trip owner" "$(nds_query "
-SELECT pg_get_userbyid(c.relowner)
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'import' AND c.relname = 'stg_trip';
-")" "hop_nds_user"
-assert_equals "import.stg_trip persistence" "$(nds_query "
-SELECT c.relpersistence
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'import' AND c.relname = 'stg_trip';
-")" "u"
-assert_zero "import.stg_trip missing Hop privileges" "$(nds_query "
-SELECT CASE
-  WHEN has_schema_privilege('hop_nds_user', 'import', 'USAGE')
-   AND has_table_privilege('hop_nds_user', 'import.stg_trip', 'SELECT')
-   AND has_table_privilege('hop_nds_user', 'import.stg_trip', 'INSERT')
-   AND has_table_privilege('hop_nds_user', 'import.stg_trip', 'TRUNCATE')
-  THEN 0 ELSE 1
-END;
 ")"
 
 assert_zero "trip start station mapped to another city" "$(nds_query "

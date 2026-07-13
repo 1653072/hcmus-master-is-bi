@@ -123,16 +123,13 @@ Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không p
 - `D_pipelines/02_ETL_StagingDB_To_NDS/00_start_etl_stagingdb_to_nds.hpl`: set biến `ETL_STAGINGDB_TO_NDS_STARTED_AT` cho audit log
 - `D_pipelines/02_ETL_StagingDB_To_NDS/00_check_staging_dq_before_nds.hpl`: chặn NDS/cleanup nếu một source-to-staging result không `SUCCESS`; `DQ_PARTIAL_PASSED` vẫn load accepted rows
 - `D_pipelines/02_ETL_StagingDB_To_NDS/01_load_city_calendar_to_nds.hpl`: city code xuất hiện trong staging → `nds.city`; khoảng ngày staging trip/weather → `nds.calendar_day`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/01_load_gbfs_station_to_nds.hpl`: `stg_gbfs_station` → `nds.station`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/02_load_weather_to_nds.hpl`: `stg_weather` → `nds.weather`, derive `weather_category`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/03_prepare_trip_buffer.hpl`: truncate transient `import.stg_trip` trong NDS trước mỗi lần nạp trip
-- `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl`: batch copy accepted `stg_divvy_trips` + `stg_citibike_trips` → `import.stg_trip`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/03_merge_trip_buffer_to_nds.hpl`: set-based join city/station, derive `duration_minutes`, rồi upsert vào `nds.trip` theo `(city_sk, ride_id)`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/04_audit_stagingdb_to_nds_job_log.hpl`: ghi `control.etl_job_log` với `job_name = "etl_stagingdb_to_nds"`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/05_cleanup_nds_trip_buffer.hpl`: sau audit thành công, truncate transient `import.stg_trip`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/05_cleanup_staging_after_nds.hpl`: sau khi NDS load và audit thành công, truncate 4 `staging.raw_*` và 4 `staging.stg_*` tables
+- `D_pipelines/02_ETL_StagingDB_To_NDS/02_load_gbfs_station_to_nds.hpl`: `stg_gbfs_station` → `nds.station`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_weather_to_nds.hpl`: `stg_weather` → `nds.weather`, derive `weather_category`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/04_load_trips_to_nds.hpl`: đọc/deduplicate Divvy + Citi Bike staging, lookup city và station theo city, tính `duration_minutes`, rồi Hop `InsertUpdate` vào `nds.trip` theo `(city_sk, ride_id)`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/05_audit_stagingdb_to_nds_job_log.hpl`: ghi `control.etl_job_log` với `job_name = "etl_stagingdb_to_nds"`
+- `D_pipelines/02_ETL_StagingDB_To_NDS/06_cleanup_staging_after_nds.hpl`: sau khi NDS load và audit thành công, truncate 4 `staging.raw_*` và 4 `staging.stg_*` tables
 
-`import.stg_trip` là bảng làm việc transient trong DB NDS, không phải output nghiệp vụ. Bảng này là `UNLOGGED`, không có PK/index, có thể tái tạo từ Staging nếu workflow lỗi/crash; output chính thức vẫn là `nds.trip`.
+Workflow 02 không dùng bảng trip buffer trong `dw_nds`; toàn bộ mapping/upsert trip được thể hiện trực tiếp bằng các transform Hop để dễ đọc và trình bày. Đây là lựa chọn ưu tiên tính minh bạch của đồ án; không xem là tuyên bố nhanh hơn set-based SQL nếu chưa benchmark cùng điều kiện.
 
 **DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
 
@@ -827,7 +824,7 @@ erDiagram
 
 Port **5435** · SQL: `B2_dw_nds_postgresql/02_nds_schema.sql`
 
-Migration `B2_dw_nds_postgresql/05_import_trip_buffer.sql` tạo thêm `import.stg_trip` làm buffer transient cho trip bulk load. Buffer này nằm cùng DB NDS để Hop có thể batch copy từ Staging rồi PostgreSQL merge set-based vào `nds.trip`; nó không thuộc mô hình 3NF nghiệp vụ.
+Trip ETL không tạo bảng buffer lâu dài trong NDS. Pipeline `04_load_trips_to_nds.hpl` lookup surrogate keys và upsert trực tiếp vào `nds.trip`.
 
 ```mermaid
 erDiagram

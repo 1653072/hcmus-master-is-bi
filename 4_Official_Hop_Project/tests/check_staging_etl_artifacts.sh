@@ -76,17 +76,21 @@ for pipeline in \
   grep -q "etl_dq_rule_result_analysis" "$PIPE_DIR/$pipeline"
 done
 
-grep -q "<type>ExecSql</type>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
-grep -q "INSERT INTO staging.stg_citibike_trips" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
-grep -q "ON CONFLICT (source_city_code, ride_id)" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
-grep -q "IS DISTINCT FROM" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<name>Read valid typed Citi Bike trips</name>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<type>TableInput</type>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "DISTINCT ON (source_city_code_norm, ride_id_norm)" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<type>InsertUpdate</type>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<name>Upsert staging.stg_citibike_trips</name>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<commit>10000</commit>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<from>Read valid typed Citi Bike trips</from>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
+grep -q "<to>Upsert staging.stg_citibike_trips</to>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
 grep -q "CITIBIKE_VALIDATE_MONTH" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
 grep -q "CITIBIKE_RESULT_LOAD_RUN_ID" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
 grep -q "etl_dq_rule_result_details" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
 grep -q "etl_dq_rule_result_analysis" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"
-if grep -q "<name>Cast Citi Bike clean rows</name>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl" || \
-   grep -q "<name>Upsert staging.stg_citibike_trips</name>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"; then
-  echo "Citi Bike accepted branch must remain set-based, not row-by-row ScriptValueMod/InsertUpdate" >&2
+if grep -q "Set-based upsert staging.stg_citibike_trips" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl" || \
+   grep -q "<type>ScriptValueMod</type>" "$PIPE_DIR/02_validate_citibike_raw_to_staging.hpl"; then
+  echo "Citi Bike accepted branch must use TableInput and InsertUpdate without ExecSql or ScriptValueMod" >&2
   exit 1
 fi
 

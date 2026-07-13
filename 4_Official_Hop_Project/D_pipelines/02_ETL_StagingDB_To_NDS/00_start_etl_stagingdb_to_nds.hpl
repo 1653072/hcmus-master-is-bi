@@ -56,7 +56,7 @@
   </order>
   <notepads>
     <notepad><note>Sets ETL_STAGINGDB_TO_NDS_STARTED_AT before the NDS load chain.
-04_audit_stagingdb_to_nds_job_log reads it with GetVariable and writes it to control.etl_job_log.started_at.</note><xloc>96</xloc><yloc>224</yloc><width>840</width><heigth>80</heigth></notepad>
+05_audit_stagingdb_to_nds_job_log reads it with GetVariable and writes it to control.etl_job_log.started_at.</note><xloc>96</xloc><yloc>224</yloc><width>840</width><heigth>80</heigth></notepad>
   </notepads>
   <attributes/>
   <transform_error_handling/>

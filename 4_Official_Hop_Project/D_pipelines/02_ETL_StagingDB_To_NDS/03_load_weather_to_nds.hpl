@@ -4,7 +4,7 @@
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
     <parameters/>
-    <name>02_load_weather_to_nds</name>
+    <name>03_load_weather_to_nds</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
     <description>Visible Hop load from staging.stg_weather into nds.weather with weather_category and city/hour dedupe.</description>
   </info>

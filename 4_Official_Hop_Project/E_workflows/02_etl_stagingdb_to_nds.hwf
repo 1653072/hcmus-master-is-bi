@@ -129,7 +129,7 @@
       <attributes_hac/>
     </action>
     <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/01_load_gbfs_station_to_nds.hpl</filename>
+      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/02_load_gbfs_station_to_nds.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -145,7 +145,7 @@
         <pass_all_parameters>Y</pass_all_parameters>
       </parameters>
       <run_configuration>local</run_configuration>
-      <name>01_load_gbfs_station_to_nds.hpl</name>
+      <name>02_load_gbfs_station_to_nds.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
       <xloc>896</xloc>
@@ -154,7 +154,7 @@
       <attributes_hac/>
     </action>
     <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/02_load_weather_to_nds.hpl</filename>
+      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/03_load_weather_to_nds.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -170,7 +170,7 @@
         <pass_all_parameters>Y</pass_all_parameters>
       </parameters>
       <run_configuration>local</run_configuration>
-      <name>02_load_weather_to_nds.hpl</name>
+      <name>03_load_weather_to_nds.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
       <xloc>1120</xloc>
@@ -179,7 +179,7 @@
       <attributes_hac/>
     </action>
     <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/03_prepare_trip_buffer.hpl</filename>
+      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/04_load_trips_to_nds.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -195,7 +195,7 @@
         <pass_all_parameters>Y</pass_all_parameters>
       </parameters>
       <run_configuration>local</run_configuration>
-      <name>03_prepare_trip_buffer.hpl</name>
+      <name>04_load_trips_to_nds.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
       <xloc>1248</xloc>
@@ -204,7 +204,7 @@
       <attributes_hac/>
     </action>
     <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/03_load_trips_to_nds.hpl</filename>
+      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/05_audit_stagingdb_to_nds_job_log.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -220,57 +220,7 @@
         <pass_all_parameters>Y</pass_all_parameters>
       </parameters>
       <run_configuration>local</run_configuration>
-      <name>03_load_trips_to_nds.hpl</name>
-      <type>PIPELINE</type>
-      <attributes/>
-      <xloc>1344</xloc>
-      <yloc>240</yloc>
-      <parallel>N</parallel>
-      <attributes_hac/>
-    </action>
-    <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/03_merge_trip_buffer_to_nds.hpl</filename>
-      <params_from_previous>N</params_from_previous>
-      <exec_per_row>N</exec_per_row>
-      <clear_rows>N</clear_rows>
-      <clear_files>N</clear_files>
-      <create_parent_folder>N</create_parent_folder>
-      <set_logfile>N</set_logfile>
-      <set_append_logfile>N</set_append_logfile>
-      <add_date>N</add_date>
-      <add_time>N</add_time>
-      <loglevel>Basic</loglevel>
-      <wait_until_finished>Y</wait_until_finished>
-      <parameters>
-        <pass_all_parameters>Y</pass_all_parameters>
-      </parameters>
-      <run_configuration>local</run_configuration>
-      <name>03_merge_trip_buffer_to_nds.hpl</name>
-      <type>PIPELINE</type>
-      <attributes/>
-      <xloc>1424</xloc>
-      <yloc>32</yloc>
-      <parallel>N</parallel>
-      <attributes_hac/>
-    </action>
-    <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/04_audit_stagingdb_to_nds_job_log.hpl</filename>
-      <params_from_previous>N</params_from_previous>
-      <exec_per_row>N</exec_per_row>
-      <clear_rows>N</clear_rows>
-      <clear_files>N</clear_files>
-      <create_parent_folder>N</create_parent_folder>
-      <set_logfile>N</set_logfile>
-      <set_append_logfile>N</set_append_logfile>
-      <add_date>N</add_date>
-      <add_time>N</add_time>
-      <loglevel>Basic</loglevel>
-      <wait_until_finished>Y</wait_until_finished>
-      <parameters>
-        <pass_all_parameters>Y</pass_all_parameters>
-      </parameters>
-      <run_configuration>local</run_configuration>
-      <name>04_audit_stagingdb_to_nds_job_log.hpl</name>
+      <name>05_audit_stagingdb_to_nds_job_log.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
       <xloc>1568</xloc>
@@ -279,7 +229,7 @@
       <attributes_hac/>
     </action>
     <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/05_cleanup_nds_trip_buffer.hpl</filename>
+      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/06_cleanup_staging_after_nds.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
       <clear_rows>N</clear_rows>
@@ -295,32 +245,7 @@
         <pass_all_parameters>Y</pass_all_parameters>
       </parameters>
       <run_configuration>local</run_configuration>
-      <name>05_cleanup_nds_trip_buffer.hpl</name>
-      <type>PIPELINE</type>
-      <attributes/>
-      <xloc>1664</xloc>
-      <yloc>48</yloc>
-      <parallel>N</parallel>
-      <attributes_hac/>
-    </action>
-    <action>
-      <filename>${PROJECT_HOME}/D_pipelines/02_ETL_StagingDB_To_NDS/05_cleanup_staging_after_nds.hpl</filename>
-      <params_from_previous>N</params_from_previous>
-      <exec_per_row>N</exec_per_row>
-      <clear_rows>N</clear_rows>
-      <clear_files>N</clear_files>
-      <create_parent_folder>N</create_parent_folder>
-      <set_logfile>N</set_logfile>
-      <set_append_logfile>N</set_append_logfile>
-      <add_date>N</add_date>
-      <add_time>N</add_time>
-      <loglevel>Basic</loglevel>
-      <wait_until_finished>Y</wait_until_finished>
-      <parameters>
-        <pass_all_parameters>Y</pass_all_parameters>
-      </parameters>
-      <run_configuration>local</run_configuration>
-      <name>05_cleanup_staging_after_nds.hpl</name>
+      <name>06_cleanup_staging_after_nds.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
       <xloc>1792</xloc>
@@ -370,62 +295,41 @@
     </hop>
     <hop>
       <from>01_load_city_calendar_to_nds.hpl</from>
-      <to>01_load_gbfs_station_to_nds.hpl</to>
+      <to>02_load_gbfs_station_to_nds.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>01_load_gbfs_station_to_nds.hpl</from>
-      <to>02_load_weather_to_nds.hpl</to>
+      <from>02_load_gbfs_station_to_nds.hpl</from>
+      <to>03_load_weather_to_nds.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>02_load_weather_to_nds.hpl</from>
-      <to>03_prepare_trip_buffer.hpl</to>
+      <from>03_load_weather_to_nds.hpl</from>
+      <to>04_load_trips_to_nds.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>03_prepare_trip_buffer.hpl</from>
-      <to>03_load_trips_to_nds.hpl</to>
+      <from>04_load_trips_to_nds.hpl</from>
+      <to>05_audit_stagingdb_to_nds_job_log.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>03_load_trips_to_nds.hpl</from>
-      <to>03_merge_trip_buffer_to_nds.hpl</to>
+      <from>05_audit_stagingdb_to_nds_job_log.hpl</from>
+      <to>06_cleanup_staging_after_nds.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>03_merge_trip_buffer_to_nds.hpl</from>
-      <to>04_audit_stagingdb_to_nds_job_log.hpl</to>
-      <evaluation>Y</evaluation>
-      <unconditional>N</unconditional>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>04_audit_stagingdb_to_nds_job_log.hpl</from>
-      <to>05_cleanup_nds_trip_buffer.hpl</to>
-      <evaluation>Y</evaluation>
-      <unconditional>N</unconditional>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>05_cleanup_nds_trip_buffer.hpl</from>
-      <to>05_cleanup_staging_after_nds.hpl</to>
-      <evaluation>Y</evaluation>
-      <unconditional>N</unconditional>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>05_cleanup_staging_after_nds.hpl</from>
+      <from>06_cleanup_staging_after_nds.hpl</from>
       <to>Success</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>

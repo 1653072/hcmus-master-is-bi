@@ -4,7 +4,7 @@
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
     <parameters/>
-    <name>01_load_gbfs_station_to_nds</name>
+    <name>02_load_gbfs_station_to_nds</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
     <description>Visible Hop load from staging.stg_gbfs_station into nds.station using city_sk and short_name/source_station_id as the business key.</description>
   </info>

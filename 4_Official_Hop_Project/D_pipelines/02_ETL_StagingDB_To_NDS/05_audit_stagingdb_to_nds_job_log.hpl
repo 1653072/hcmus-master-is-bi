@@ -4,7 +4,7 @@
     <pipeline_type>Normal</pipeline_type>
     <pipeline_status>-1</pipeline_status>
     <parameters/>
-    <name>04_audit_stagingdb_to_nds_job_log</name>
+    <name>05_audit_stagingdb_to_nds_job_log</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
     <description>Writes one control.etl_job_log row for the successful StagingDB to NDS load before staging cleanup runs.</description>
   </info>
