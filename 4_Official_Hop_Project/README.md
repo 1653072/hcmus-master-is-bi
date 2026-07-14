@@ -40,6 +40,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
   - [8.8 Hop metadata & biến môi trường](#88-hop-metadata--biến-môi-trường)
   - [8.9 Enum / coded fields](#89-enum--coded-fields)
 9. [Push MDM Station](#9-push-mdm-station)
+10. [OLAP Cube — Mondrian và Saiku](#10-olap-cube--mondrian-và-saiku)
 
 ---
 
@@ -161,7 +162,7 @@ make runtime-checks
 
 ### 2.3 Pipeline 3: NDS → DDS
 
-`D_pipelines/03_ETL_NDS_To_DDS/` và `E_workflows/03_etl_nds_to_dds.hwf` hiện mới là skeleton/placeholder. DDS ETL sẽ làm sau; README này chỉ ghi nhận naming/status hiện tại của folder logic.
+`D_pipelines/03_ETL_NDS_To_DDS/` và `E_workflows/03_etl_nds_to_dds.hwf` triển khai luồng City → Station → Fact: load `dim_city`, đồng bộ SCD2 `dim_station`, rồi aggregate `nds.trip` theo Station × Hour và join weather để upsert `fact_station_hour_balance`.
 
 ---
 
@@ -285,7 +286,7 @@ Lệnh này sinh lại `development_configs.json` từ `development_configs.loca
 | Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines                             |
 | Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification                                             |
 | ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.city`, `nds.calendar_day`, `nds.station`, `nds.weather`, `nds.trip`, sau đó audit và cleanup 8 bảng staging; script chỉ là fallback/manual verification |
-| Hop ETL end-to-end                     | `D_pipelines/03_ETL_NDS_To_DDS`, `E_workflows/03_etl_nds_to_dds.hwf` hiện là skeleton/placeholder; DDS load làm sau                                                                          |
+| Hop ETL end-to-end                     | Workflow 01 Source → Staging, workflow 02 Staging → NDS, workflow 03 NDS → DDS; cube Mondrian nằm trong `F_olap/mondrian/`                                                                  |
 
 
 ---
@@ -623,7 +624,7 @@ Thiết kế schema cho bike-share DW (Chicago Divvy + NYC Citi Bike, kỳ mẫu
 
 - **4 dimensions** (không `Dim_Holiday`): `Dim_City`, `Dim_Station`, `Dim_DateTime`, `Dim_WeatherCondition`.
 - **1 fact:** `Fact_StationHourBalance` — Periodic Snapshot, grain **City × Station × Hour**.
-- **DDS layout:** **Snowflake schema** — `dim_station.city_sk` → `dim_city` (hierarchy City → Station); fact FK trực tiếp tới cả `city_sk` và `station_sk`.
+- **DDS layout:** **Snowflake schema** — fact FK tới `dim_station.station_sk`; city được suy ra qua `dim_station.city_sk` → `dim_city.city_sk`.
 - **Không** `batch_id` trên staging — chỉ `loaded_at`; upsert theo business key.
 - **Raw 0NF:** `staging.raw_`* giữ giá trị dạng `TEXT`, không PK, có `load_run_id`, `source_file`, `source_row_number`, `raw_loaded_at` để kiểm DQ/duplicate.
 
@@ -931,7 +932,7 @@ erDiagram
 ### 8.5. DDS Snowflake (`dds.*` — 4 Dim + 1 Fact)
 
 - Port **5436** · SQL: `B3_dw_dds_postgresql/02_dds_schema.sql`
-- **Schema type:** **Snowflake** (không phải Star thuần) — dimension có hierarchy: `dim_station` FK `city_sk` → `dim_city` (City → Station). Các dimension còn lại (`dim_datetime`, `dim_weather_condition`) nối trực tiếp fact; không có hierarchy bổ sung.
+- **Schema type:** **Snowflake** (không phải Star thuần) — fact nối `dim_station`, rồi `dim_station.city_sk` nối `dim_city`. Trong logical OLAP cube, Station không được công bố thành level; các hierarchy demo là Time `Year → Quarter → Month` và Weather `Precipitation Band → Weather Category`.
 - **Fact type:** Periodic Snapshot
 - **Fact Grain:** City × Station × Hour
 - **Unique Key in Fact table:** `(city_sk, station_sk, datetime_sk)`
@@ -1338,6 +1339,131 @@ curl -u cluster:cluster -H "Content-Type: application/json" -H "X-API-Key: local
 ```
 
 Load file hàng loạt (`04_load_gbfs` → raw → validate → stg) vẫn dùng cho bootstrap; MDM push là đường online khi master data trạm thay đổi.
+
+---
+
+## 10. OLAP Cube — Mondrian và Saiku
+
+Cube demo đọc trực tiếp tầng DDS sau khi workflow `03_etl_nds_to_dds.hwf` hoàn tất. Mondrian schema được quản lý cùng source code tại:
+
+```text
+F_olap/
+├── mondrian/
+│   └── BikeShareCube.xml
+└── mdx/
+    └── demo_queries.mdx
+```
+
+### 10.1 Cube, hypercube, hierarchies và measures
+
+Fact `dds.fact_station_hour_balance` có grain **Station × Hour**. Cube dùng một measure chính và ba dimensions; khi đồng thời phân tích trên cả ba dimensions, lát dữ liệu được trình bày như một **hypercube** `Time × Location × Weather × Measures`.
+
+| Dimension | Đường join DDS | Hierarchy |
+| --- | --- | --- |
+| Time | fact.`datetime_sk` → `dim_datetime.datetime_sk` | `Year → Quarter → Month` |
+| City / Location | fact.`station_sk` → `dim_station.station_sk` → `dim_city.city_sk` | `City` |
+| Weather | fact.`weather_condition_sk` → `dim_weather_condition.weather_condition_sk` | `Precipitation Band → Weather Category` |
+
+```mermaid
+flowchart LR
+  Y[Year] --> Q[Quarter] --> M[Month]
+  C[City]
+  P[Precipitation Band] --> W[Weather Category]
+  M --> F((Trip Count))
+  C --> F
+  W --> F
+```
+
+Measure chính là `Trip Count = SUM(trips_started)`. Không dùng `COUNT(*)`, vì một record fact là một station-hour chứ không phải một chuyến xe. Schema cũng cung cấp `Trips Ended`, `Member Trips`, `Casual Trips`, `Electric Trips`, `Classic Trips` và `Absolute Imbalance`.
+
+Các thuộc tính `year`, `quarter`, `month`, `month_name` được lưu trong `dim_datetime`. File `05_cube_hierarchy_migration.sql` nâng cấp idempotent database DDS cũ; database tạo mới nhận các cột này trực tiếp từ DDL và seed.
+
+### 10.2 Điều kiện trước khi mở cube
+
+Chạy đúng thứ tự:
+
+```text
+01_etl_source_to_stagingdb.hwf
+→ 02_etl_stagingdb_to_nds.hwf
+→ 03_etl_nds_to_dds.hwf
+```
+
+Kiểm tra DDS có fact:
+
+```sql
+SELECT COUNT(*) AS fact_rows,
+       SUM(trips_started) AS trip_count
+FROM dds.fact_station_hour_balance;
+```
+
+### 10.3 Kết nối Saiku với DDS PostgreSQL
+
+Upload `F_olap/mondrian/BikeShareCube.xml` trong Saiku Administration, sau đó tạo Mondrian data source:
+
+| Field | Giá trị local |
+| --- | --- |
+| Connection type | `Mondrian` |
+| JDBC URL khi Saiku chạy trên máy host | `jdbc:postgresql://localhost:5436/dw_dds` |
+| JDBC URL khi Saiku chạy trong Docker | `jdbc:postgresql://host.docker.internal:5436/dw_dds` |
+| JDBC driver | `org.postgresql.Driver` |
+| Username | `analytics_reader_user` |
+| Password | `analytics_reader@123` |
+| Schema/Catalog | `BikeShareCube.xml` đã upload |
+
+PostgreSQL JDBC driver phải có trong classpath của Saiku/Tomcat. Sau mỗi lần ETL cập nhật DDS, refresh Mondrian/Saiku cache trước khi kiểm tra số liệu mới.
+
+### 10.4 Demo và MDX kiểm tra
+
+Trong Saiku, kéo `Time.Calendar.Month` và `City.Geography.City` vào Rows, `Weather.Weather Category` vào Columns, rồi chọn measure `Trip Count`.
+
+Bộ MDX dùng để nộp và demo được lưu tại `F_olap/mdx/demo_queries.mdx`, gồm query hypercube tổng quan và các thao tác roll-up, drill-down, slice, dice, pivot.
+
+```mdx
+SELECT
+  NON EMPTY CrossJoin(
+    { [Measures].[Trip Count] },
+    [Weather].[Weather].[Weather Category].Members
+  ) ON COLUMNS,
+  NON EMPTY CrossJoin(
+    [Time].[Calendar].[Month].Members,
+    [City].[Geography].[City].Members
+  ) ON ROWS
+FROM [Bike Share Trips]
+```
+
+### 10.5 Các thao tác truy vấn OLAP
+
+| Thao tác | Ý nghĩa trong cube | Ví dụ dữ liệu cụ thể | MDX trong file demo |
+| --- | --- | --- | --- |
+| Roll-up | Tổng hợp từ level chi tiết lên level cha | Month → Quarter | Q2 |
+| Drill-down | Đi từ level tổng hợp xuống chi tiết | Year 2026 → Quarter → Month | Q3 |
+| Slice | Cố định một member của một chiều | Weather = Rain, xem Month × City | Q4 |
+| Dice | Chọn tập con member trên nhiều chiều | Apr–May 2026 × Chicago/NYC × Clear/Rain | Q5 |
+| Pivot | Đổi trục trình bày mà không đổi số liệu | City từ Rows sang Columns; Weather theo Rows | Q6 |
+
+Query hypercube cơ sở Q1 trả về `Trip Count` cho mọi tổ hợp Month × City × Weather Category. Query Q7 minh họa nhiều measures trong cùng cell context: member/casual và electric/classic cho năm 2026 dưới thời tiết Rain.
+
+`Station` vẫn là grain/FK trong DDS để bảo toàn khả năng phân tích chi tiết, nhưng không được công bố thành level của cube demo. Cách này tránh dimension cardinality cao trong Saiku; cube trình bày chỉ còn tối đa khoảng `5 tháng × 2 city × 4 weather category = 40` tổ hợp nghiệp vụ cho kỳ 01–05/2026. Mondrian vẫn tổng hợp từ các fact station-hour đang tồn tại, không materialize toàn bộ tích Descartes.
+
+SQL đối chiếu kết quả cube:
+
+```sql
+SELECT dt.month,
+       c.city_name,
+       w.weather_category,
+       SUM(f.trips_started) AS trip_count
+FROM dds.fact_station_hour_balance f
+JOIN dds.dim_datetime dt
+  ON dt.datetime_sk = f.datetime_sk
+JOIN dds.dim_station s
+  ON s.station_sk = f.station_sk
+JOIN dds.dim_city c
+  ON c.city_sk = s.city_sk
+JOIN dds.dim_weather_condition w
+  ON w.weather_condition_sk = f.weather_condition_sk
+GROUP BY dt.month, c.city_name, w.weather_category
+ORDER BY dt.month, c.city_name, w.weather_category;
+```
 
 ---
 

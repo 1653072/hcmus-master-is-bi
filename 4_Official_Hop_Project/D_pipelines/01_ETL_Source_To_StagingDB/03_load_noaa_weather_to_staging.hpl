@@ -19,14 +19,14 @@
     <type>GetFileNames</type>
     <name>List NOAA LCD CSV files</name>
     <file>
-      <name>${NOAA_LCD_CHICAGO}</name>
+      <name>${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00014819_2026_01-05.csv</name>
       <filemask/>
       <exclude_filemask/>
       <file_required>Y</file_required>
       <include_subfolders>N</include_subfolders>
     </file>
     <file>
-      <name>${NOAA_LCD_NYC}</name>
+      <name>${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00094728_2026_01-05.csv</name>
       <filemask/>
       <exclude_filemask/>
       <file_required>Y</file_required>
