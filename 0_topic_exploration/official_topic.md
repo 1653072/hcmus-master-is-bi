@@ -410,7 +410,7 @@ Các dimension còn lại: `Dim_City`, `Dim_WeatherCondition`, `Dim_Holiday` dù
 
 ```mermaid
 erDiagram
-  Fact_StationHourBalance ||--o{ Dim_City : city_sk
+  Dim_Station ||--o{ Dim_City : city_sk
   Fact_StationHourBalance ||--o{ Dim_Station : station_sk
   Fact_StationHourBalance ||--o{ Dim_DateTime : datetime_sk
   Fact_StationHourBalance ||--o{ Dim_Holiday : holiday_sk

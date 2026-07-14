@@ -934,7 +934,7 @@ erDiagram
 - **Schema type:** **Snowflake** (không phải Star thuần) — dimension có hierarchy: `dim_station` FK `city_sk` → `dim_city` (City → Station). Các dimension còn lại (`dim_datetime`, `dim_weather_condition`) nối trực tiếp fact; không có hierarchy bổ sung.
 - **Fact type:** Periodic Snapshot
 - **Fact Grain:** City × Station × Hour
-- **Unique Key in Fact table:** `(city_sk, station_sk, datetime_sk)`
+- **Unique Key in Fact table:** `(station_sk, datetime_sk)`
 
 ```mermaid
 erDiagram
@@ -977,7 +977,6 @@ erDiagram
   }
   fact_station_hour_balance {
     bigint station_hour_balance_sk PK
-    int city_sk FK
     bigint station_sk FK
     int datetime_sk FK
     int weather_condition_sk FK
@@ -996,7 +995,6 @@ erDiagram
     numeric wind_speed
     timestamp loaded_at
   }
-  dim_city ||--o{ fact_station_hour_balance : city_sk
   dim_station ||--o{ fact_station_hour_balance : station_sk
   dim_datetime ||--o{ fact_station_hour_balance : datetime_sk
   dim_weather_condition ||--o{ fact_station_hour_balance : weather_condition_sk
