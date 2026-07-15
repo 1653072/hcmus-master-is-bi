@@ -20,7 +20,7 @@
     <name>List GBFS JSON files</name>
     <file>
       <name>${PROJECT_HOME}/A_datasets/A4_mdm_station_info/</name>
-      <filemask>.*station_information\.json</filemask>
+      <filemask>(citibike|divvy)_station_information\.json</filemask>
       <exclude_filemask/>
       <file_required>Y</file_required>
       <include_subfolders>N</include_subfolders>
