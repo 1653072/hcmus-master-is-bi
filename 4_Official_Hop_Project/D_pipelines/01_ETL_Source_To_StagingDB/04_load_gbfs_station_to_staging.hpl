@@ -19,8 +19,8 @@
     <type>GetFileNames</type>
     <name>List GBFS JSON files</name>
     <file>
-      <name>${GBFS_STATION_DIR}/</name>
-      <filemask>.*station_information\.json</filemask>
+      <name>${PROJECT_HOME}/A_datasets/A4_mdm_station_info/</name>
+      <filemask>(citibike|divvy)_station_information\.json</filemask>
       <exclude_filemask/>
       <file_required>Y</file_required>
       <include_subfolders>N</include_subfolders>

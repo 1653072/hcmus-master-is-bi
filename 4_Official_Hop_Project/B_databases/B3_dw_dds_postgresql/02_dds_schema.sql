@@ -38,7 +38,10 @@ CREATE TABLE dds.dim_datetime (
     day_of_week       SMALLINT NOT NULL,
     is_weekend        BOOLEAN NOT NULL,
     is_peak_hour      BOOLEAN NOT NULL,
+    year              SMALLINT NOT NULL,
+    quarter           SMALLINT NOT NULL CHECK (quarter BETWEEN 1 AND 4),
     month             SMALLINT NOT NULL,
+    month_name        VARCHAR(20) NOT NULL,
     season            VARCHAR(20) NOT NULL,
     CONSTRAINT uq_dim_datetime_date_hour UNIQUE (date, hour)
 );

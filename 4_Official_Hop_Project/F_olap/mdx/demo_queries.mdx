@@ -1,0 +1,103 @@
+-- Bike Share OLAP: cube, hypercube and OLAP operations
+-- Cube: [Bike Share Trips]
+-- Grain: Station x Hour
+-- Hierarchies:
+--   Time.Calendar       : Year -> Quarter -> Month
+--   City.Geography      : City
+--   Weather.Weather     : Precipitation Band -> Weather Category
+-- Main measure: [Measures].[Trip Count] = SUM(trips_started)
+
+-- Q1. HYPERCUBE / base query
+-- Three-dimensional view: Month x City x Weather Category.
+SELECT
+  NON EMPTY CrossJoin(
+    { [Measures].[Trip Count] },
+    [Weather].[Weather].[Weather Category].Members
+  ) ON COLUMNS,
+  NON EMPTY CrossJoin(
+    [Time].[Calendar].[Month].Members,
+    [City].[Geography].[City].Members
+  ) ON ROWS
+FROM [Bike Share Trips];
+
+-- Q2. ROLL-UP
+-- Aggregate Month -> Quarter.
+SELECT
+  { [Measures].[Trip Count] } ON COLUMNS,
+  NON EMPTY CrossJoin(
+    [Time].[Calendar].[Quarter].Members,
+    [City].[Geography].[City].Members
+  ) ON ROWS
+FROM [Bike Share Trips];
+
+-- Q3. DRILL-DOWN
+-- Start at year 2026, then display its descendant months.
+SELECT
+  { [Measures].[Trip Count] } ON COLUMNS,
+  NON EMPTY CrossJoin(
+    Descendants(
+      [Time].[Calendar].[2026],
+      [Time].[Calendar].[Month]
+    ),
+    Descendants(
+      [Weather].[Weather].[All Weather],
+      [Weather].[Weather].[Weather Category]
+    )
+  ) ON ROWS
+FROM [Bike Share Trips];
+
+-- Q4. SLICE
+-- Fix Weather = Rain; the remaining view is Month x City.
+SELECT
+  { [Measures].[Trip Count] } ON COLUMNS,
+  NON EMPTY CrossJoin(
+    [Time].[Calendar].[Month].Members,
+    [City].[Geography].[City].Members
+  ) ON ROWS
+FROM [Bike Share Trips]
+WHERE ([Weather].[Weather].[Rain]);
+
+-- Q5. DICE
+-- Sub-cube: Apr-May 2026 x Chicago/NYC x Clear/Rain.
+SELECT
+  NON EMPTY CrossJoin(
+    { [Measures].[Trip Count] },
+    {
+      [Weather].[Weather].[Clear],
+      [Weather].[Weather].[Rain]
+    }
+  ) ON COLUMNS,
+  NON EMPTY CrossJoin(
+    {
+      [Time].[Calendar].[2026].[2].[April],
+      [Time].[Calendar].[2026].[2].[May]
+    },
+    {
+      [City].[Geography].[Chicago],
+      [City].[Geography].[New York City]
+    }
+  ) ON ROWS
+FROM [Bike Share Trips];
+
+-- Q6. PIVOT
+-- Same analytical content as a city/weather view, but swap axes.
+SELECT
+  NON EMPTY [City].[Geography].[City].Members ON COLUMNS,
+  NON EMPTY [Weather].[Weather].[Weather Category].Members ON ROWS
+FROM [Bike Share Trips]
+WHERE ([Measures].[Trip Count]);
+
+-- Q7. Multiple measures for a concrete comparison.
+SELECT
+  {
+    [Measures].[Member Trips],
+    [Measures].[Casual Trips],
+    [Measures].[Electric Trips],
+    [Measures].[Classic Trips]
+  } ON COLUMNS,
+  NON EMPTY [City].[Geography].[City].Members ON ROWS
+FROM [Bike Share Trips]
+WHERE (
+  [Time].[Calendar].[2026],
+  [Weather].[Weather].[Rain]
+);

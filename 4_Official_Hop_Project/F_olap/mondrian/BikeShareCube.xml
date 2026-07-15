@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Schema name="BikeShareDW">
+  <Cube name="Bike Share Trips"
+        caption="Bike Share Trips"
+        defaultMeasure="Trip Count"
+        cache="true"
+        enabled="true">
+    <Table name="fact_station_hour_balance" schema="dds"/>
+
+    <!-- Fact.datetime_sk -> dim_datetime.datetime_sk -->
+    <Dimension name="Time"
+               caption="Time"
+               type="TimeDimension"
+               foreignKey="datetime_sk">
+      <Hierarchy name="Calendar"
+                 hasAll="true"
+                 allMemberName="All Time"
+                 primaryKey="datetime_sk">
+        <Table name="dim_datetime" schema="dds"/>
+        <Level name="Year"
+               caption="Year"
+               column="year"
+               type="Numeric"
+               levelType="TimeYears"
+               uniqueMembers="true"/>
+        <Level name="Quarter"
+               caption="Quarter"
+               column="quarter"
+               type="Numeric"
+               levelType="TimeQuarters"
+               uniqueMembers="false"/>
+        <Level name="Month"
+               caption="Month"
+               column="month"
+               nameColumn="month_name"
+               type="Numeric"
+               levelType="TimeMonths"
+               uniqueMembers="false"/>
+      </Hierarchy>
+    </Dimension>
+
+    <!-- Fact.station_sk -> dim_station -> dim_city -->
+    <Dimension name="City"
+               caption="City"
+               foreignKey="station_sk">
+      <Hierarchy name="Geography"
+                 hasAll="true"
+                 allMemberName="All Cities"
+                 primaryKey="station_sk"
+                 primaryKeyTable="station">
+        <Join leftKey="city_sk" rightKey="city_sk">
+          <Table name="dim_station" schema="dds" alias="station"/>
+          <Table name="dim_city" schema="dds" alias="city"/>
+        </Join>
+        <Level name="City"
+               caption="City"
+               table="city"
+               column="city_sk"
+               nameColumn="city_name"
+               type="Numeric"
+               uniqueMembers="true"/>
+      </Hierarchy>
+    </Dimension>
+
+    <!-- Fact.weather_condition_sk -> dim_weather_condition -->
+    <Dimension name="Weather"
+               caption="Weather"
+               foreignKey="weather_condition_sk">
+      <Hierarchy name="Weather"
+                 hasAll="true"
+                 allMemberName="All Weather"
+                 primaryKey="weather_condition_sk">
+        <Table name="dim_weather_condition" schema="dds"/>
+        <Level name="Precipitation Band"
+               caption="Precipitation Band"
+               column="precipitation_band"
+               type="String"
+               uniqueMembers="true"/>
+        <Level name="Weather Category"
+               caption="Weather Category"
+               column="weather_condition_sk"
+               nameColumn="weather_category"
+               type="Numeric"
+               uniqueMembers="true"/>
+      </Hierarchy>
+    </Dimension>
+
+    <!-- One fact row is Station x Hour, so COUNT(*) is not a trip count. -->
+    <Measure name="Trip Count"
+             caption="Trips Started"
+             column="trips_started"
+             aggregator="sum"
+             formatString="#,##0"/>
+    <Measure name="Trips Ended"
+             column="trips_ended"
+             aggregator="sum"
+             formatString="#,##0"/>
+    <Measure name="Member Trips"
+             column="member_trip_count"
+             aggregator="sum"
+             formatString="#,##0"/>
+    <Measure name="Casual Trips"
+             column="casual_trip_count"
+             aggregator="sum"
+             formatString="#,##0"/>
+    <Measure name="Electric Trips"
+             column="electric_trip_count"
+             aggregator="sum"
+             formatString="#,##0"/>
+    <Measure name="Classic Trips"
+             column="classic_trip_count"
+             aggregator="sum"
+             formatString="#,##0"/>
+    <Measure name="Absolute Imbalance"
+             column="abs_imbalance"
+             aggregator="sum"
+             formatString="#,##0"/>
+  </Cube>
+</Schema>
