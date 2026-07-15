@@ -56,7 +56,8 @@ INSERT INTO control.etl_extraction_control (source_name, table_name, lset, cet, 
     ('divvy_trips',    'stg_divvy_trips',    '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
     ('citibike_trips', 'stg_citibike_trips', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
     ('noaa_lcd',       'stg_weather',        '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
-    ('gbfs_station',   'stg_gbfs_station',   '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0);
+    ('gbfs_station',   'stg_gbfs_station',   '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
+    ('nds_to_dds',     'fact_station_hour_balance', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0);
 
 INSERT INTO control.dq_rule_catalog (rule_code, source_name, rule_type, severity, rule_description) VALUES
     ('DIVVY_NULL_REQUIRED',       'divvy_trips',    'null',      'reject',  'ride_id, started_at, and source_city_code are required'),

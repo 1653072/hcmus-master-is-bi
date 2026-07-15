@@ -24,7 +24,6 @@
     <sql>WITH starts AS (
     SELECT 
         city_sk,
-        start_station_sk AS station_sk,
         start_station_id AS source_station_id,
         DATE_TRUNC('hour', started_at) AS date_hour,
         COUNT(*) AS trips_started,
@@ -36,23 +35,23 @@
         SUM(duration_minutes) FILTER (WHERE member_casual = 'casual') AS sum_duration_casual
     FROM nds.trip
     WHERE start_station_sk IS NOT NULL
-    GROUP BY city_sk, start_station_sk, start_station_id, DATE_TRUNC('hour', started_at)
+      AND loaded_at &gt; '${LSET_NDS_TO_DDS}'::TIMESTAMP AND loaded_at &lt;= '${CET_NDS_TO_DDS}'::TIMESTAMP
+    GROUP BY city_sk, start_station_id, DATE_TRUNC('hour', started_at)
 ),
 ends AS (
     SELECT 
         city_sk,
-        end_station_sk AS station_sk,
         end_station_id AS source_station_id,
         DATE_TRUNC('hour', ended_at) AS date_hour,
         COUNT(*) AS trips_ended
     FROM nds.trip
     WHERE end_station_sk IS NOT NULL AND ended_at IS NOT NULL
-    GROUP BY city_sk, end_station_sk, end_station_id, DATE_TRUNC('hour', ended_at)
+      AND loaded_at &gt; '${LSET_NDS_TO_DDS}'::TIMESTAMP AND loaded_at &lt;= '${CET_NDS_TO_DDS}'::TIMESTAMP
+    GROUP BY city_sk, end_station_id, DATE_TRUNC('hour', ended_at)
 ),
 combined AS (
     SELECT 
         COALESCE(s.city_sk, e.city_sk) AS city_sk,
-        COALESCE(s.station_sk, e.station_sk) AS nds_station_sk,
         COALESCE(s.source_station_id, e.source_station_id) AS source_station_id,
         COALESCE(s.date_hour, e.date_hour) AS date_hour,
         COALESCE(s.trips_started, 0) AS trips_started,
@@ -76,7 +75,7 @@ combined AS (
     FROM starts s
     FULL OUTER JOIN ends e 
         ON s.city_sk = e.city_sk 
-        AND s.station_sk = e.station_sk 
+        AND s.source_station_id = e.source_station_id 
         AND s.date_hour = e.date_hour
 )
 SELECT 
@@ -107,7 +106,7 @@ LEFT JOIN nds.weather w
 ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
+    <variables_active>Y</variables_active>
     <connection>dw-nds</connection>
     <lookup/>
     <sql_from_file/>
@@ -127,9 +126,9 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
     <type>DBLookup</type>
     <name>Lookup datetime_sk</name>
     <connection>dw-dds</connection>
-    <cache>N</cache>
+    <cache>Y</cache>
     <cache_size>0</cache_size>
-    <cache_load_all>N</cache_load_all>
+    <cache_load_all>Y</cache_load_all>
     <lookup>
       <schema>dds</schema>
       <table>dim_datetime</table>
@@ -170,9 +169,9 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
     <type>DBLookup</type>
     <name>Lookup weather_condition_sk</name>
     <connection>dw-dds</connection>
-    <cache>N</cache>
+    <cache>Y</cache>
     <cache_size>0</cache_size>
-    <cache_load_all>N</cache_load_all>
+    <cache_load_all>Y</cache_load_all>
     <lookup>
       <schema>dds</schema>
       <table>dim_weather_condition</table>
@@ -204,42 +203,41 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
     <attributes/>
   </transform>
   <transform>
-    <type>DBLookup</type>
+    <type>DimensionLookup</type>
     <name>Lookup station_sk</name>
+    <schema>dds</schema>
+    <table>dim_station</table>
     <connection>dw-dds</connection>
-    <cache>N</cache>
-    <cache_size>0</cache_size>
-    <cache_load_all>N</cache_load_all>
-    <lookup>
-      <schema>dds</schema>
-      <table>dim_station</table>
+    <update>N</update>
+    <fields>
       <key>
         <name>city_sk</name>
-        <name2/>
-        <condition>=</condition>
-        <field>city_sk</field>
+        <lookup>city_sk</lookup>
       </key>
       <key>
         <name>source_station_id</name>
-        <name2/>
-        <condition>=</condition>
-        <field>source_station_id</field>
+        <lookup>source_station_id</lookup>
       </key>
-      <key>
-        <name>is_current_const</name>
-        <name2/>
-        <condition>=</condition>
-        <field>is_current</field>
-      </key>
-      <value>
+      <date>
+        <name>date_hour</name>
+        <from>effective_from</from>
+        <to>effective_to</to>
+      </date>
+      <return>
         <name>station_sk</name>
         <rename>station_sk</rename>
-        <default/>
-        <type>Integer</type>
-      </value>
-      <fail_on_multiple>N</fail_on_multiple>
-      <eat_row_on_failure>N</eat_row_on_failure>
-    </lookup>
+        <creation_method>autoinc</creation_method>
+        <version>version</version>
+      </return>
+    </fields>
+    <commit>100</commit>
+    <useBatch>N</useBatch>
+    <min_year>1900</min_year>
+    <max_year>2199</max_year>
+    <cache_size>0</cache_size>
+    <use_start_date_alternative>N</use_start_date_alternative>
+    <preload_cache>Y</preload_cache>
+    <unknown_row_check_disabled>Y</unknown_row_check_disabled>
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
@@ -253,107 +251,94 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
     <attributes/>
   </transform>
   <transform>
-    <type>InsertUpdate</type>
-    <name>Upsert fact_station_hour_balance</name>
+    <type>TableOutput</type>
+    <name>Load fact_station_hour_balance</name>
     <connection>dw-dds</connection>
-    <commit>100</commit>
-    <update_bypassed>N</update_bypassed>
-    <lookup>
-      <schema>dds</schema>
-      <table>fact_station_hour_balance</table>
-      <key>
-        <name>station_sk</name>
-        <field>station_sk</field>
-        <condition>=</condition>
-        <name2/>
-      </key>
-      <key>
-        <name>datetime_sk</name>
-        <field>datetime_sk</field>
-        <condition>=</condition>
-        <name2/>
-      </key>
-      <value>
-        <name>station_sk</name>
-        <rename>station_sk</rename>
-        <update>N</update>
-      </value>
-      <value>
-        <name>datetime_sk</name>
-        <rename>datetime_sk</rename>
-        <update>N</update>
-      </value>
-      <value>
-        <name>weather_condition_sk</name>
-        <rename>weather_condition_sk</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>trips_started</name>
-        <rename>trips_started</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>trips_ended</name>
-        <rename>trips_ended</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>net_flow</name>
-        <rename>net_flow</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>abs_imbalance</name>
-        <rename>abs_imbalance</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>member_trip_count</name>
-        <rename>member_trip_count</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>casual_trip_count</name>
-        <rename>casual_trip_count</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>electric_trip_count</name>
-        <rename>electric_trip_count</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>classic_trip_count</name>
-        <rename>classic_trip_count</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>avg_duration_member_minutes</name>
-        <rename>avg_duration_member_minutes</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>avg_duration_casual_minutes</name>
-        <rename>avg_duration_casual_minutes</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>temperature</name>
-        <rename>temperature</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>precipitation</name>
-        <rename>precipitation</rename>
-        <update>Y</update>
-      </value>
-      <value>
-        <name>wind_speed</name>
-        <rename>wind_speed</rename>
-        <update>Y</update>
-      </value>
-    </lookup>
+    <schema>dds</schema>
+    <table>fact_station_hour_balance</table>
+    <commit>5000</commit>
+    <truncate>N</truncate>
+    <only_when_have_rows>N</only_when_have_rows>
+    <ignore_errors>N</ignore_errors>
+    <use_batch>Y</use_batch>
+    <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_daily>N</partitioning_daily>
+    <partitioning_monthly>N</partitioning_monthly>
+    <tablename_in_field>N</tablename_in_field>
+    <tablename_in_table>N</tablename_in_table>
+    <return_keys>N</return_keys>
+    <specify_fields>Y</specify_fields>
+    <auto_update_table_structure>N</auto_update_table_structure>
+    <always_drop_and_recreate>N</always_drop_and_recreate>
+    <add_columns>N</add_columns>
+    <drop_columns>N</drop_columns>
+    <change_column_types>N</change_column_types>
+    <fields>
+      <field>
+        <stream_name>station_sk</stream_name>
+        <column_name>station_sk</column_name>
+      </field>
+      <field>
+        <stream_name>datetime_sk</stream_name>
+        <column_name>datetime_sk</column_name>
+      </field>
+      <field>
+        <stream_name>weather_condition_sk</stream_name>
+        <column_name>weather_condition_sk</column_name>
+      </field>
+      <field>
+        <stream_name>trips_started</stream_name>
+        <column_name>trips_started</column_name>
+      </field>
+      <field>
+        <stream_name>trips_ended</stream_name>
+        <column_name>trips_ended</column_name>
+      </field>
+      <field>
+        <stream_name>net_flow</stream_name>
+        <column_name>net_flow</column_name>
+      </field>
+      <field>
+        <stream_name>abs_imbalance</stream_name>
+        <column_name>abs_imbalance</column_name>
+      </field>
+      <field>
+        <stream_name>member_trip_count</stream_name>
+        <column_name>member_trip_count</column_name>
+      </field>
+      <field>
+        <stream_name>casual_trip_count</stream_name>
+        <column_name>casual_trip_count</column_name>
+      </field>
+      <field>
+        <stream_name>electric_trip_count</stream_name>
+        <column_name>electric_trip_count</column_name>
+      </field>
+      <field>
+        <stream_name>classic_trip_count</stream_name>
+        <column_name>classic_trip_count</column_name>
+      </field>
+      <field>
+        <stream_name>avg_duration_member_minutes</stream_name>
+        <column_name>avg_duration_member_minutes</column_name>
+      </field>
+      <field>
+        <stream_name>avg_duration_casual_minutes</stream_name>
+        <column_name>avg_duration_casual_minutes</column_name>
+      </field>
+      <field>
+        <stream_name>temperature</stream_name>
+        <column_name>temperature</column_name>
+      </field>
+      <field>
+        <stream_name>precipitation</stream_name>
+        <column_name>precipitation</column_name>
+      </field>
+      <field>
+        <stream_name>wind_speed</stream_name>
+        <column_name>wind_speed</column_name>
+      </field>
+    </fields>
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
@@ -384,7 +369,7 @@ ORDER BY c.city_sk, c.source_station_id, c.date_hour</sql>
     </hop>
     <hop>
       <from>Lookup station_sk</from>
-      <to>Upsert fact_station_hour_balance</to>
+      <to>Load fact_station_hour_balance</to>
       <enabled>Y</enabled>
     </hop>
   </order>

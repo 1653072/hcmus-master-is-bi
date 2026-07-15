@@ -83,6 +83,8 @@ CREATE TABLE nds.trip (
 
 CREATE INDEX idx_trip_started_at ON nds.trip (city_sk, started_at);
 CREATE INDEX idx_trip_end_station ON nds.trip (end_station_sk, ended_at);
+CREATE INDEX idx_trip_start_hour ON nds.trip (city_sk, start_station_sk, DATE_TRUNC('hour', started_at));
+CREATE INDEX idx_trip_end_hour ON nds.trip (city_sk, end_station_sk, DATE_TRUNC('hour', ended_at));
 
 ALTER TABLE nds.city OWNER TO hop_nds_user;
 ALTER TABLE nds.station OWNER TO hop_nds_user;

@@ -23,7 +23,32 @@
       <type>SPECIAL</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>80</yloc>
+      <yloc>40</yloc>
+      <parallel>N</parallel>
+      <attributes_hac/>
+    </action>
+    <action>
+      <filename>${PROJECT_HOME}/D_pipelines/03_ETL_NDS_To_DDS/00_start_etl_nds_to_dds.hpl</filename>
+      <params_from_previous>N</params_from_previous>
+      <exec_per_row>N</exec_per_row>
+      <clear_rows>Y</clear_rows>
+      <clear_files>Y</clear_files>
+      <create_parent_folder>Y</create_parent_folder>
+      <set_logfile>N</set_logfile>
+      <set_append_logfile>N</set_append_logfile>
+      <add_date>N</add_date>
+      <add_time>N</add_time>
+      <loglevel>Basic</loglevel>
+      <wait_until_finished>Y</wait_until_finished>
+      <parameters>
+        <pass_all_parameters>Y</pass_all_parameters>
+      </parameters>
+      <run_configuration>local</run_configuration>
+      <name>00_start_etl_nds_to_dds.hpl</name>
+      <type>PIPELINE</type>
+      <attributes/>
+      <xloc>224</xloc>
+      <yloc>120</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -78,6 +103,19 @@
       <attributes_hac/>
     </action>
     <action>
+      <name>Clean fact range</name>
+      <type>SQL</type>
+      <sql>DELETE FROM dds.fact_station_hour_balance 
+WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL '15 days', 'YYYYMMDDHH24') AS INTEGER)
+  AND datetime_sk &lt;= CAST(TO_CHAR('${CET_NDS_TO_DDS}'::TIMESTAMP, 'YYYYMMDDHH24') AS INTEGER);</sql>
+      <useVariableSubstitution>Y</useVariableSubstitution>
+      <connection>dw-dds</connection>
+      <parallel>N</parallel>
+      <xloc>224</xloc>
+      <yloc>384</yloc>
+      <attributes_hac/>
+    </action>
+    <action>
       <filename>${PROJECT_HOME}/D_pipelines/03_ETL_NDS_To_DDS/D3_Aggregate_Fact_StationHourBalance.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
@@ -98,7 +136,32 @@
       <type>PIPELINE</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>416</yloc>
+      <yloc>464</yloc>
+      <parallel>N</parallel>
+      <attributes_hac/>
+    </action>
+    <action>
+      <filename>${PROJECT_HOME}/D_pipelines/03_ETL_NDS_To_DDS/05_audit_nds_to_dds.hpl</filename>
+      <params_from_previous>N</params_from_previous>
+      <exec_per_row>N</exec_per_row>
+      <clear_rows>Y</clear_rows>
+      <clear_files>Y</clear_files>
+      <create_parent_folder>Y</create_parent_folder>
+      <set_logfile>N</set_logfile>
+      <set_append_logfile>N</set_append_logfile>
+      <add_date>N</add_date>
+      <add_time>N</add_time>
+      <loglevel>Basic</loglevel>
+      <wait_until_finished>Y</wait_until_finished>
+      <parameters>
+        <pass_all_parameters>Y</pass_all_parameters>
+      </parameters>
+      <run_configuration>local</run_configuration>
+      <name>05_audit_nds_to_dds.hpl</name>
+      <type>PIPELINE</type>
+      <attributes/>
+      <xloc>224</xloc>
+      <yloc>544</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -108,12 +171,26 @@
       <type>SUCCESS</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>528</yloc>
+      <yloc>624</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
   </actions>
   <hops>
+    <hop>
+      <from>Start</from>
+      <to>00_start_etl_nds_to_dds.hpl</to>
+      <evaluation>Y</evaluation>
+      <unconditional>Y</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>00_start_etl_nds_to_dds.hpl</from>
+      <to>D1_Load_Dim_City.hpl</to>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+      <enabled>Y</enabled>
+    </hop>
     <hop>
       <from>D1_Load_Dim_City.hpl</from>
       <to>D2_Load_Dim_Station.hpl</to>
@@ -123,6 +200,13 @@
     </hop>
     <hop>
       <from>D2_Load_Dim_Station.hpl</from>
+      <to>Clean fact range</to>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Clean fact range</from>
       <to>D3_Aggregate_Fact_StationHourBalance.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
@@ -130,16 +214,16 @@
     </hop>
     <hop>
       <from>D3_Aggregate_Fact_StationHourBalance.hpl</from>
-      <to>Success</to>
+      <to>05_audit_nds_to_dds.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Start</from>
-      <to>D1_Load_Dim_City.hpl</to>
+      <from>05_audit_nds_to_dds.hpl</from>
+      <to>Success</to>
       <evaluation>Y</evaluation>
-      <unconditional>Y</unconditional>
+      <unconditional>N</unconditional>
       <enabled>Y</enabled>
     </hop>
   </hops>

@@ -20,8 +20,8 @@
     <name>List Divvy CSV files</name>
     <file>
       <name>${DIVVY_TRIPS_DIR}/</name>
-      <!-- <filemask>[0-9]{6}.*\.csv</filemask> -->
-      <filemask>202[56]01.*\.csv</filemask>
+      <filemask>[0-9]{6}.*\.csv</filemask>
+      <!-- <filemask>202[56]01.*\.csv</filemask> -->
       <exclude_filemask/>
       <file_required>Y</file_required>
       <include_subfolders>Y</include_subfolders>

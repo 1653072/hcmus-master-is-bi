@@ -68,22 +68,22 @@
       <value>
         <name>city_name</name>
         <rename>city_name</rename>
-        <update>Y</update>
+        <update>N</update>
       </value>
       <value>
         <name>timezone</name>
         <rename>timezone</rename>
-        <update>Y</update>
+        <update>N</update>
       </value>
       <value>
         <name>noaa_station_id</name>
         <rename>noaa_station_id</rename>
-        <update>Y</update>
+        <update>N</update>
       </value>
       <value>
         <name>gbfs_system_id</name>
         <rename>gbfs_system_id</rename>
-        <update>Y</update>
+        <update>N</update>
       </value>
     </lookup>
     <distribute>Y</distribute>
