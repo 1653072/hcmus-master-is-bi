@@ -73,7 +73,7 @@
       <type>PIPELINE</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>304</yloc>
+      <yloc>352</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -98,7 +98,7 @@
       <type>PIPELINE</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>416</yloc>
+      <yloc>496</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -108,7 +108,7 @@
       <type>SUCCESS</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>528</yloc>
+      <yloc>640</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
