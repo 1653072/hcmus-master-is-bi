@@ -594,7 +594,7 @@ bash download_datasets.sh --from 202603 --to 202604
 | GBFS / MDM   | `GBFS_STATION_DIR`, `HOP_MDM_STATION_STAGING_TABLE`        | Push → `stg_gbfs_station`                        |
 | DB STG       | `STAGING_DB_*`, `CONTROL_DB_*`                             | Port **5434**                                    |
 | DB NDS / DDS | `NDS_DB_*` (5435), `DDS_DB_*` (5436)                       | User `*_user`, password `*@123`                  |
-| Power BI     | `POWERBI_DDS_*`                                            | `analytics_reader_user` / `analytics_reader@123` |
+| Analytics    | `ANALYTICS_DDS_*`                                          | `analytics_reader_user` / `analytics_reader@123` |
 
 
 Chi tiết MDM + metadata: [mục 8.8](#88-hop-metadata--biến-môi-trường).
@@ -1083,7 +1083,7 @@ metadata/
 | Control  | `hop_control_user`      | `hop_control@123`      |
 | NDS      | `hop_nds_user`          | `hop_nds@123`          |
 | DDS      | `hop_dds_user`          | `hop_dds@123`          |
-| Power BI | `analytics_reader_user` | `analytics_reader@123` |
+| Analytics (Tableau / Power BI) | `analytics_reader_user` | `analytics_reader@123` |
 
 
 

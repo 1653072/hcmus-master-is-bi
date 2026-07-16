@@ -50,14 +50,14 @@
     { "name" : "DDS_DB_NAME", "value" : "dw_dds", "description" : "DDS database name" },
     { "name" : "DDS_DB_USER", "value" : "hop_dds_user", "description" : "DDS database user" },
     { "name" : "DDS_DB_PASSWORD", "value" : "hop_dds@123", "description" : "DDS password (local fake — committed for dev)" },
-    { "name" : "DDS_DB_SCHEMA", "value" : "dds", "description" : "DDS schema (Snowflake — Power BI reads here)" },
+    { "name" : "DDS_DB_SCHEMA", "value" : "dds", "description" : "DDS schema (Snowflake — analytics tools read here)" },
     { "name" : "DDS_LOAD_DIMENSIONS_BEFORE_FACTS", "value" : "true", "description" : "Load dimension tables before fact tables" },
 
-    { "name" : "POWERBI_DDS_HOST", "value" : "localhost", "description" : "Power BI — DDS host (docker: dw-dds-postgres)" },
-    { "name" : "POWERBI_DDS_PORT", "value" : "5436", "description" : "Power BI — DDS port" },
-    { "name" : "POWERBI_DDS_NAME", "value" : "dw_dds", "description" : "Power BI — DDS database" },
-    { "name" : "POWERBI_DDS_USER", "value" : "analytics_reader_user", "description" : "Power BI — read-only user" },
-    { "name" : "POWERBI_DDS_PASSWORD", "value" : "analytics_reader@123", "description" : "Power BI — password (local fake — committed for dev)" },
-    { "name" : "POWERBI_DDS_SCHEMA", "value" : "dds", "description" : "Power BI — DDS schema" }
+    { "name" : "ANALYTICS_DDS_HOST", "value" : "localhost", "description" : "Analytics tools — DDS host (docker: dw-dds-postgres)" },
+    { "name" : "ANALYTICS_DDS_PORT", "value" : "5436", "description" : "Analytics tools — DDS port" },
+    { "name" : "ANALYTICS_DDS_NAME", "value" : "dw_dds", "description" : "Analytics tools — DDS database" },
+    { "name" : "ANALYTICS_DDS_USER", "value" : "analytics_reader_user", "description" : "Analytics tools — read-only user" },
+    { "name" : "ANALYTICS_DDS_PASSWORD", "value" : "analytics_reader@123", "description" : "Analytics tools — password (local fake — committed for dev)" },
+    { "name" : "ANALYTICS_DDS_SCHEMA", "value" : "dds", "description" : "Analytics tools — DDS schema" }
   ]
 }
