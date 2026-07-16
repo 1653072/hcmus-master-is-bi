@@ -18,7 +18,7 @@
       <minutes>00</minutes>
       <hour>00</hour>
       <doNotWaitOnFirstExecution>Y</doNotWaitOnFirstExecution>
-      <name>Start (Repeated at 00:00 everyday)</name>
+      <name>Start (Repeated at 00:00 everyday with LSET/CET)</name>
       <description/>
       <type>SPECIAL</type>
       <attributes/>
@@ -147,7 +147,7 @@
   </actions>
   <hops>
     <hop>
-      <from>Start (Repeated at 00:00 everyday)</from>
+      <from>Start (Repeated at 00:00 everyday with LSET/CET)</from>
       <to>Check all DB connections</to>
       <evaluation>Y</evaluation>
       <unconditional>Y</unconditional>
