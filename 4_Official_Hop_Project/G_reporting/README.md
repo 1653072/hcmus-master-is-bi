@@ -13,6 +13,14 @@ Open `BikeShare_Executive_Dashboard.twb` with Tableau Desktop 2026.2 or newer.
 
 Enter the PostgreSQL password when Tableau requests credentials. The password is intentionally not stored in this repository.
 
+## KPI report (Chương 6)
+
+Filled markdown from DDS (Jan–May 2026 Actual + YTD):
+
+- [`kpi_report_2026_jan_may.md`](kpi_report_2026_jan_may.md)
+- SQL: [`sql/kpi_report_actuals_2026_jan_may.sql`](sql/kpi_report_actuals_2026_jan_may.sql)
+- Regenerate: `python3 scripts/generate_kpi_report.py` (requires Docker container `hcmus-bi-official-db-dw-dds-postgres`)
+
 ## Dashboard layout
 
 The `Executive Overview` dashboard contains:
