@@ -20,8 +20,9 @@ type StationStatusEnum string
 
 const (
 	MaxRetry             = 3
-	MaxTimeout           = 5 * time.Second
-	RetryBackoffInterval = 500 * time.Millisecond
+	MaxTimeout           = 30 * time.Second // each push runs a full Hop pipeline; 5s caused false timeouts under GC/OOM
+	RetryBackoffInterval = 600 * time.Millisecond
+	PushDelay            = 100 * time.Millisecond // pause between pushes to ease Hop GC under bulk load
 
 	HopServerUsername = "cluster"
 	HopServerPassword = "cluster"
@@ -307,9 +308,11 @@ func main() {
 	op := strings.ToUpper(strings.TrimSpace(*operation))
 	fmt.Printf("Pushing MDM stations to %s\n", buildPushURL())
 	if perStationCity {
-		fmt.Printf("Input=%s city=per-station(CHI*/else NYC) operation=%s stations=%d limit=%d\n", path, op, len(stations), *limit)
+		fmt.Printf("Input=%s city=per-station(CHI*/else NYC) operation=%s stations=%d limit=%d delay=%s\n",
+			path, op, len(stations), *limit, PushDelay)
 	} else {
-		fmt.Printf("Input=%s city=%s operation=%s stations=%d limit=%d\n", path, defaultCity, op, len(stations), *limit)
+		fmt.Printf("Input=%s city=%s operation=%s stations=%d limit=%d delay=%s\n",
+			path, defaultCity, op, len(stations), *limit, PushDelay)
 	}
 
 	ok, fail := 0, 0
@@ -336,11 +339,15 @@ func main() {
 			continue
 		}
 		fmt.Printf("[%d] HTTP %d short_name=%s resp=%s\n", i, status, payload.Data.ShortName, string(respBody))
-		
+
 		if status >= 200 && status < 300 {
 			ok++
 		} else {
 			fail++
+		}
+
+		if PushDelay > 0 && (*limit == 0 || i+1 < *limit) && i+1 < len(stations) {
+			time.Sleep(PushDelay)
 		}
 	}
 	

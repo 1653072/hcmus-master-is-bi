@@ -1405,13 +1405,15 @@ Quy tắc NDS: đã có dòng active + INSERT/UPDATE → **cập nhật tại ch
 cd 4_Official_Hop_Project
 make setup-project-home   # scripts/setup_project_home.sh
 make db-up
-make mdm-start            # scripts/start_mdm_station_services.sh
+make mdm-start            # scripts/start_mdm_station_services.sh (Hop -Xmx4g + push all stations)
 # Chỉ chạy Hop Server mà không chạy Go service để push station: SKIP_GO_PUSH=1 make mdm-start
+# Cap số station: ./scripts/start_mdm_station_services.sh -city ALL -operation INSERT -limit 20
+# Heap lớn hơn: HOP_OPTIONS="-Xmx6g" make mdm-start
 ```
 
 `make mdm-start` mặc định dùng project `HCMUS_Master_IS_BI_Hop_ETL_Official` và environment `Hop_ETL_Official_Configs` (khớp `hop-config.json` trên máy đã đăng ký project Official).
 
-Trên máy khác, nếu script **không tìm thấy** `hop-server.sh` hoặc tên project / lifecycle trên Hop GUI khác default, hãy export biến trước khi `make mdm-start`:
+> **OOM / timeout:** mỗi POST chạy full pipeline trên Hop Server. Default Hop chỉ có `-Xmx2048m`; script này nâng lên `-Xmx4g`. Đóng Hop GUI / kill process cũ trên port 8080 trước khi chạy lại nếu vẫn thấy `Java heap space` hoặc `context deadline exceeded`. Smoke nhanh: `go run . -limit 20`.Trên máy khác, nếu script **không tìm thấy** `hop-server.sh` hoặc tên project / lifecycle trên Hop GUI khác default, hãy export biến trước khi `make mdm-start`:
 
 
 | Biến                   | Khi nào cần                                                | Giá trị mặc định trong script         |
@@ -1419,6 +1421,8 @@ Trên máy khác, nếu script **không tìm thấy** `hop-server.sh` hoặc tê
 | `HOP_HOME`             | Thư mục cài Apache Hop không nằm trong danh sách tìm sẵn   | (auto-find)                           |
 | `HOP_PROJECT_NAME`     | Tên project trong Hop GUI / `hop-config.json` khác default | `HCMUS_Master_IS_BI_Hop_ETL_Official` |
 | `HOP_ENVIRONMENT_NAME` | Tên lifecycle environment khác default                     | `Hop_ETL_Official_Configs`            |
+| `HOP_OPTIONS`          | Heap JVM cho hop-server (tránh `Java heap space` khi push) | `-Xmx4g`                              |
+| `SKIP_GO_PUSH`         | Chỉ start Hop Server, không chạy Go pusher                 | unset                                 |
 
 
 **Checklist trên máy mới**:

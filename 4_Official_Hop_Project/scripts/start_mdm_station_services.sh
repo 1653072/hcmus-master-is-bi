@@ -10,7 +10,14 @@
 #   HOP_PROJECT_NAME            — default: HCMUS_Master_IS_BI_Hop_ETL_Official
 #   HOP_ENVIRONMENT_NAME        — default: Hop_ETL_Official_Configs
 #   HOP_MDM_API_HOST / HOP_MDM_API_PORT
+#   HOP_OPTIONS                 — JVM flags for hop-server (default: -Xmx4g)
 #   SKIP_GO_PUSH=1              — start Hop Server only
+#
+# Examples:
+#   make mdm-start                                    # Hop 4g + push all stations
+#   HOP_OPTIONS="-Xmx6g" make mdm-start
+#   SKIP_GO_PUSH=1 make mdm-start                     # Hop only; then go run . -limit 5
+#   ./scripts/start_mdm_station_services.sh -city ALL -operation INSERT -limit 20
 
 set -euo pipefail
 
@@ -23,6 +30,8 @@ HOP_MDM_API_PORT="${HOP_MDM_API_PORT:-8080}"
 # Defaults match hop-config.json projectConfigurations / lifecycleEnvironments for this repo
 HOP_PROJECT_NAME="${HOP_PROJECT_NAME:-HCMUS_Master_IS_BI_Hop_ETL_Official}"
 HOP_ENVIRONMENT_NAME="${HOP_ENVIRONMENT_NAME:-Hop_ETL_Official_Configs}"
+# hop-server.sh defaults to -Xmx2048m — too small for rapid MDM web-service pipelines
+export HOP_OPTIONS="${HOP_OPTIONS:--Xmx4g}"
 
 find_hop_server() {
   local candidate
@@ -73,11 +82,21 @@ export HOP_CONFIG_FOLDER="${HOP_CONFIG_FOLDER:-$HOP_INSTALL_DIR/config}"
 
 echo "Using hop-server: $HOP_SERVER"
 echo "HOP_CONFIG_FOLDER=$HOP_CONFIG_FOLDER"
+echo "HOP_OPTIONS=$HOP_OPTIONS"
 echo "Project=$HOP_PROJECT_NAME env=$HOP_ENVIRONMENT_NAME host=$HOP_MDM_API_HOST port=$HOP_MDM_API_PORT"
 
 # Ensure development_configs.json exists with absolute PROJECT_HOME
 if [[ -x "$SCRIPT_DIR/setup_project_home.sh" ]]; then
   "$SCRIPT_DIR/setup_project_home.sh" || true
+fi
+
+# Warn if something already listens on the MDM port (stale Hop / GUI conflict)
+if command -v lsof >/dev/null 2>&1; then
+  if lsof -nP -iTCP:"$HOP_MDM_API_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "WARNING: port $HOP_MDM_API_PORT already in use:" >&2
+    lsof -nP -iTCP:"$HOP_MDM_API_PORT" -sTCP:LISTEN >&2 || true
+    echo "Kill the old process (or change HOP_MDM_API_PORT) before retrying." >&2
+  fi
 fi
 
 cd "$HOP_INSTALL_DIR"
@@ -96,8 +115,28 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Give Jetty a moment
-sleep 3
+# Wait until Jetty answers (up to ~60s) — sleep 3 alone is often too short after cold start
+echo "Waiting for Hop Server on ${HOP_MDM_API_HOST}:${HOP_MDM_API_PORT} ..."
+ready=0
+for _ in $(seq 1 60); do
+  if curl -sf -u cluster:cluster \
+    "http://${HOP_MDM_API_HOST}:${HOP_MDM_API_PORT}/hop/status/" >/dev/null 2>&1 \
+    || curl -sf -u cluster:cluster \
+    "http://${HOP_MDM_API_HOST}:${HOP_MDM_API_PORT}/hop/" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  if ! kill -0 "$HOP_PID" 2>/dev/null; then
+    echo "ERROR: Hop Server exited before becoming ready (check Java heap / port)." >&2
+    exit 1
+  fi
+  sleep 1
+done
+if [[ "$ready" -ne 1 ]]; then
+  echo "ERROR: Hop Server did not become ready within 60s." >&2
+  exit 1
+fi
+echo "Hop Server is ready."
 
 if [[ "${SKIP_GO_PUSH:-0}" == "1" ]]; then
   echo "SKIP_GO_PUSH=1 — Hop Server only. Press Ctrl+C to stop."
@@ -108,7 +147,7 @@ fi
 cd "$PROJECT_ROOT/C_backend/C1_mdm_station_info"
 echo "Starting Go MDM station pusher (go run .)"
 if [[ "$#" -eq 0 ]]; then
-  echo "No flags passed — default: -city ALL -operation INSERT (CHI*→CHI, else→NYC per station)"
+  echo "No flags passed — default: -city ALL -operation INSERT (all stations; pass -limit N to cap)"
   set -- -city ALL -operation INSERT
 else
   echo "Args: $*"
