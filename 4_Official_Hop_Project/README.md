@@ -1273,6 +1273,110 @@ sequenceDiagram
 | **Trạm chỉ còn bản ghi lịch sử** | `station_id` khớp bản ghi `nds.station` với `is_current = false` | **Không** pending — load NDS với `station_sk` lịch sử |
 | **Thiếu ID trên file trip** | `start_station_id` / `end_station_id` null trên CSV | Cảnh báo Data Quality; vẫn load NDS (surrogate key null) |
 
+#### Cách kiểm thử Late-Arriving Station Master Data
+
+File `A_datasets/A4_mdm_station_info/new_mdm_station_information.json` chứa master data giả lập được tạo từ danh sách `station_id` đang thiếu master:
+
+- `short_name` giữ nguyên `station_id` trên trip để join theo `(city_sk, source_station_id)`.
+- `short_name` bắt đầu bằng `CHI` dùng tọa độ Chicago; các mã còn lại dùng tọa độ New York City.
+- `station_type` là `classic` hoặc `e_bike`; `region_id` luôn bằng `"0"`.
+- File hiện có 3.869 station duy nhất: 1.574 Chicago và 2.295 New York City.
+
+Quy trình test phải giữ đúng thứ tự **trip đến trước, master data đến sau**:
+
+1. Khởi động database và Hop Server, nhưng **chưa push station master**:
+
+   ```bash
+   cd 4_Official_Hop_Project
+   make db-up
+   SKIP_GO_PUSH=1 make mdm-start
+   ```
+
+2. Trên Hop GUI, chạy **Workflow ETL Source → Staging**, sau đó chạy **Workflow ETL Staging → NDS**.
+
+   Kỳ vọng sau lần chạy đầu:
+
+   - Trip có `station_id` chưa tồn tại trong `nds.station` không được upsert mới vào `nds.trip`.
+   - Các trip này vẫn còn trong `staging.stg_divvy_trips` hoặc `staging.stg_citibike_trips` sau cleanup.
+   - `control.etl_job_log.failed_rows_count` của job `etl_stagingdb_to_nds` lớn hơn `0`.
+
+3. Giữ Hop Server đang chạy. Mở terminal khác và push master data giả lập:
+
+   ```bash
+   cd 4_Official_Hop_Project/C_backend/C1_mdm_station_info
+
+   # Smoke test nhanh: push 20 station đầu tiên
+   go run . -city ALL -operation INSERT -limit 20
+
+   # Hoặc push toàn bộ 3.869 station (sẽ mất nhiều thời gian vì gửi từng HTTP request)
+   go run . -city ALL -operation INSERT
+   ```
+
+   Với `-city ALL`, Go backend xác định city theo từng station: `CHI*` → `CHI`, còn lại → `NYC`.
+
+4. Kiểm tra station đã được MDM ghi vào staging. Ví dụ station NYC `1234.56` nằm trong nhóm đầu của file:
+
+   ```sql
+   -- Chạy trên dw_staging (port 5434)
+   SELECT source_city_code, short_name, station_name, operation
+   FROM staging.stg_gbfs_station
+   WHERE source_city_code = 'NYC'
+     AND short_name = '1234.56';
+   ```
+
+5. Chạy lại **Workflow ETL Staging → NDS**.
+
+   Trong lần chạy này:
+
+   - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
+   - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk`.
+   - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
+
+6. Xác minh kết quả trên NDS:
+
+   ```sql
+   -- Chạy trên dw_nds (port 5435)
+   SELECT city_sk, source_station_id, station_sk, is_current, row_status
+   FROM nds.station
+   WHERE source_station_id = '1234.56';
+
+   SELECT
+     COUNT(*) AS total_trips,
+     COUNT(*) FILTER (WHERE start_station_id = '1234.56'
+                       AND start_station_sk IS NOT NULL) AS resolved_start_trips,
+     COUNT(*) FILTER (WHERE end_station_id = '1234.56'
+                       AND end_station_sk IS NOT NULL) AS resolved_end_trips
+   FROM nds.trip
+   WHERE start_station_id = '1234.56'
+      OR end_station_id = '1234.56';
+   ```
+
+7. Xác minh audit và cleanup:
+
+   ```sql
+   -- Chạy trên dw_control (port 5434)
+   SELECT job_name, status, total_rows_count, success_rows_count,
+          failed_rows_count, finished_at
+   FROM control.etl_job_log
+   WHERE job_name = 'etl_stagingdb_to_nds'
+   ORDER BY finished_at DESC
+   LIMIT 2;
+
+   -- Chạy trên dw_staging (port 5434)
+   SELECT COUNT(*) AS unresolved_rows
+   FROM (
+     SELECT start_station_id, end_station_id
+     FROM staging.stg_divvy_trips
+     UNION ALL
+     SELECT start_station_id, end_station_id
+     FROM staging.stg_citibike_trips
+   ) t
+   WHERE start_station_id = '1234.56'
+      OR end_station_id = '1234.56';
+   ```
+
+   Kỳ vọng: trip của station đã push có surrogate key trên NDS và không còn trên staging; `failed_rows_count` giảm tương ứng. Các trip thiếu `station_id` trên CSV vẫn được load với surrogate key null và không bị coi là late-arriving master.
+
 | Bước                  | Pipeline                                                                          | Vai trò                                       |
 | --------------------- | --------------------------------------------------------------------------------- | --------------------------------------------- |
 | 1 — Entry Web Service | `D_pipelines/00_ETL_Push_Station_MDM_To_StagingDB/00_mdm_service_redirection.hpl` | Kiểm tra API key; gọi executor hoặc trả 401   |
@@ -1383,7 +1487,7 @@ Path tìm sẵn trong `scripts/start_mdm_station_services.sh` (không cần `HOP
 
 **Hướng dẫn test push station với Golang Backend service**:
 
-Smoke test Go: `go run . -city CHI -operation INSERT -limit 5 -input A_datasets/A4_mdm_station_info/new_mdm_station_information.json`
+Smoke test Go cho file mixed Chicago/New York City: `go run . -city ALL -operation INSERT -limit 5`
 
 Ví dụ curl:
 

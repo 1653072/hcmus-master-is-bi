@@ -129,24 +129,15 @@ func inferCityCode(path string) string {
 
 // inferCityCodeFromStations uses short_name / station_id prefixes (CHI… / NYC…)
 // so the default new_mdm_station_information.json demo file works without -city.
+// Mixed CHI + numeric Citi Bike files return "" so main uses per-station city.
 func inferCityCodeFromStations(stations []gbfsStation) string {
 	hasCHI, hasNYC := false, false
 	for _, st := range stations {
-		for _, raw := range []string{st.ShortName, st.StationID} {
-			u := strings.ToUpper(strings.TrimSpace(raw))
-			if strings.HasPrefix(u, "CHI") || strings.Contains(u, "CHI-") || strings.Contains(u, "-CHI-") {
-				hasCHI = true
-			}
-			if strings.HasPrefix(u, "NYC") || strings.Contains(u, "NYC-") || strings.Contains(u, "-NYC-") {
-				hasNYC = true
-			}
-			lower := strings.ToLower(raw)
-			if strings.Contains(lower, "divvy") || strings.Contains(lower, "chicago") {
-				hasCHI = true
-			}
-			if strings.Contains(lower, "citibike") || strings.Contains(lower, "new_york") {
-				hasNYC = true
-			}
+		switch cityCodeForStation(st) {
+		case "CHI":
+			hasCHI = true
+		case "NYC":
+			hasNYC = true
 		}
 	}
 	switch {
@@ -157,6 +148,28 @@ func inferCityCodeFromStations(stations []gbfsStation) string {
 	default:
 		return ""
 	}
+}
+
+// cityCodeForStation maps Divvy-style CHI* short_name → CHI; everything else → NYC
+// (Citi Bike short_names are typically numeric like "3550.05").
+func cityCodeForStation(st gbfsStation) string {
+	for _, raw := range []string{st.ShortName, st.StationID} {
+		u := strings.ToUpper(strings.TrimSpace(raw))
+		if strings.HasPrefix(u, "CHI") || strings.Contains(u, "CHI-") || strings.Contains(u, "-CHI-") {
+			return "CHI"
+		}
+		lower := strings.ToLower(raw)
+		if strings.Contains(lower, "divvy") || strings.Contains(lower, "chicago") {
+			return "CHI"
+		}
+		if strings.HasPrefix(u, "NYC") || strings.Contains(u, "NYC-") || strings.Contains(u, "-NYC-") {
+			return "NYC"
+		}
+		if strings.Contains(lower, "citibike") || strings.Contains(lower, "new_york") {
+			return "NYC"
+		}
+	}
+	return "NYC"
 }
 
 func toPushRequest(city, operation string, st gbfsStation) mdmPushRequest {
@@ -277,21 +290,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	city := strings.ToUpper(strings.TrimSpace(*cityFlag))
-	if city == "" || city == "ALL" {
-		city = inferCityCode(path)
+	defaultCity := strings.ToUpper(strings.TrimSpace(*cityFlag))
+	if defaultCity == "" || defaultCity == "ALL" {
+		defaultCity = inferCityCode(path)
 	}
-	if city == "" || city == "ALL" {
-		city = inferCityCodeFromStations(stations)
+	if defaultCity == "" || defaultCity == "ALL" {
+		defaultCity = inferCityCodeFromStations(stations)
 	}
-	if city != "CHI" && city != "NYC" {
-		fmt.Fprintf(os.Stderr, "ERROR: set -city CHI|NYC (could not infer from %s)\n", path)
+	// Mixed CHI+NYC late-master files: allow ALL / empty and resolve city per station.
+	perStationCity := defaultCity == "" || defaultCity == "ALL"
+	if !perStationCity && defaultCity != "CHI" && defaultCity != "NYC" {
+		fmt.Fprintf(os.Stderr, "ERROR: set -city CHI|NYC|ALL (could not infer from %s)\n", path)
 		os.Exit(1)
 	}
 
 	op := strings.ToUpper(strings.TrimSpace(*operation))
 	fmt.Printf("Pushing MDM stations to %s\n", buildPushURL())
-	fmt.Printf("Input=%s city=%s operation=%s stations=%d limit=%d\n", path, city, op, len(stations), *limit)
+	if perStationCity {
+		fmt.Printf("Input=%s city=per-station(CHI*/else NYC) operation=%s stations=%d limit=%d\n", path, op, len(stations), *limit)
+	} else {
+		fmt.Printf("Input=%s city=%s operation=%s stations=%d limit=%d\n", path, defaultCity, op, len(stations), *limit)
+	}
 
 	ok, fail := 0, 0
 	for i, st := range stations {
@@ -305,6 +324,10 @@ func main() {
 			continue
 		}
 
+		city := defaultCity
+		if perStationCity {
+			city = cityCodeForStation(st)
+		}
 		payload := toPushRequest(city, op, st)
 		respBody, status, err := pushStation(payload)
 		if err != nil {
