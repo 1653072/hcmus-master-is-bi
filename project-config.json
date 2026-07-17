@@ -1,7 +1,7 @@
 {
   "metadataBaseFolder" : "${PROJECT_HOME}/metadata",
   "unitTestsBasePath" : "${PROJECT_HOME}",
-  "dataSetsCsvFolder" : "${PROJECT_HOME}/datasets",
+  "dataSetsCsvFolder" : "${PROJECT_HOME}/A_datasets",
   "enforcingExecutionInHome" : true,
   "parentProjectName" : "default",
   "config" : {
