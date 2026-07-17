@@ -40,6 +40,7 @@ Dự án Apache Hop chính thức cho đề tài **Xây dựng Data Warehouse ph
   - [8.8 Hop metadata & biến môi trường](#88-hop-metadata--biến-môi-trường)
   - [8.9 Enum / coded fields](#89-enum--coded-fields)
 9. [Push MDM Station](#9-push-mdm-station)
+  - [Late-Arriving Master Data](#late-arriving-master-data-master-data-trạm-đến-trễ)
 10. [OLAP Cube — Mondrian và Saiku](#10-olap-cube--mondrian-và-saiku)
 
 ---
@@ -140,9 +141,9 @@ Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không p
 - `D_pipelines/02_ETL_StagingDB_To_NDS/01_load_city_calendar_to_nds.hpl`: city code xuất hiện trong staging → `nds.city`; khoảng ngày staging trip/weather → `nds.calendar_day`
 - `D_pipelines/02_ETL_StagingDB_To_NDS/02_load_gbfs_station_to_nds.hpl`: `stg_gbfs_station` → `nds.station`
 - `D_pipelines/02_ETL_StagingDB_To_NDS/03_load_weather_to_nds.hpl`: `stg_weather` → `nds.weather`, derive `weather_category`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/04_load_trips_to_nds.hpl`: đọc/deduplicate Divvy + Citi Bike staging, lookup city và station theo city, tính `duration_minutes`, rồi Hop `InsertUpdate` vào `nds.trip` theo `(city_sk, ride_id)`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/05_audit_stagingdb_to_nds_job_log.hpl`: ghi `control.etl_job_log` với `job_name = "etl_stagingdb_to_nds"`
-- `D_pipelines/02_ETL_StagingDB_To_NDS/06_cleanup_staging_after_nds.hpl`: sau khi NDS load và audit thành công, truncate 4 `staging.raw_*` và 4 `staging.stg_*` tables
+- `D_pipelines/02_ETL_StagingDB_To_NDS/04_load_trips_to_nds.hpl`: đọc/deduplicate Divvy + Citi Bike staging, lookup city và station (ưu tiên bản ghi current, fallback lịch sử), tính `duration_minutes`; chỉ `InsertUpdate` trip đã resolve station; trip pending late master giữ trên staging
+- `D_pipelines/02_ETL_StagingDB_To_NDS/05_audit_stagingdb_to_nds_job_log.hpl`: ghi `control.etl_job_log` với `job_name = "etl_stagingdb_to_nds"`; `failed_rows_count` = số trip pending master còn trên staging
+- `D_pipelines/02_ETL_StagingDB_To_NDS/06_cleanup_staging_after_nds.hpl`: sau khi NDS load và audit thành công, truncate `raw_*` + `stg_weather` + `stg_gbfs_station`; DELETE có điều kiện `stg_*_trips` đã có trên `nds.trip` (giữ trip pending master)
 
 Workflow 02 không dùng bảng trip buffer trong `dw_nds`; toàn bộ mapping/upsert trip được thể hiện trực tiếp bằng các transform Hop để dễ đọc và trình bày. Đây là lựa chọn ưu tiên tính minh bạch của đồ án; không xem là tuyên bố nhanh hơn set-based SQL nếu chưa benchmark cùng điều kiện.
 
@@ -285,7 +286,7 @@ Lệnh này sinh lại `development_configs.json` từ `development_configs.loca
 | Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                                                                                                                                                  |
 | Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines                             |
 | Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification                                             |
-| ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.city`, `nds.calendar_day`, `nds.station`, `nds.weather`, `nds.trip`, sau đó audit và cleanup 8 bảng staging; script chỉ là fallback/manual verification |
+| ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.city`, `nds.calendar_day`, `nds.station`, `nds.weather`, `nds.trip`, audit (kể cả trip pending master), rồi cleanup có điều kiện (giữ trip late master trên staging); script chỉ là fallback/manual verification |
 | Hop ETL end-to-end                     | Workflow 01 Source → Staging, workflow 02 Staging → NDS, workflow 03 NDS → DDS; cube Mondrian nằm trong `F_olap/mondrian/`                                                                  |
 
 
@@ -1213,8 +1214,64 @@ flowchart TB
   NDS -->|"03 D2 Load Dim Station"| DDS
 ```
 
+### Late-Arriving Master Data (master data trạm đến trễ)
 
+**Vấn đề:** Trip có thể được pull vào Staging **trước** khi master data trạm có trên Data Warehouse (MDM crash, trạm mới khai trương ngoài giờ batch, v.v.).
 
+```mermaid
+sequenceDiagram
+  participant Ops as VanHanh
+  participant MDM as MDM_Backend
+  participant WF_Source as Workflow_ETL_Source_to_Staging
+  participant STG as staging
+  participant WF_NDS as Workflow_ETL_Staging_to_NDS
+  participant NDS as nds
+
+  Note over Ops: 16/07 17:00 Tram moi CHI02042 khai truong
+  Note over MDM: Cron MDM crash - chua push station
+
+  Ops->>WF_Source: 17/07 00:00 pull trip CSV
+  WF_Source->>STG: staging.stg_*_trips co station_id=CHI02042
+  Note over STG: Chua co tram tren stg_gbfs_station / nds.station
+
+  WF_NDS->>NDS: Pipeline load GBFS station - khong co tram moi
+  WF_NDS->>NDS: Pipeline load trips - lookup miss CHI02042
+  Note over WF_NDS: Khong upsert nds.trip - trip pending giu tren staging
+  WF_NDS->>STG: Pipeline cleanup - DELETE chi trip da resolve
+  Note over STG: Trip pending VAN CON tren staging
+
+  MDM->>STG: 17/07 10:00 push INSERT CHI02042 vao stg_gbfs_station
+  Note over STG: Master tram moi tren staging
+
+  WF_Source->>STG: 18/07 00:00 validate upsert trip pending van con
+  WF_NDS->>NDS: Pipeline load GBFS station - tao station_sk moi
+  WF_NDS->>NDS: Pipeline load trips - re-lookup thanh cong
+  WF_NDS->>STG: Pipeline cleanup - xoa trip da vao nds.trip
+```
+
+**Giả lập tình huống (timeline):**
+
+1. **16/07 17:00** — Trạm `CHI02042` vận hành thực tế; dịch vụ MDM backend bị lỗi → chưa push master data trạm.
+2. **17/07 00:00 — Workflow ETL Source → Staging** — Pull trip có `start_station_id` / `end_station_id = CHI02042` → `staging.stg_divvy_trips` hoặc `staging.stg_citibike_trips`.
+3. **17/07 00:00 — Workflow ETL Staging → NDS** — Pipeline load GBFS station chưa có trạm mới; pipeline load trips lookup miss → **không** upsert `nds.trip`; pipeline cleanup chỉ xóa trip đã resolve → **trip pending vẫn trên staging**.
+4. **17/07 10:00 — MDM push online** — Ghi vào `staging.stg_gbfs_station` (chưa cần vào NDS ngay).
+5. **18/07 00:00 — Workflow ETL Source → Staging** — Validate trip InsertUpdate theo `(source_city_code, ride_id)` → trip pending **vẫn tồn tại** nếu ride không có trong raw batch mới.
+6. **18/07 — Workflow ETL Staging → NDS** — Load GBFS station tạo `nds.station` + `station_sk`; load trips lookup lại thành công → upsert `nds.trip`; cleanup xóa trip đã vào NDS.
+
+**Hướng giải quyết:**
+
+- Pipeline `04_load_trips_to_nds`: bỏ qua upsert NDS nếu trip pending; giữ trên staging.
+- Pipeline `06_cleanup_staging_after_nds`: DELETE có điều kiện (chỉ trip đã có trên `nds.trip`); không TRUNCATE toàn bộ bảng trip staging.
+- MDM push → `staging.stg_gbfs_station` → lần chạy Workflow ETL Staging → NDS sau load station → lookup trip lại.
+- **Độ trễ chấp nhận:** resolve trong lần batch Staging → NDS kế tiếp (tối đa khoảng một ngày); không bắt buộc chạy lại load trips ngay sau MDM push.
+
+**Phân biệt ba loại “thiếu station”:**
+
+| Loại | Điều kiện | Xử lý |
+|------|-----------|--------|
+| **Master đến trễ (trip pending)** | `station_id` có trên trip, nhưng **chưa từng có** bản ghi nào trên `nds.station` | Giữ trên staging; chờ lần chạy Workflow ETL Staging → NDS sau |
+| **Trạm chỉ còn bản ghi lịch sử** | `station_id` khớp bản ghi `nds.station` với `is_current = false` | **Không** pending — load NDS với `station_sk` lịch sử |
+| **Thiếu ID trên file trip** | `start_station_id` / `end_station_id` null trên CSV | Cảnh báo Data Quality; vẫn load NDS (surrogate key null) |
 
 | Bước                  | Pipeline                                                                          | Vai trò                                       |
 | --------------------- | --------------------------------------------------------------------------------- | --------------------------------------------- |
