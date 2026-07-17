@@ -291,8 +291,8 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>100</xloc>
-      <yloc>360</yloc>
+      <xloc>80</xloc>
+      <yloc>352</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -339,8 +339,8 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>280</xloc>
-      <yloc>360</yloc>
+      <xloc>272</xloc>
+      <yloc>352</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -382,8 +382,8 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>440</xloc>
-      <yloc>360</yloc>
+      <xloc>432</xloc>
+      <yloc>352</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -425,7 +425,7 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>608</xloc>
+      <xloc>624</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
@@ -451,8 +451,8 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>760</xloc>
-      <yloc>360</yloc>
+      <xloc>800</xloc>
+      <yloc>352</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -489,8 +489,8 @@ Station-Hour combination exists in NDS trips but was not written to fact_station
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>920</xloc>
-      <yloc>360</yloc>
+      <xloc>976</xloc>
+      <yloc>352</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
