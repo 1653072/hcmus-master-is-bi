@@ -13,10 +13,10 @@
 #   HOP_OPTIONS                 — JVM flags for hop-server (default: -Xmx8g)
 #   MDM_KILL_EXISTING=1         — kill process listening on HOP_MDM_API_PORT before start
 #   SKIP_GO_PUSH=1              — start Hop Server only
-#   HOP_OBJECT_TIMEOUT_MINUTES  — default: 5  (purge completed pipeline objects)
-#   HOP_LOG_TIMEOUT_MINUTES     — default: 10
-#   HOP_MAX_LOG_LINES           — default: 1000
-#   HOP_LOGGING_REGISTRY_SIZE   — default: 1000
+#   HOP_OBJECT_TIMEOUT_MINUTES  — default: 2  (purge completed pipeline objects)
+#   HOP_LOG_TIMEOUT_MINUTES     — default: 5
+#   HOP_MAX_LOG_LINES           — default: 100
+#   HOP_LOGGING_REGISTRY_SIZE   — default: 200
 #
 # Examples:
 #   make mdm-start
@@ -41,10 +41,10 @@ export HOP_OPTIONS="${HOP_OPTIONS:--Xmx8g}"
 
 # Retention: each MDM POST keeps parent+child pipeline executions in Hop Server memory.
 # Defaults below prevent multi-hour accumulation / Java heap space on bulk push.
-HOP_OBJECT_TIMEOUT_MINUTES="${HOP_OBJECT_TIMEOUT_MINUTES:-5}"
-HOP_LOG_TIMEOUT_MINUTES="${HOP_LOG_TIMEOUT_MINUTES:-10}"
-HOP_MAX_LOG_LINES="${HOP_MAX_LOG_LINES:-1000}"
-HOP_LOGGING_REGISTRY_SIZE="${HOP_LOGGING_REGISTRY_SIZE:-1000}"
+HOP_OBJECT_TIMEOUT_MINUTES="${HOP_OBJECT_TIMEOUT_MINUTES:-2}"
+HOP_LOG_TIMEOUT_MINUTES="${HOP_LOG_TIMEOUT_MINUTES:-5}"
+HOP_MAX_LOG_LINES="${HOP_MAX_LOG_LINES:-100}"
+HOP_LOGGING_REGISTRY_SIZE="${HOP_LOGGING_REGISTRY_SIZE:-200}"
 
 find_hop_server() {
   local candidate

@@ -1414,7 +1414,7 @@ make mdm-start            # scripts/start_mdm_station_services.sh (Hop -Xmx8g + 
 
 `make mdm-start` mặc định dùng project `HCMUS_Master_IS_BI_Hop_ETL_Official` và environment `Hop_ETL_Official_Configs` (khớp `hop-config.json` trên máy đã đăng ký project Official).
 
-Trước khi start, script **patch retention** trên Hop install tìm được (portable — không hardcode path máy): `object_timeout=5m`, `log_timeout=10m`, `max_log_lines=1000`, `logging_registry=1000` trong `config/hop-config.json` và `hop-server.xml`. Mỗi POST MDM tạo parent+child pipeline; giữ execution/log 24h dễ OOM khi push hàng nghìn station. Patch áp dụng cho **toàn bộ** Hop install đó (mọi project dùng chung).
+Trước khi start, script **patch retention** trên Hop install tìm được (portable — không hardcode path máy): `object_timeout=2m`, `log_timeout=5m`, `max_log_lines=100`, `logging_registry=200` trong `config/hop-config.json` và `hop-server.xml`. Mỗi POST MDM tạo parent+child pipeline; giữ execution/log 24h dễ OOM khi push hàng nghìn station. Patch áp dụng cho **toàn bộ** Hop install đó (mọi project dùng chung).
 
 > **OOM / timeout:** mỗi POST chạy full pipeline trên Hop Server. Default Hop chỉ có `-Xmx2048m`; script nâng lên `-Xmx8g` và rút retention như trên. Port bận: `MDM_KILL_EXISTING=1 make mdm-start`. Smoke nhanh: `go run . -limit 20`. Trên máy khác, nếu script **không tìm thấy** `hop-server.sh` hoặc tên project / lifecycle trên Hop GUI khác default, hãy export biến trước khi `make mdm-start`:
 
