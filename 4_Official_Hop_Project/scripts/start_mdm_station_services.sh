@@ -10,12 +10,12 @@
 #   HOP_PROJECT_NAME            — default: HCMUS_Master_IS_BI_Hop_ETL_Official
 #   HOP_ENVIRONMENT_NAME        — default: Hop_ETL_Official_Configs
 #   HOP_MDM_API_HOST / HOP_MDM_API_PORT
-#   HOP_OPTIONS                 — JVM flags for hop-server (default: -Xmx8g)
+#   HOP_OPTIONS                 — JVM flags for hop-server (default: -Xmx4g)
 #   SKIP_GO_PUSH=1              — start Hop Server only
 #
 # Examples:
-#   make mdm-start                                    # Hop 8g + push all stations
-#   HOP_OPTIONS="-Xmx10g" make mdm-start
+#   make mdm-start                                    # Hop 4g + push all stations
+#   HOP_OPTIONS="-Xmx6g" make mdm-start
 #   SKIP_GO_PUSH=1 make mdm-start                     # Hop only; then go run . -limit 5
 #   ./scripts/start_mdm_station_services.sh -city ALL -operation INSERT -limit 20
 
@@ -31,7 +31,7 @@ HOP_MDM_API_PORT="${HOP_MDM_API_PORT:-8080}"
 HOP_PROJECT_NAME="${HOP_PROJECT_NAME:-HCMUS_Master_IS_BI_Hop_ETL_Official}"
 HOP_ENVIRONMENT_NAME="${HOP_ENVIRONMENT_NAME:-Hop_ETL_Official_Configs}"
 # hop-server.sh defaults to -Xmx2048m — too small for rapid MDM web-service pipelines
-export HOP_OPTIONS="${HOP_OPTIONS:--Xmx8g}"
+export HOP_OPTIONS="${HOP_OPTIONS:--Xmx4g}"
 
 find_hop_server() {
   local candidate
