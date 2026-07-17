@@ -9,11 +9,11 @@
     <parameters/>
     <name>04_load_trips_to_nds</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Hop-native trip load: staging input, city/station lookups scoped by city, then InsertUpdate into nds.trip.</description>
+    <description>Load staging trips into nds.trip. Station lookup prefers current active rows then falls back to historical station_sk. Trips with station_id but no nds.station row (pending late master) are held on staging and not upserted.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/16 22:58:43.538</created_date>
-    <modified_date>2026/07/16 22:58:43.538</modified_date>
+    <modified_date>2026/07/17 01:40:00.000</modified_date>
   </info>
   <transform>
     <type>TableInput</type>
@@ -36,7 +36,6 @@
 )
 SELECT 
 	*, 
-	TRUE AS is_current,
  	CASE 
 		WHEN ended_at IS NOT NULL AND ended_at >= started_at 
 		THEN ROUND((EXTRACT(EPOCH FROM ended_at-started_at)/60.0)::NUMERIC,2) 
@@ -111,7 +110,7 @@ FROM deduplicated</sql>
         <conditions/>
       </condition>
     </compare>
-    <send_true_to/>
+    <send_true_to>Lookup start_station_sk</send_true_to>
     <send_false_to/>
     <distribute>N</distribute>
     <copies>1</copies>
@@ -126,42 +125,30 @@ FROM deduplicated</sql>
     <attributes/>
   </transform>
   <transform>
-    <type>DBLookup</type>
+    <type>DBJoin</type>
     <name>Lookup start_station_sk</name>
     <connection>dw-nds</connection>
     <cache>N</cache>
     <cache_size>0</cache_size>
-    <cache_load_all>N</cache_load_all>
-    <lookup>
-      <schema>nds</schema>
-      <table>station</table>
-      <key>
+    <sql>SELECT station_sk AS start_station_sk
+FROM nds.station
+WHERE city_sk = ?
+  AND source_station_id = ?
+ORDER BY is_current DESC, effective_from DESC
+LIMIT 1</sql>
+    <rowlimit>1</rowlimit>
+    <outer_join>Y</outer_join>
+    <parameter>
+      <field>
         <name>city_sk</name>
-        <name2/>
-        <condition>=</condition>
-        <field>city_sk</field>
-      </key>
-      <key>
-        <name>start_station_id</name>
-        <name2/>
-        <condition>=</condition>
-        <field>source_station_id</field>
-      </key>
-      <key>
-        <name>is_current</name>
-        <name2/>
-        <condition>=</condition>
-        <field>is_current</field>
-      </key>
-      <value>
-        <name>station_sk</name>
-        <rename>start_station_sk</rename>
-        <default/>
         <type>Integer</type>
-      </value>
-      <fail_on_multiple>N</fail_on_multiple>
-      <eat_row_on_failure>N</eat_row_on_failure>
-    </lookup>
+      </field>
+      <field>
+        <name>start_station_id</name>
+        <type>String</type>
+      </field>
+    </parameter>
+    <replace_vars>N</replace_vars>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
@@ -175,47 +162,124 @@ FROM deduplicated</sql>
     <attributes/>
   </transform>
   <transform>
-    <type>DBLookup</type>
+    <type>DBJoin</type>
     <name>Lookup end_station_sk</name>
     <connection>dw-nds</connection>
     <cache>N</cache>
     <cache_size>0</cache_size>
-    <cache_load_all>N</cache_load_all>
-    <lookup>
-      <schema>nds</schema>
-      <table>station</table>
-      <key>
+    <sql>SELECT station_sk AS end_station_sk
+FROM nds.station
+WHERE city_sk = ?
+  AND source_station_id = ?
+ORDER BY is_current DESC, effective_from DESC
+LIMIT 1</sql>
+    <rowlimit>1</rowlimit>
+    <outer_join>Y</outer_join>
+    <parameter>
+      <field>
         <name>city_sk</name>
-        <name2/>
-        <condition>=</condition>
-        <field>city_sk</field>
-      </key>
-      <key>
-        <name>end_station_id</name>
-        <name2/>
-        <condition>=</condition>
-        <field>source_station_id</field>
-      </key>
-      <key>
-        <name>is_current</name>
-        <name2/>
-        <condition>=</condition>
-        <field>is_current</field>
-      </key>
-      <value>
-        <name>station_sk</name>
-        <rename>end_station_sk</rename>
-        <default/>
         <type>Integer</type>
-      </value>
-      <fail_on_multiple>N</fail_on_multiple>
-      <eat_row_on_failure>N</eat_row_on_failure>
-    </lookup>
+      </field>
+      <field>
+        <name>end_station_id</name>
+        <type>String</type>
+      </field>
+    </parameter>
+    <replace_vars>N</replace_vars>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
       <xloc>176</xloc>
       <yloc>704</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Mark pending master trips</name>
+    <jsScripts>
+      <jsScript>
+        <jsScript_type>0</jsScript_type>
+        <jsScript_name>process</jsScript_name>
+        <jsScript_script>// Pending only when station_id is present but no station_sk exists (including historical SCD rows).
+var startId = start_station_id == null ? "" : String(start_station_id).trim();
+var endId = end_station_id == null ? "" : String(end_station_id).trim();
+var startPending = startId.length > 0 &amp;&amp; (start_station_sk == null || String(start_station_sk).length == 0);
+var endPending = endId.length > 0 &amp;&amp; (end_station_sk == null || String(end_station_sk).length == 0);
+var is_pending_master = (startPending || endPending) ? 1 : 0;</jsScript_script>
+      </jsScript>
+    </jsScripts>
+    <fields>
+      <field>
+        <name>is_pending_master</name>
+        <rename>is_pending_master</rename>
+        <type>Integer</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>N</replace>
+      </field>
+    </fields>
+    <optimizationLevel>9</optimizationLevel>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>176</xloc>
+      <yloc>848</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>FilterRows</type>
+    <name>Is resolvable trips?</name>
+    <compare>
+      <condition>
+        <negated>N</negated>
+        <operator>-</operator>
+        <leftvalue>is_pending_master</leftvalue>
+        <function>=</function>
+        <rightvalue/>
+        <value>
+          <name>constant</name>
+          <type>Integer</type>
+          <text>0</text>
+          <length>-1</length>
+          <precision>0</precision>
+          <isnull>N</isnull>
+          <mask>#</mask>
+        </value>
+        <conditions/>
+      </condition>
+    </compare>
+    <send_true_to>Upsert nds.trip</send_true_to>
+    <send_false_to>Keep pending trips in staging due to empty master start/end_station_sk</send_false_to>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>176</xloc>
+      <yloc>992</yloc>
+    </GUI>
+    <partitioning>
+      <method>none</method>
+      <schema_name/>
+    </partitioning>
+    <attributes/>
+  </transform>
+  <transform>
+    <type>Dummy</type>
+    <name>Keep pending trips in staging due to empty master start/end_station_sk</name>
+    <distribute>N</distribute>
+    <copies>1</copies>
+    <GUI>
+      <xloc>528</xloc>
+      <yloc>992</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -329,7 +393,7 @@ FROM deduplicated</sql>
     <copies>1</copies>
     <GUI>
       <xloc>176</xloc>
-      <yloc>848</yloc>
+      <yloc>1136</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -360,11 +424,49 @@ FROM deduplicated</sql>
     </hop>
     <hop>
       <from>Lookup end_station_sk</from>
+      <to>Mark pending master trips</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Mark pending master trips</from>
+      <to>Is resolvable trips?</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Is resolvable trips?</from>
       <to>Upsert nds.trip</to>
       <enabled>Y</enabled>
     </hop>
+    <hop>
+      <from>Is resolvable trips?</from>
+      <to>Keep pending trips in staging due to empty master start/end_station_sk</to>
+      <enabled>Y</enabled>
+    </hop>
   </order>
-  <notepads/>
+  <notepads>
+    <notepad>
+      <note>- Late-arriving master data: prefer current nds.station (is_current DESC), else historical station_sk.
+- "Pending" means start/end_station_id presents but there are no nds.station row at all (start/end_station_sk is empty). Hold on pending trips in staging (Dummy) + Do not upsert nds.trip.
+- However, missing start/end_station_id (null/blank) is not a pending trip, we still keep loading them to NDS with null start/end_station_sk.</note>
+      <fontname>.AppleSystemUIFont</fontname>
+      <fontsize>13</fontsize>
+      <fontbold>N</fontbold>
+      <fontitalic>N</fontitalic>
+      <fontcolorred>14</fontcolorred>
+      <fontcolorgreen>58</fontcolorgreen>
+      <fontcolorblue>90</fontcolorblue>
+      <backgroundcolorred>201</backgroundcolorred>
+      <backgroundcolorgreen>232</backgroundcolorgreen>
+      <backgroundcolorblue>251</backgroundcolorblue>
+      <bordercolorred>14</bordercolorred>
+      <bordercolorgreen>58</bordercolorgreen>
+      <bordercolorblue>90</bordercolorblue>
+      <xloc>336</xloc>
+      <yloc>80</yloc>
+      <width>880</width>
+      <height>-1</height>
+    </notepad>
+  </notepads>
   <attributes/>
   <transform_error_handling/>
 </pipeline>
