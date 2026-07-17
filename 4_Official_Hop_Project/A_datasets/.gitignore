@@ -4,5 +4,5 @@ A1_citibike/extracted/
 A2_divvy/*.zip
 A2_divvy/extracted/
 A3_noaa_lcd_v2/*.csv
-A4_mdm_station_info/*.json
+#A4_mdm_station_info/*.json
 manifest.json
