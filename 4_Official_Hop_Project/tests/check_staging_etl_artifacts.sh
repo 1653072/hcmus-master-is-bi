@@ -35,6 +35,7 @@ required_pipelines=(
   "03_validate_noaa_raw_to_staging.hpl"
   "04_load_gbfs_station_to_staging.hpl"
   "04_validate_gbfs_raw_to_staging.hpl"
+  "05_assess_source_change_matching_leakage.hpl"
   "05_audit_dq_rule_results.hpl"
   "05_audit_staging_load_counts.hpl"
 )
@@ -122,6 +123,7 @@ grep -q "01_validate_divvy_raw_to_staging.hpl" "$WORKFLOW"
 grep -q "02_validate_citibike_raw_to_staging.hpl" "$WORKFLOW"
 grep -q "03_validate_noaa_raw_to_staging.hpl" "$WORKFLOW"
 grep -q "04_validate_gbfs_raw_to_staging.hpl" "$WORKFLOW"
+grep -q "05_assess_source_change_matching_leakage.hpl" "$WORKFLOW"
 grep -q "05_audit_dq_rule_results.hpl" "$WORKFLOW"
 grep -q "05_audit_staging_load_counts.hpl" "$WORKFLOW"
 

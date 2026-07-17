@@ -55,7 +55,7 @@ Bảng dưới đây khớp với bản đăng ký đề tài ([official_topic_f
 | Xe điện và xe cơ chiếm tỷ trọng bao nhiêu từng trạm? Có khác biệt giữa Chicago và NYC không? | `electric_trip_count`, `classic_trip_count` |
 | Nhìn tổng thể, thành phố nào (Chicago hay NYC) có mức độ mất cân bằng vận hành nghiêm trọng hơn, và nhạy cảm với thời tiết hơn? | Xem [KPI so sánh thành phố](#kpi-so-sánh-thành-phố) bên dưới |
 
-`net_flow` và `abs_imbalance` phản ánh **chênh lệch dòng chuyến** (bắt đầu so với kết thúc tại trạm), không phải số xe đang có tại trạm. Trong báo cáo hàng ngày, người quản lý dùng các chỉ số này để suy ra trạm có xu hướng hết xe hoặc đầy xe; tồn kho thời gian thực (`num_bikes_available` từ GBFS) chưa nằm trong fact.
+`net_flow` và `abs_imbalance` phản ánh **chênh lệch dòng chuyến**, không phải số xe đang có tại trạm. Quy ước chính thức là `net_flow = trips_ended - trips_started`: giá trị dương biểu thị dòng vào lớn hơn dòng ra, tức trạm có xu hướng dồn ứ; giá trị âm biểu thị dòng ra lớn hơn dòng vào, tức trạm có xu hướng bị rút cạn. `abs_imbalance = ABS(net_flow)` đo độ lớn mất cân bằng, không xét hướng. Tồn kho thời gian thực (`num_bikes_available` từ GBFS) chưa nằm trong fact.
 
 #### KPI so sánh thành phố
 
@@ -362,7 +362,7 @@ Bảng `Fact_StationHourBalance` lưu trữ dữ liệu tổng hợp theo **City
 | `weather_condition_sk`    | FK      | `Dim_WeatherCondition`                                         |                                     |
 | `trips_started`           | Measure | COUNT chuyến có `start_station` = trạm trong giờ               | Additive                            |
 | `trips_ended`             | Measure | COUNT chuyến có `end_station` = trạm trong giờ                 | Additive                            |
-| `net_flow`                | Measure | `trips_started - trips_ended`                                  | Semi-additive                       |
+| `net_flow`                | Measure | `trips_ended - trips_started`                                  | Semi-additive                       |
 | `abs_imbalance`           | Measure | `ABS(net_flow)`                                                | Semi-additive                       |
 | `member_trip_count`       | Measure | COUNT `member_casual = member` (gom start hoặc theo rule nhóm) | Additive                            |
 | `casual_trip_count`       | Measure | COUNT `member_casual = casual`                                 | Additive                            |

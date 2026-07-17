@@ -87,3 +87,6 @@ ALTER TABLE dds.dim_station OWNER TO hop_dds_user;
 ALTER TABLE dds.dim_datetime OWNER TO hop_dds_user;
 ALTER TABLE dds.dim_weather_condition OWNER TO hop_dds_user;
 ALTER TABLE dds.fact_station_hour_balance OWNER TO hop_dds_user;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA dds
+TO analytics_reader_user;

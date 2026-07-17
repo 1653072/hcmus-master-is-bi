@@ -367,7 +367,7 @@ end_station_name, end_station_id, start_lat, start_lng, end_lat, end_lng, member
 | `rideable_type`, `member_casual` | Measure electric/classic, member/casual                |
 
 
-**Lưu ý:** Trip CSV **không** có tồn kho xe; `net_flow` suy từ dòng chuyến (PDF/md).
+**Lưu ý:** Trip CSV **không** có tồn kho xe; `net_flow = trips_ended - trips_started` suy từ dòng chuyến. `net_flow > 0` biểu thị xu hướng dồn ứ, `net_flow < 0` biểu thị xu hướng rút cạn.
 
 ### 7.3. Dataset A1: Citi Bike Trip Histories (NYC)
 

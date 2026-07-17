@@ -274,6 +274,31 @@
       <attributes_hac/>
     </action>
     <action>
+      <filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/05_assess_source_change_matching_leakage.hpl</filename>
+      <params_from_previous>N</params_from_previous>
+      <exec_per_row>N</exec_per_row>
+      <clear_rows>N</clear_rows>
+      <clear_files>N</clear_files>
+      <create_parent_folder>N</create_parent_folder>
+      <set_logfile>N</set_logfile>
+      <set_append_logfile>N</set_append_logfile>
+      <add_date>N</add_date>
+      <add_time>N</add_time>
+      <loglevel>Basic</loglevel>
+      <wait_until_finished>Y</wait_until_finished>
+      <parameters>
+        <pass_all_parameters>Y</pass_all_parameters>
+      </parameters>
+      <run_configuration>local</run_configuration>
+      <name>05_assess_source_change_matching_leakage.hpl</name>
+      <type>PIPELINE</type>
+      <attributes/>
+      <xloc>1584</xloc>
+      <yloc>128</yloc>
+      <parallel>N</parallel>
+      <attributes_hac/>
+    </action>
+    <action>
       <filename>${PROJECT_HOME}/D_pipelines/01_ETL_Source_To_StagingDB/05_audit_dq_rule_results.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
@@ -452,6 +477,13 @@
     </hop>
     <hop>
       <from>Join</from>
+      <to>05_assess_source_change_matching_leakage.hpl</to>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>05_assess_source_change_matching_leakage.hpl</from>
       <to>05_audit_dq_rule_results.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>

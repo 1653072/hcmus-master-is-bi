@@ -123,6 +123,7 @@ nds-load: $(CONFIG_FILE)
 runtime-checks: $(CONFIG_FILE)
 	@bash tests/check_staging_etl_artifacts.sh
 	@bash tests/check_staging_0nf_dq_artifacts.sh
+	@bash tests/check_etl_requirement_controls.sh
 	@bash tests/check_nds_etl_artifacts.sh
 	@bash tests/check_runtime_counts.sh
 

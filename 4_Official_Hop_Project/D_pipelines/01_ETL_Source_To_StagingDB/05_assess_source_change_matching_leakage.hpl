@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <capture_transform_performance>N</capture_transform_performance>
+    <transform_performance_capturing_delay>1000</transform_performance_capturing_delay>
+    <transform_performance_capturing_size_limit>100</transform_performance_capturing_size_limit>
+    <pipeline_type>Normal</pipeline_type>
+    <pipeline_status>-1</pipeline_status>
+    <parameters>
+      <parameter><name>LEAK_TRAIN_END</name><default_value>2026-03-31 23:59:59</default_value><description>Inclusive training cutoff used by the leakage audit</description></parameter>
+      <parameter><name>LEAK_VALID_END</name><default_value>2026-04-30 23:59:59</default_value><description>Inclusive validation cutoff used by the leakage audit</description></parameter>
+      <parameter><name>LEAK_TEST_END</name><default_value>2026-05-31 23:59:59</default_value><description>Inclusive test cutoff used by the leakage audit</description></parameter>
+    </parameters>
+    <name>05_assess_source_change_matching_leakage</name>
+    <name_sync_with_filename>Y</name_sync_with_filename>
+    <description>Post-staging control gate: fingerprints each raw source file, reconciles trip station entities against GBFS, and checks temporal data leakage.</description>
+    <created_user>Codex</created_user>
+    <modified_user>Codex</modified_user>
+    <created_date>2026/07/17 00:00:00.000</created_date>
+    <modified_date>2026/07/17 00:00:00.000</modified_date>
+  </info>
+
+  <transform>
+    <type>TableInput</type>
+    <name>Fingerprint raw source files</name>
+    <sql>SELECT 'divvy_trips'::TEXT AS source_name,
+       COALESCE(source_file, '(unknown)')::TEXT AS source_file,
+       MAX(load_run_id)::TEXT AS load_run_id,
+       COUNT(*)::BIGINT AS row_count,
+       MD5(COUNT(*)::TEXT || ':' || COALESCE(SUM(hashtextextended((to_jsonb(r) - 'raw_loaded_at' - 'load_run_id' - 'source_file' - 'source_row_number')::TEXT, 0))::TEXT, '0')) AS current_fingerprint
+FROM staging.raw_divvy_trips r
+GROUP BY COALESCE(source_file, '(unknown)')
+UNION ALL
+SELECT 'citibike_trips', COALESCE(source_file, '(unknown)'), MAX(load_run_id), COUNT(*)::BIGINT,
+       MD5(COUNT(*)::TEXT || ':' || COALESCE(SUM(hashtextextended((to_jsonb(r) - 'raw_loaded_at' - 'load_run_id' - 'source_file' - 'source_row_number')::TEXT, 0))::TEXT, '0'))
+FROM staging.raw_citibike_trips r
+GROUP BY COALESCE(source_file, '(unknown)')
+UNION ALL
+SELECT 'noaa_lcd', COALESCE(source_file, '(unknown)'), MAX(load_run_id), COUNT(*)::BIGINT,
+       MD5(COUNT(*)::TEXT || ':' || COALESCE(SUM(hashtextextended((to_jsonb(r) - 'raw_loaded_at' - 'load_run_id' - 'source_file' - 'source_row_number')::TEXT, 0))::TEXT, '0'))
+FROM staging.raw_noaa_weather r
+GROUP BY COALESCE(source_file, '(unknown)')
+UNION ALL
+SELECT 'gbfs_station', COALESCE(source_file, '(unknown)'), MAX(load_run_id), COUNT(*)::BIGINT,
+       MD5(COUNT(*)::TEXT || ':' || COALESCE(SUM(hashtextextended((to_jsonb(r) - 'raw_loaded_at' - 'load_run_id' - 'source_file' - 'source_row_number')::TEXT, 0))::TEXT, '0'))
+FROM staging.raw_gbfs_station r
+GROUP BY COALESCE(source_file, '(unknown)')</sql>
+    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>N</variables_active>
+    <connection>dw-staging</connection><lookup/><sql_from_file/>
+    <distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>80</xloc><yloc>64</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>DBLookup</type>
+    <name>Lookup previous source fingerprint</name>
+    <connection>dw-control</connection><cache>N</cache><cache_size>0</cache_size><cache_load_all>N</cache_load_all>
+    <lookup>
+      <schema>control</schema><table>etl_source_file_manifest</table>
+      <key><name>source_name</name><name2/><condition>=</condition><field>source_name</field></key>
+      <key><name>source_file</name><name2/><condition>=</condition><field>source_file</field></key>
+      <value><name>current_fingerprint</name><rename>previous_fingerprint</rename><default/><type>String</type><trim_type>none</trim_type></value>
+      <orderby/><fail_on_multiple>Y</fail_on_multiple><eat_row_on_failure>N</eat_row_on_failure>
+    </lookup>
+    <distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>304</xloc><yloc>64</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>ScriptValueMod</type>
+    <name>Classify source change</name>
+    <jsScripts><jsScript><jsScript_type>0</jsScript_type><jsScript_name>process</jsScript_name><jsScript_script>var change_type;
+if (previous_fingerprint == null || String(previous_fingerprint).length === 0) {
+  change_type = "NEW";
+} else if (String(previous_fingerprint) === String(current_fingerprint)) {
+  change_type = "UNCHANGED";
+} else {
+  change_type = "CHANGED";
+}
+var detected_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now());</jsScript_script></jsScript></jsScripts>
+    <fields>
+      <field><name>change_type</name><rename>change_type</rename><type>String</type><length>20</length><precision>-1</precision><replace>N</replace></field>
+      <field><name>detected_at</name><rename>detected_at</rename><type>Timestamp</type><length>-1</length><precision>-1</precision><replace>N</replace></field>
+    </fields>
+    <optimizationLevel>9</optimizationLevel><distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>528</xloc><yloc>64</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>InsertUpdate</type><name>Upsert source manifest</name><connection>dw-control</connection>
+    <lookup>
+      <key><name>source_name</name><field>source_name</field><condition>=</condition><name2/></key>
+      <key><name>source_file</name><field>source_file</field><condition>=</condition><name2/></key>
+      <value><name>source_name</name><rename>source_name</rename><update>N</update></value>
+      <value><name>source_file</name><rename>source_file</rename><update>N</update></value>
+      <value><name>current_fingerprint</name><rename>current_fingerprint</rename><update>Y</update></value>
+      <value><name>row_count</name><rename>row_count</rename><update>Y</update></value>
+      <value><name>last_load_run_id</name><rename>load_run_id</rename><update>Y</update></value>
+      <value><name>last_change_type</name><rename>change_type</rename><update>Y</update></value>
+      <value><name>last_seen_at</name><rename>detected_at</rename><update>Y</update></value>
+      <schema>control</schema><table>etl_source_file_manifest</table>
+    </lookup>
+    <commit>100</commit><update_bypassed>N</update_bypassed><distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>768</xloc><yloc>32</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>InsertUpdate</type><name>Upsert source change result</name><connection>dw-control</connection>
+    <lookup>
+      <key><name>load_run_id</name><field>load_run_id</field><condition>=</condition><name2/></key>
+      <key><name>source_name</name><field>source_name</field><condition>=</condition><name2/></key>
+      <key><name>source_file</name><field>source_file</field><condition>=</condition><name2/></key>
+      <value><name>load_run_id</name><rename>load_run_id</rename><update>N</update></value>
+      <value><name>source_name</name><rename>source_name</rename><update>N</update></value>
+      <value><name>source_file</name><rename>source_file</rename><update>N</update></value>
+      <value><name>previous_fingerprint</name><rename>previous_fingerprint</rename><update>Y</update></value>
+      <value><name>current_fingerprint</name><rename>current_fingerprint</rename><update>Y</update></value>
+      <value><name>row_count</name><rename>row_count</rename><update>Y</update></value>
+      <value><name>change_type</name><rename>change_type</rename><update>Y</update></value>
+      <value><name>detected_at</name><rename>detected_at</rename><update>Y</update></value>
+      <schema>control</schema><table>etl_source_change_result</table>
+    </lookup>
+    <commit>100</commit><update_bypassed>N</update_bypassed><distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>768</xloc><yloc>96</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>TableInput</type><name>Match source station entities</name>
+    <sql>WITH trip_station AS (
+  SELECT DISTINCT 'divvy_trips'::TEXT AS source_name, source_city_code::TEXT AS city_code,
+         start_station_id::TEXT AS station_id, start_station_name::TEXT AS station_name
+  FROM staging.stg_divvy_trips WHERE start_station_id IS NOT NULL
+  UNION
+  SELECT DISTINCT 'divvy_trips', source_city_code, end_station_id, end_station_name
+  FROM staging.stg_divvy_trips WHERE end_station_id IS NOT NULL
+  UNION
+  SELECT DISTINCT 'citibike_trips', source_city_code, start_station_id, start_station_name
+  FROM staging.stg_citibike_trips WHERE start_station_id IS NOT NULL
+  UNION
+  SELECT DISTINCT 'citibike_trips', source_city_code, end_station_id, end_station_name
+  FROM staging.stg_citibike_trips WHERE end_station_id IS NOT NULL
+), candidate AS (
+  SELECT t.*, g.short_name AS candidate_master_key, g.station_name AS candidate_master_name,
+         CASE
+           WHEN g.short_name = t.station_id OR g.gbfs_station_id = t.station_id THEN 'EXACT_ID'
+           WHEN g.short_name IS NOT NULL THEN 'NORMALIZED_NAME'
+           ELSE 'UNMATCHED'
+         END AS match_method
+  FROM trip_station t
+  LEFT JOIN LATERAL (
+    SELECT s.short_name, s.gbfs_station_id, s.station_name
+    FROM staging.stg_gbfs_station s
+    WHERE s.source_city_code = t.city_code
+      AND (
+        s.short_name = t.station_id OR s.gbfs_station_id = t.station_id OR
+        (NULLIF(regexp_replace(lower(COALESCE(t.station_name, '')), '[^a-z0-9]+', '', 'g'), '') IS NOT NULL
+         AND regexp_replace(lower(COALESCE(s.station_name, '')), '[^a-z0-9]+', '', 'g') =
+             regexp_replace(lower(COALESCE(t.station_name, '')), '[^a-z0-9]+', '', 'g'))
+      )
+    ORDER BY CASE WHEN s.short_name = t.station_id OR s.gbfs_station_id = t.station_id THEN 0 ELSE 1 END,
+             s.short_name
+    LIMIT 1
+  ) g ON TRUE
+)
+SELECT '${ETL_STARTED_AT}'::TEXT AS load_run_id,
+       source_name,
+       city_code || '|' || station_id AS source_entity_key,
+       station_name AS source_entity_name,
+       candidate_master_key,
+       candidate_master_name,
+       match_method,
+       CASE match_method WHEN 'EXACT_ID' THEN 1.0000 WHEN 'NORMALIZED_NAME' THEN 0.7500 ELSE 0.0000 END::NUMERIC(5,4) AS confidence,
+       (match_method &lt;&gt; 'EXACT_ID')::BOOLEAN AS requires_review,
+       CURRENT_TIMESTAMP AS checked_at
+FROM candidate</sql>
+    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>Y</variables_active>
+    <connection>dw-staging</connection><lookup/><sql_from_file/>
+    <distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>80</xloc><yloc>240</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>InsertUpdate</type><name>Upsert entity match result</name><connection>dw-control</connection>
+    <lookup>
+      <key><name>load_run_id</name><field>load_run_id</field><condition>=</condition><name2/></key>
+      <key><name>source_name</name><field>source_name</field><condition>=</condition><name2/></key>
+      <key><name>source_entity_key</name><field>source_entity_key</field><condition>=</condition><name2/></key>
+      <value><name>load_run_id</name><rename>load_run_id</rename><update>N</update></value>
+      <value><name>source_name</name><rename>source_name</rename><update>N</update></value>
+      <value><name>source_entity_key</name><rename>source_entity_key</rename><update>N</update></value>
+      <value><name>source_entity_name</name><rename>source_entity_name</rename><update>Y</update></value>
+      <value><name>candidate_master_key</name><rename>candidate_master_key</rename><update>Y</update></value>
+      <value><name>candidate_master_name</name><rename>candidate_master_name</rename><update>Y</update></value>
+      <value><name>match_method</name><rename>match_method</rename><update>Y</update></value>
+      <value><name>confidence</name><rename>confidence</rename><update>Y</update></value>
+      <value><name>requires_review</name><rename>requires_review</rename><update>Y</update></value>
+      <value><name>checked_at</name><rename>checked_at</rename><update>Y</update></value>
+      <schema>control</schema><table>etl_entity_match_result</table>
+    </lookup>
+    <commit>500</commit><update_bypassed>N</update_bypassed><distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>384</xloc><yloc>240</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>TableInput</type><name>Check temporal data leakage</name>
+    <sql>WITH cutoff AS (
+  SELECT '${ETL_STARTED_AT}'::TIMESTAMP AS etl_cutoff,
+         '${LEAK_TRAIN_END}'::TIMESTAMP AS train_end,
+         '${LEAK_VALID_END}'::TIMESTAMP AS valid_end,
+         '${LEAK_TEST_END}'::TIMESTAMP AS test_end
+), rules AS (
+  SELECT 'divvy_trips'::TEXT AS source_name,
+         'FUTURE_RECORD_AFTER_ETL_CUTOFF'::TEXT AS rule_code,
+         'reject'::TEXT AS severity,
+         COUNT(*)::BIGINT AS checked_count,
+         COUNT(*) FILTER (WHERE t.started_at &gt; c.etl_cutoff)::BIGINT AS leak_count,
+         'Source rows must not be newer than the ETL extraction cutoff'::TEXT AS rule_description
+  FROM staging.stg_divvy_trips t CROSS JOIN cutoff c
+  UNION ALL
+  SELECT 'citibike_trips', 'FUTURE_RECORD_AFTER_ETL_CUTOFF', 'reject', COUNT(*)::BIGINT,
+         COUNT(*) FILTER (WHERE t.started_at &gt; c.etl_cutoff)::BIGINT,
+         'Source rows must not be newer than the ETL extraction cutoff'
+  FROM staging.stg_citibike_trips t CROSS JOIN cutoff c
+  UNION ALL
+  SELECT 'noaa_lcd', 'FUTURE_RECORD_AFTER_ETL_CUTOFF', 'reject', COUNT(*)::BIGINT,
+         COUNT(*) FILTER (WHERE w.observation_ts &gt; c.etl_cutoff)::BIGINT,
+         'Weather rows must not be newer than the ETL extraction cutoff'
+  FROM staging.stg_weather w CROSS JOIN cutoff c
+  UNION ALL
+  SELECT 'divvy_trips', 'TRIP_END_CROSSES_TRAIN_CUTOFF', 'warning', COUNT(*)::BIGINT,
+         COUNT(*) FILTER (WHERE t.started_at &lt;= c.train_end AND t.ended_at &gt; c.train_end)::BIGINT,
+         'Trips crossing the training cutoff cannot use end-time or duration-derived features in training'
+  FROM staging.stg_divvy_trips t CROSS JOIN cutoff c
+  UNION ALL
+  SELECT 'citibike_trips', 'TRIP_END_CROSSES_TRAIN_CUTOFF', 'warning', COUNT(*)::BIGINT,
+         COUNT(*) FILTER (WHERE t.started_at &lt;= c.train_end AND t.ended_at &gt; c.train_end)::BIGINT,
+         'Trips crossing the training cutoff cannot use end-time or duration-derived features in training'
+  FROM staging.stg_citibike_trips t CROSS JOIN cutoff c
+  UNION ALL
+  SELECT 'mining_split', 'TEMPORAL_SPLIT_ORDER', 'reject', 1::BIGINT,
+         CASE WHEN c.train_end &lt; c.valid_end AND c.valid_end &lt; c.test_end THEN 0 ELSE 1 END::BIGINT,
+         'Required order is TRAIN_END before VALID_END before TEST_END'
+  FROM cutoff c
+)
+SELECT '${ETL_STARTED_AT}'::TEXT AS load_run_id,
+       source_name, rule_code, severity, checked_count, leak_count,
+       CASE WHEN leak_count = 0 THEN 'PASS'
+            WHEN severity = 'warning' THEN 'WARNING'
+            ELSE 'FAIL' END::TEXT AS status,
+       rule_description,
+       CURRENT_TIMESTAMP AS checked_at
+FROM rules</sql>
+    <limit>0</limit><execute_each_row>N</execute_each_row><variables_active>Y</variables_active>
+    <connection>dw-staging</connection><lookup/><sql_from_file/>
+    <distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>80</xloc><yloc>400</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <transform>
+    <type>InsertUpdate</type><name>Upsert data leak rule result</name><connection>dw-control</connection>
+    <lookup>
+      <key><name>load_run_id</name><field>load_run_id</field><condition>=</condition><name2/></key>
+      <key><name>source_name</name><field>source_name</field><condition>=</condition><name2/></key>
+      <key><name>rule_code</name><field>rule_code</field><condition>=</condition><name2/></key>
+      <value><name>load_run_id</name><rename>load_run_id</rename><update>N</update></value>
+      <value><name>source_name</name><rename>source_name</rename><update>N</update></value>
+      <value><name>rule_code</name><rename>rule_code</rename><update>N</update></value>
+      <value><name>severity</name><rename>severity</rename><update>Y</update></value>
+      <value><name>checked_count</name><rename>checked_count</rename><update>Y</update></value>
+      <value><name>leak_count</name><rename>leak_count</rename><update>Y</update></value>
+      <value><name>status</name><rename>status</rename><update>Y</update></value>
+      <value><name>rule_description</name><rename>rule_description</rename><update>Y</update></value>
+      <value><name>checked_at</name><rename>checked_at</rename><update>Y</update></value>
+      <schema>control</schema><table>etl_data_leak_rule_result</table>
+    </lookup>
+    <commit>100</commit><update_bypassed>N</update_bypassed><distribute>N</distribute><copies>1</copies>
+    <GUI><xloc>384</xloc><yloc>400</yloc></GUI>
+    <partitioning><method>none</method><schema_name/></partitioning><attributes/>
+  </transform>
+
+  <order>
+    <hop><from>Fingerprint raw source files</from><to>Lookup previous source fingerprint</to><enabled>Y</enabled></hop>
+    <hop><from>Lookup previous source fingerprint</from><to>Classify source change</to><enabled>Y</enabled></hop>
+    <hop><from>Classify source change</from><to>Upsert source manifest</to><enabled>Y</enabled></hop>
+    <hop><from>Classify source change</from><to>Upsert source change result</to><enabled>Y</enabled></hop>
+    <hop><from>Match source station entities</from><to>Upsert entity match result</to><enabled>Y</enabled></hop>
+    <hop><from>Check temporal data leakage</from><to>Upsert data leak rule result</to><enabled>Y</enabled></hop>
+  </order>
+  <notepads>
+    <notepad><note>Source change: fingerprint excludes load metadata and is insensitive to input row order. NEW/CHANGED/UNCHANGED is persisted per source file.</note><fontsize>-1</fontsize><fontbold>N</fontbold><fontitalic>N</fontitalic><fontcolorred>14</fontcolorred><fontcolorgreen>14</fontcolorgreen><fontcolorblue>14</fontcolorblue><backgroundcolorred>255</backgroundcolorred><backgroundcolorgreen>255</backgroundcolorgreen><backgroundcolorblue>204</backgroundcolorblue><bordercolorred>100</bordercolorred><bordercolorgreen>100</bordercolorgreen><bordercolorblue>100</bordercolorblue><drawshadow>Y</drawshadow><xloc>720</xloc><yloc>152</yloc><width>360</width><heigth>80</heigth><fontname>SansSerif</fontname><fontcolor>#0e0e0e</fontcolor><backgroundcolor>#ffffcc</backgroundcolor><bordercolor>#646464</bordercolor></notepad>
+    <notepad><note>Entity matching: only exact station id is accepted automatically. Normalized-name candidates remain requires_review=true to prevent false merges.</note><fontsize>-1</fontsize><fontbold>N</fontbold><fontitalic>N</fontitalic><fontcolorred>14</fontcolorred><fontcolorgreen>14</fontcolorgreen><fontcolorblue>14</fontcolorblue><backgroundcolorred>255</backgroundcolorred><backgroundcolorgreen>255</backgroundcolorgreen><backgroundcolorblue>204</backgroundcolorblue><bordercolorred>100</bordercolorred><bordercolorgreen>100</bordercolorgreen><bordercolorblue>100</bordercolorblue><drawshadow>Y</drawshadow><xloc>512</xloc><yloc>208</yloc><width>360</width><heigth>80</heigth><fontname>SansSerif</fontname><fontcolor>#0e0e0e</fontcolor><backgroundcolor>#ffffcc</backgroundcolor><bordercolor>#646464</bordercolor></notepad>
+    <notepad><note>Leakage audit: blocks records after extraction cutoff and invalid split order; warns about trips crossing the train cutoff because end-time/duration features would expose future information.</note><fontsize>-1</fontsize><fontbold>N</fontbold><fontitalic>N</fontitalic><fontcolorred>14</fontcolorred><fontcolorgreen>14</fontcolorgreen><fontcolorblue>14</fontcolorblue><backgroundcolorred>255</backgroundcolorred><backgroundcolorgreen>255</backgroundcolorgreen><backgroundcolorblue>204</backgroundcolorblue><bordercolorred>100</bordercolorred><bordercolorgreen>100</bordercolorgreen><bordercolorblue>100</bordercolorblue><drawshadow>Y</drawshadow><xloc>512</xloc><yloc>368</yloc><width>400</width><heigth>88</heigth><fontname>SansSerif</fontname><fontcolor>#0e0e0e</fontcolor><backgroundcolor>#ffffcc</backgroundcolor><bordercolor>#646464</bordercolor></notepad>
+  </notepads>
+  <attributes/>
+</pipeline>

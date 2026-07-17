@@ -157,7 +157,7 @@ Bike-share OLTP (operator apps) handles live check-out/check-in. The dispatch ma
 
 **Example aggregations:**
 
-- `SUM(trips_started) - SUM(trips_ended)` by station × hour (rebalancing priority)
+- `SUM(trips_ended) - SUM(trips_started)` by station × hour (rebalancing priority; dương = dồn ứ, âm = rút cạn)
 - `COUNT(*)` by city × `is_holiday` × `hour_of_day`
 - `AVG(trip_count)` on rainy vs. dry hours (weather join)
 
