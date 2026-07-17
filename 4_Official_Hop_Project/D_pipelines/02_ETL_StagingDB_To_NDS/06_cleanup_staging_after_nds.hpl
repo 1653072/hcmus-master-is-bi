@@ -41,7 +41,7 @@
     <copies>1</copies>
     <GUI>
       <xloc>352</xloc>
-      <yloc>48</yloc>
+      <yloc>160</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -74,7 +74,7 @@
     <copies>1</copies>
     <GUI>
       <xloc>352</xloc>
-      <yloc>176</yloc>
+      <yloc>288</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -93,7 +93,7 @@ SELECT source_city_code, ride_id
 FROM staging.stg_citibike_trips
 WHERE ride_id IS NOT NULL</sql>
     <limit>0</limit>
-    <execute_each_row>Y</execute_each_row>
+    <execute_each_row>N</execute_each_row>
     <variables_active>N</variables_active>
     <connection>dw-staging</connection>
     <lookup/>
@@ -101,8 +101,8 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>304</yloc>
+      <xloc>752</xloc>
+      <yloc>160</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -138,8 +138,8 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>432</yloc>
+      <xloc>752</xloc>
+      <yloc>288</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -173,7 +173,7 @@ WHERE ride_id IS NOT NULL</sql>
         <name>trip_sk</name>
         <rename>trip_sk</rename>
         <default/>
-        <type>Integer</type>
+        <type>BigNumber</type>
       </value>
       <fail_on_multiple>N</fail_on_multiple>
       <eat_row_on_failure>N</eat_row_on_failure>
@@ -181,8 +181,8 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>560</yloc>
+      <xloc>752</xloc>
+      <yloc>416</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -199,17 +199,16 @@ WHERE ride_id IS NOT NULL</sql>
         <operator>-</operator>
         <leftvalue>trip_sk</leftvalue>
         <function>IS NOT NULL</function>
-        <rightvalue/>
         <conditions/>
       </condition>
     </compare>
     <send_true_to>Delete resolved stg_divvy_trips</send_true_to>
     <send_false_to>Keep pending trips in staging due to empty master start/end_station_sk</send_false_to>
-    <distribute>Y</distribute>
+    <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>688</yloc>
+      <xloc>752</xloc>
+      <yloc>544</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -223,8 +222,8 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>736</xloc>
-      <yloc>688</yloc>
+      <xloc>1136</xloc>
+      <yloc>544</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -256,8 +255,8 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>816</yloc>
+      <xloc>752</xloc>
+      <yloc>672</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -289,8 +288,8 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>352</xloc>
-      <yloc>944</yloc>
+      <xloc>752</xloc>
+      <yloc>800</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -302,11 +301,6 @@ WHERE ride_id IS NOT NULL</sql>
     <hop>
       <from>Generate 1 cleanup trigger row</from>
       <to>Truncate all temporary rate tables + 2 staging tables (weather &amp; gbfs_station)</to>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>Truncate all temporary rate tables + 2 staging tables (weather &amp; gbfs_station)</from>
-      <to>Read staging trip keys</to>
       <enabled>Y</enabled>
     </hop>
     <hop>
@@ -342,8 +336,9 @@ WHERE ride_id IS NOT NULL</sql>
   </order>
   <notepads>
     <notepad>
-      <note>Keep trip pending master (late master) on staging until the next Workflow ETL Staging → NDS run.
-Truncate raw_* + stg_weather + stg_gbfs_station. Delete stg_*_trips only when the ride already exists in nds.trip.</note>
+      <note>Two parallel streams:
+A) Generate → Truncate raw_* + stg_weather + stg_gbfs_station
+B) Read stg_*_trips (execute_each_row=N, independent start) → lookup nds.trip → delete only when trip_sk IS NOT NULL (keep pending late-master)</note>
       <fontsize>-1</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
@@ -356,8 +351,8 @@ Truncate raw_* + stg_weather + stg_gbfs_station. Delete stg_*_trips only when th
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>192</xloc>
-      <yloc>1056</yloc>
+      <xloc>32</xloc>
+      <yloc>64</yloc>
       <width>880</width>
       <height>-1</height>
     </notepad>
