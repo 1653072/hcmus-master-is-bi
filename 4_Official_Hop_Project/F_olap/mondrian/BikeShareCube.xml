@@ -128,6 +128,10 @@
              column="classic_trip_count"
              aggregator="sum"
              formatString="#,##0"/>
+    <Measure name="Net Flow"
+             column="net_flow"
+             aggregator="sum"
+             formatString="+#,##0;-#,##0;0"/>
     <Measure name="Absolute Imbalance"
              column="abs_imbalance"
              aggregator="sum"

@@ -1525,7 +1525,7 @@ flowchart LR
 
 
 
-Measure chính là `Trip Count = SUM(trips_started)`. Không dùng `COUNT(*)`, vì một record fact là một station-hour chứ không phải một chuyến xe. Schema cũng cung cấp `Trips Ended`, `Member Trips`, `Casual Trips`, `Electric Trips`, `Classic Trips` và `Absolute Imbalance`.
+Measure chính là `Trip Count = SUM(trips_started)`. Không dùng `COUNT(*)`, vì một record fact là một station-hour chứ không phải một chuyến xe. Schema cũng cung cấp `Trips Ended`, `Member Trips`, `Casual Trips`, `Electric Trips`, `Classic Trips`, `Net Flow` và `Absolute Imbalance`. `Net Flow = SUM(trips_ended - trips_started)` giữ dấu để thể hiện hướng luồng xe: dương là trạm nhận ròng xe, âm là trạm mất ròng xe; `Absolute Imbalance` bỏ dấu để đo tổng mức mất cân bằng.
 
 Các thuộc tính `year`, `quarter`, `month`, `month_name` được lưu trong `dim_datetime`. File `05_cube_hierarchy_migration.sql` nâng cấp idempotent database DDS cũ; database tạo mới nhận các cột này trực tiếp từ DDL và seed.
 
@@ -1600,7 +1600,7 @@ FROM [Bike Share Trips]
 | Pivot      | Đổi trục trình bày mà không đổi số liệu  | City từ Rows sang Columns; Weather theo Rows | Q6                  |
 
 
-Query hypercube cơ sở Q1 trả về `Trip Count` cho mọi tổ hợp Month × City × Weather Category. Query Q7 minh họa nhiều measures trong cùng cell context: member/casual và electric/classic cho năm 2026 dưới thời tiết Rain. Query Q8 dùng `TopCount()` để lấy 20 station có nhiều chuyến bắt đầu nhất.
+Query hypercube cơ sở Q1 trả về `Trip Count` cho mọi tổ hợp Month × City × Weather Category. Query Q7 minh họa nhiều measures trong cùng cell context: member/casual và electric/classic cho năm 2026 dưới thời tiết Rain. Query Q8 dùng `TopCount()` để lấy 20 station có nhiều chuyến bắt đầu nhất. Query Q9 hiển thị `Net Flow` và `Absolute Imbalance` cho 20 station mất cân bằng nhất.
 
 Trong hierarchy Location, level Station nằm dưới City và được nối qua `fact.station_sk → dim_station.station_sk → dim_city.city_sk`. Level Station hiển thị `station_name` và cung cấp các property `Source Station ID`, `Station Status`, `Capacity`. Do level này có cardinality cao, truy vấn demo nên lọc theo City hoặc giới hạn bằng `TopCount()`; Mondrian chỉ tổng hợp từ các fact station-hour đang tồn tại, không materialize toàn bộ tích Descartes.
 

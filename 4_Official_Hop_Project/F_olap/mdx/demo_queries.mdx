@@ -113,3 +113,18 @@ SELECT
     [Measures].[Trip Count]
   ) ON ROWS
 FROM [Bike Share Trips]
+
+-- Q9. NET FLOW BY STATION
+-- Positive: more trips ended than started (station gains bikes).
+-- Negative: more trips started than ended (station loses bikes).
+SELECT
+  {
+    [Measures].[Net Flow],
+    [Measures].[Absolute Imbalance]
+  } ON COLUMNS,
+  NON EMPTY TopCount(
+    [City].[Geography].[Station].Members,
+    20,
+    [Measures].[Absolute Imbalance]
+  ) ON ROWS
+FROM [Bike Share Trips]
