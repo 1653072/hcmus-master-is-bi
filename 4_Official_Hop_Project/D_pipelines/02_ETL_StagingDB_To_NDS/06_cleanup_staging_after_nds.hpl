@@ -40,7 +40,7 @@
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>48</yloc>
     </GUI>
     <partitioning>
@@ -51,7 +51,7 @@
   </transform>
   <transform>
     <type>ExecSql</type>
-    <name>Truncate raw weather gbfs staging</name>
+    <name>Truncate all temporary rate tables + 2 staging tables (weather &amp; gbfs_station)</name>
     <connection>dw-staging</connection>
     <sql>TRUNCATE TABLE
   staging.raw_divvy_trips,
@@ -73,7 +73,7 @@
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>176</yloc>
     </GUI>
     <partitioning>
@@ -101,7 +101,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>304</yloc>
     </GUI>
     <partitioning>
@@ -138,7 +138,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>432</yloc>
     </GUI>
     <partitioning>
@@ -181,7 +181,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>560</yloc>
     </GUI>
     <partitioning>
@@ -208,7 +208,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>688</yloc>
     </GUI>
     <partitioning>
@@ -223,7 +223,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>592</xloc>
+      <xloc>736</xloc>
       <yloc>688</yloc>
     </GUI>
     <partitioning>
@@ -256,7 +256,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>816</yloc>
     </GUI>
     <partitioning>
@@ -289,7 +289,7 @@ WHERE ride_id IS NOT NULL</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>208</xloc>
+      <xloc>352</xloc>
       <yloc>944</yloc>
     </GUI>
     <partitioning>
@@ -301,11 +301,11 @@ WHERE ride_id IS NOT NULL</sql>
   <order>
     <hop>
       <from>Generate 1 cleanup trigger row</from>
-      <to>Truncate raw weather gbfs staging</to>
+      <to>Truncate all temporary rate tables + 2 staging tables (weather &amp; gbfs_station)</to>
       <enabled>Y</enabled>
     </hop>
     <hop>
-      <from>Truncate raw weather gbfs staging</from>
+      <from>Truncate all temporary rate tables + 2 staging tables (weather &amp; gbfs_station)</from>
       <to>Read staging trip keys</to>
       <enabled>Y</enabled>
     </hop>
@@ -356,7 +356,7 @@ Truncate raw_* + stg_weather + stg_gbfs_station. Delete stg_*_trips only when th
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>48</xloc>
+      <xloc>192</xloc>
       <yloc>1056</yloc>
       <width>880</width>
       <height>-1</height>
