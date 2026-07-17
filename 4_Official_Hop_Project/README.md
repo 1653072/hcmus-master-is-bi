@@ -147,7 +147,7 @@ Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không p
 
 Workflow 02 không dùng bảng trip buffer trong `dw_nds`; toàn bộ mapping/upsert trip được thể hiện trực tiếp bằng các transform Hop để dễ đọc và trình bày. Đây là lựa chọn ưu tiên tính minh bạch của đồ án; không xem là tuyên bố nhanh hơn set-based SQL nếu chưa benchmark cùng điều kiện.
 
-**DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Trip có **cả hai** `start_station_id` và `end_station_id` null/blank bị **reject** (`*_REJECT_BOTH_STATION_ID`) — chỉ giữ trên `raw_`*, không vào* `stg_`**. Trip chỉ thiếu **một phía** null/blank là **warning** (*`*_WARN_STATION_ID`*) và vẫn vào* `stg_` → NDS/DDS. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
+**DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Trip có **cả hai** `start_station_id` và `end_station_id` null/blank bị **reject** (`*_REJECT_BOTH_STATION_ID`) — chỉ giữ trên `raw_`*, không vào* `stg_`**. Trip chỉ thiếu **một phía** null/blank là **warning** (`*_WARN_STATION_ID`) và vẫn vào* `stg_` → NDS/DDS. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
 
 **Citi Bike validation runtime:** `02_validate_citibike_raw_to_staging.hpl` có 2 parameter optional: `CITIBIKE_VALIDATE_MONTH` mặc định `ALL` và `CITIBIKE_RESULT_LOAD_RUN_ID` mặc định `bootstrap_202601_202605`. Khi cần proof nhanh, chạy pipeline Citi trực tiếp với `CITIBIKE_VALIDATE_MONTH=202602` và một `CITIBIKE_RESULT_LOAD_RUN_ID` riêng; workflow 01 không truyền gì thêm nên vẫn validate full kỳ 202601–202605.
 
@@ -1173,6 +1173,8 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 
 ---
 
+
+
 ## 9. Push MDM Station
 
 Luồng này cho phép **Go MDM Station** gửi thay đổi master data GBFS (thông tin trạm) tới Apache Hop theo thời gian thực. Backend POST từng trạm một tới **Hop Sync Web Service**. Hop kiểm tra API key, đối chiếu `INSERT` / `UPDATE` / `DELETE` với `nds.station`, rồi upsert `staging.stg_gbfs_station` (kèm cột `operation`). Các bước Staging→NDS và NDS→DDS phía sau xử lý soft-delete / tái kích hoạt (reactivation).
@@ -1211,6 +1213,10 @@ flowchart TB
   STG -->|"02 ETL Staging to NDS"| NDS
   NDS -->|"03 D2 Load Dim Station"| DDS
 ```
+
+
+
+
 
 ### Late-Arriving Master Data (master data trạm đến trễ)
 
@@ -1272,7 +1278,7 @@ sequenceDiagram
 | --------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Master đến trễ (trip pending)** | `station_id` có trên trip, nhưng **chưa từng có** bản ghi nào trên `nds.station` | Giữ trên staging; chờ lần chạy Workflow ETL Staging → NDS sau                                                                                                                                      |
 | **Trạm chỉ còn bản ghi lịch sử**  | `station_id` khớp bản ghi `nds.station` với `is_current = false`                 | **Không** pending — load NDS với `station_sk` lịch sử                                                                                                                                              |
-| **Cả hai station_id null**        | `start_station_id` và `end_station_id` đều null/blank                            | DQ **reject** (`*_REJECT_BOTH_STATION_ID`); chỉ giữ trên `raw`_* rồi sau đó sẽ bị xóa ở bước cuối khi ETL StagingDB -> NDS hoàn tất. Do đó, dữ liệu sẽ **không** được đưa vào `stg_`* / NDS / DDS. |
+| **Cả hai station_id null**        | `start_station_id` và `end_station_id` đều null/blank                            | DQ **reject** (`*_REJECT_BOTH_STATION_ID`); chỉ giữ trên `raw`_* rồi sau đó sẽ bị xóa ở bước cuối khi ETL StagingDB -> NDS hoàn tất. Do đó, dữ liệu sẽ **không** được đưa vào `stg`_* / NDS / DDS. |
 | **Một phía station_id null**      | Dữ liệu hợp lệ khi một trong hai null/blank                                      | DQ **warning** (`*_WARN_STATION_ID`). Dữ liệu vẫn được lưu vào `stg`_* → NDS/DDS với surrogate key null phía thiếu                                                                                 |
 
 
@@ -1283,12 +1289,11 @@ Ghi chú lịch sử: khoảng ~153k trip both-null đã từng vào `nds.trip` 
 File `A_datasets/A4_mdm_station_info/new_mdm_station_information.json` chứa master data giả lập dùng để push MDM:
 
 - **3 object đầu file** cố ý trùng `short_name` đã có trên Divvy/Citi (`3550.05`, `5656.03`, `CHI00419`) → reconcile kỳ vọng `operation = UPDATE`.
-- Các object còn lại (3.869 trạm) dùng mã mới 100% (`LATECHI#####` / `LATENYC#####`), **không** trùng `citibike_station_information.json` / `divvy_station_information.json` → kỳ vọng `operation = INSERT`.
-- `LATECHI*` dùng tọa độ Chicago; `LATENYC*` dùng tọa độ New York City.
+- Các object còn lại dùng đúng `short_name` = `start_station_id` / `end_station_id` còn thiếu trên trip staging (để late-arriving master **mở khóa** trip pending). Kỳ vọng `operation = INSERT` khi chưa có trên `nds.station`.
 - `station_type` là `classic` hoặc `e_bike`; `region_id` luôn bằng `"0"`.
-- Tổng: 3.872 station (3 UPDATE-demo + 1.574 CHI INSERT + 2.295 NYC INSERT).
+- Tổng hiện tại: **730** station (3 UPDATE-demo + **727** INSERT khớp trip đang treo).
 
-> Lưu ý: các `LATE*` không còn = `station_id` trên trip CSV gốc. Để test late-arriving join trip↔master, cần trip có `start/end_station_id` trùng `LATECHI*` / `LATENYC*` đã push.
+> Join key: `nds.station.source_station_id` = trip `start_station_id` / `end_station_id` = GBFS `short_name`. Master late-arriving phải dùng đúng mã đó — không dùng prefix giả (`LATECHI*` / `LATENYC*`).
 
 Quy trình test phải giữ đúng thứ tự **trip đến trước, master data đến sau**:
 
@@ -1307,44 +1312,35 @@ Quy trình test phải giữ đúng thứ tự **trip đến trước, master da
   ```bash
    cd 4_Official_Hop_Project/C_backend/C1_mdm_station_info
 
-   # Smoke test nhanh: push 20 station đầu tiên
+   # Smoke test nhanh: push 20 station đầu tiên (bỏ qua 3 UPDATE-demo nếu muốn: -limit từ offset thủ công)
    go run . -city ALL -operation INSERT -limit 20
 
-   # Hoặc push toàn bộ 3.869 station (sẽ mất nhiều thời gian vì gửi từng HTTP request)
+   # Hoặc push toàn bộ file (~730 station; vẫn gửi từng HTTP request)
    go run . -city ALL -operation INSERT
   ```
    Với `-city ALL`, Go backend xác định city theo từng station: `CHI*` → `CHI`, còn lại → `NYC`.
-4. Kiểm tra station đã được MDM ghi vào staging. Ví dụ station NYC `LATENYC00001`:
-
-   ```sql
+4. Kiểm tra station đã được MDM ghi vào staging. Ví dụ một `short_name` trùng trip pending (vd. `CHI00213`):
+  ```sql
    -- dw_staging (port 5434)
    SELECT source_city_code, short_name, station_name, operation
    FROM staging.stg_gbfs_station
-   WHERE short_name = 'LATENYC00001';
-   ```
-
-   Kỳ vọng: có đúng 1 dòng, `source_city_code = 'NYC'`, `operation = 'INSERT'`.
-
+   WHERE short_name = 'CHI00213';
+  ```
+   Kỳ vọng: có đúng 1 dòng, `source_city_code = 'CHI'`, `operation = 'INSERT'`.
 5. Chạy lại **Workflow ETL Staging → NDS**.
-
-   Trong lần chạy này:
-
-   - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
-   - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk` (nếu trip pending dùng cùng `source_station_id`).
-   - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
-
+  Trong lần chạy này:
+  - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
+  - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk` (nếu trip pending dùng cùng `source_station_id`).
+  - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
 6. Xác minh kết quả trên NDS:
-
-   ```sql
+  ```sql
    -- dw_nds (port 5435)
    SELECT city_sk, source_station_id, station_sk, is_current, row_status
    FROM nds.station
-   WHERE source_station_id = 'LATENYC00001';
-   ```
-
+   WHERE source_station_id = 'CHI00213';
+  ```
 7. Xác minh audit:
-
-   ```sql
+  ```sql
    -- dw_control (port 5434)
    SELECT job_name, status, total_rows_count, success_rows_count,
           failed_rows_count, finished_at
@@ -1352,9 +1348,8 @@ Quy trình test phải giữ đúng thứ tự **trip đến trước, master da
    WHERE job_name = 'etl_stagingdb_to_nds'
    ORDER BY finished_at DESC
    LIMIT 2;
-   ```
-
-   Kỳ vọng: station mới có trên NDS với `operation` path INSERT; trip pending chỉ resolve nếu `start/end_station_id` trùng `LATECHI*` / `LATENYC*` đã push. Trip chỉ **một phía** thiếu `station_id` trên CSV vẫn được load với surrogate key null; trip **cả hai** `station_id` null bị reject ở Source→Staging và không vào `stg_*`.
+  ```
+  **Kỳ vọng**: station mới có trên NDS với `operation` path INSERT; trip pending resolve khi `start/end_station_id` trùng `source_station_id` vừa nạp. Trip chỉ **một phía** thiếu `station_id` trên CSV vẫn được load với surrogate key null; trip **cả hai** `station_id` null bị reject ở Source→Staging và không vào `stg_`*.
 
 
 | Bước                  | Pipeline                                                                          | Vai trò                                       |
