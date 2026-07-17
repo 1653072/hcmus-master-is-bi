@@ -103,19 +103,6 @@
       <attributes_hac/>
     </action>
     <action>
-      <name>Clean fact range</name>
-      <type>SQL</type>
-      <sql>DELETE FROM dds.fact_station_hour_balance 
-WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL '15 days', 'YYYYMMDDHH24') AS INTEGER)
-  AND datetime_sk &lt;= CAST(TO_CHAR('${CET_NDS_TO_DDS}'::TIMESTAMP, 'YYYYMMDDHH24') AS INTEGER);</sql>
-      <useVariableSubstitution>Y</useVariableSubstitution>
-      <connection>dw-dds</connection>
-      <parallel>N</parallel>
-      <xloc>224</xloc>
-      <yloc>384</yloc>
-      <attributes_hac/>
-    </action>
-    <action>
       <filename>${PROJECT_HOME}/D_pipelines/03_ETL_NDS_To_DDS/D3_Aggregate_Fact_StationHourBalance.hpl</filename>
       <params_from_previous>N</params_from_previous>
       <exec_per_row>N</exec_per_row>
@@ -136,7 +123,7 @@ WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL 
       <type>PIPELINE</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>464</yloc>
+      <yloc>400</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -149,6 +136,8 @@ WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL 
       <create_parent_folder>Y</create_parent_folder>
       <set_logfile>N</set_logfile>
       <set_append_logfile>N</set_append_logfile>
+      <logfile/>
+      <logext/>
       <add_date>N</add_date>
       <add_time>N</add_time>
       <loglevel>Basic</loglevel>
@@ -161,7 +150,7 @@ WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL 
       <type>PIPELINE</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>544</yloc>
+      <yloc>496</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -186,7 +175,7 @@ WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL 
       <type>PIPELINE</type>
       <attributes/>
       <xloc>224</xloc>
-      <yloc>624</yloc>
+      <yloc>592</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -225,13 +214,6 @@ WHERE datetime_sk &gt;= CAST(TO_CHAR('${LSET_NDS_TO_DDS}'::TIMESTAMP - INTERVAL 
     </hop>
     <hop>
       <from>D2_Load_Dim_Station.hpl</from>
-      <to>Clean fact range</to>
-      <evaluation>Y</evaluation>
-      <unconditional>N</unconditional>
-      <enabled>Y</enabled>
-    </hop>
-    <hop>
-      <from>Clean fact range</from>
       <to>D3_Aggregate_Fact_StationHourBalance.hpl</to>
       <evaluation>Y</evaluation>
       <unconditional>N</unconditional>
