@@ -34,8 +34,8 @@ WHERE loaded_at > '${LSET_NDS_TO_DDS}'::TIMESTAMP AND loaded_at &lt;= '${CET_NDS
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>100</xloc>
-      <yloc>100</yloc>
+      <xloc>160</xloc>
+      <yloc>96</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -60,8 +60,8 @@ WHERE loaded_at >= TO_TIMESTAMP('${ETL_NDS_TO_DDS_STARTED_AT}', 'YYYY-MM-DD HH24
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>100</xloc>
-      <yloc>220</yloc>
+      <xloc>160</xloc>
+      <yloc>208</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -89,7 +89,7 @@ WHERE loaded_at >= TO_TIMESTAMP('${ETL_NDS_TO_DDS_STARTED_AT}', 'YYYY-MM-DD HH24
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>280</xloc>
+      <xloc>336</xloc>
       <yloc>160</yloc>
     </GUI>
     <partitioning>
@@ -150,7 +150,7 @@ var status_ended = diff_ended == 0 ? "OK" : "LEAK";
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>420</xloc>
+      <xloc>480</xloc>
       <yloc>160</yloc>
     </GUI>
     <partitioning>
@@ -207,7 +207,7 @@ var status_ended = diff_ended == 0 ? "OK" : "LEAK";
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>580</xloc>
+      <xloc>640</xloc>
       <yloc>160</yloc>
     </GUI>
     <partitioning>
@@ -247,7 +247,7 @@ Trip counts do not match between NDS and DDS.</logmessage>
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>740</xloc>
+      <xloc>800</xloc>
       <yloc>160</yloc>
     </GUI>
     <partitioning>
@@ -291,7 +291,7 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>80</xloc>
+      <xloc>144</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
@@ -339,7 +339,7 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>272</xloc>
+      <xloc>336</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
@@ -382,7 +382,7 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>432</xloc>
+      <xloc>496</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
@@ -425,7 +425,7 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>624</xloc>
+      <xloc>688</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
@@ -451,7 +451,7 @@ FROM (
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>800</xloc>
+      <xloc>864</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
@@ -489,7 +489,7 @@ Station-Hour combination exists in NDS trips but was not written to fact_station
     <distribute>Y</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>976</xloc>
+      <xloc>1040</xloc>
       <yloc>352</yloc>
     </GUI>
     <partitioning>
