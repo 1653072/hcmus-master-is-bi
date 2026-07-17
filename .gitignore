@@ -55,5 +55,5 @@ vendor/
 4_Official_Hop_Project/A_datasets/A2_divvy/*.zip
 4_Official_Hop_Project/A_datasets/A2_divvy/extracted/
 4_Official_Hop_Project/A_datasets/A3_noaa_lcd_v2/*.csv
-4_Official_Hop_Project/A_datasets/A4_mdm_station_info/*.json
+#4_Official_Hop_Project/A_datasets/A4_mdm_station_info/*.json
 4_Official_Hop_Project/A_datasets/manifest.json
