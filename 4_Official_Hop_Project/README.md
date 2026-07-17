@@ -1280,12 +1280,15 @@ Ghi chú lịch sử: khoảng ~153k trip both-null đã từng vào `nds.trip` 
 
 #### Cách kiểm thử Late-Arriving Station Master Data
 
-File `A_datasets/A4_mdm_station_info/new_mdm_station_information.json` chứa master data giả lập được tạo từ danh sách `station_id` đang thiếu master:
+File `A_datasets/A4_mdm_station_info/new_mdm_station_information.json` chứa master data giả lập dùng để push MDM:
 
-- `short_name` giữ nguyên `station_id` trên trip để join theo `(city_sk, source_station_id)`.
-- `short_name` bắt đầu bằng `CHI` dùng tọa độ Chicago; các mã còn lại dùng tọa độ New York City.
+- **3 object đầu file** cố ý trùng `short_name` đã có trên Divvy/Citi (`3550.05`, `5656.03`, `CHI00419`) → reconcile kỳ vọng `operation = UPDATE`.
+- Các object còn lại (3.869 trạm) dùng mã mới 100% (`LATECHI#####` / `LATENYC#####`), **không** trùng `citibike_station_information.json` / `divvy_station_information.json` → kỳ vọng `operation = INSERT`.
+- `LATECHI*` dùng tọa độ Chicago; `LATENYC*` dùng tọa độ New York City.
 - `station_type` là `classic` hoặc `e_bike`; `region_id` luôn bằng `"0"`.
-- File hiện có 3.869 station duy nhất: 1.574 Chicago và 2.295 New York City.
+- Tổng: 3.872 station (3 UPDATE-demo + 1.574 CHI INSERT + 2.295 NYC INSERT).
+
+> Lưu ý: các `LATE*` không còn = `station_id` trên trip CSV gốc. Để test late-arriving join trip↔master, cần trip có `start/end_station_id` trùng `LATECHI*` / `LATENYC*` đã push.
 
 Quy trình test phải giữ đúng thứ tự **trip đến trước, master data đến sau**:
 
@@ -1311,59 +1314,47 @@ Quy trình test phải giữ đúng thứ tự **trip đến trước, master da
    go run . -city ALL -operation INSERT
   ```
    Với `-city ALL`, Go backend xác định city theo từng station: `CHI*` → `CHI`, còn lại → `NYC`.
-4. Kiểm tra station đã được MDM ghi vào staging. Ví dụ station NYC `1234.56` nằm trong nhóm đầu của file:
-  ```sql
-   -- Chạy trên dw_staging (port 5434)
+4. Kiểm tra station đã được MDM ghi vào staging. Ví dụ station NYC `LATENYC00001`:
+
+   ```sql
+   -- dw_staging (port 5434)
    SELECT source_city_code, short_name, station_name, operation
    FROM staging.stg_gbfs_station
-   WHERE source_city_code = 'NYC'
-     AND short_name = '1234.56';
-  ```
+   WHERE short_name = 'LATENYC00001';
+   ```
+
+   Kỳ vọng: có đúng 1 dòng, `source_city_code = 'NYC'`, `operation = 'INSERT'`.
+
 5. Chạy lại **Workflow ETL Staging → NDS**.
-  Trong lần chạy này:
-  - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
-  - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk`.
-  - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
+
+   Trong lần chạy này:
+
+   - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
+   - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk` (nếu trip pending dùng cùng `source_station_id`).
+   - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
+
 6. Xác minh kết quả trên NDS:
-  ```sql
-   -- Chạy trên dw_nds (port 5435)
+
+   ```sql
+   -- dw_nds (port 5435)
    SELECT city_sk, source_station_id, station_sk, is_current, row_status
    FROM nds.station
-   WHERE source_station_id = '1234.56';
+   WHERE source_station_id = 'LATENYC00001';
+   ```
 
-   SELECT
-     COUNT(*) AS total_trips,
-     COUNT(*) FILTER (WHERE start_station_id = '1234.56'
-                       AND start_station_sk IS NOT NULL) AS resolved_start_trips,
-     COUNT(*) FILTER (WHERE end_station_id = '1234.56'
-                       AND end_station_sk IS NOT NULL) AS resolved_end_trips
-   FROM nds.trip
-   WHERE start_station_id = '1234.56'
-      OR end_station_id = '1234.56';
-  ```
-7. Xác minh audit và cleanup:
-  ```sql
-   -- Chạy trên dw_control (port 5434)
+7. Xác minh audit:
+
+   ```sql
+   -- dw_control (port 5434)
    SELECT job_name, status, total_rows_count, success_rows_count,
           failed_rows_count, finished_at
    FROM control.etl_job_log
    WHERE job_name = 'etl_stagingdb_to_nds'
    ORDER BY finished_at DESC
    LIMIT 2;
+   ```
 
-   -- Chạy trên dw_staging (port 5434)
-   SELECT COUNT(*) AS unresolved_rows
-   FROM (
-     SELECT start_station_id, end_station_id
-     FROM staging.stg_divvy_trips
-     UNION ALL
-     SELECT start_station_id, end_station_id
-     FROM staging.stg_citibike_trips
-   ) t
-   WHERE start_station_id = '1234.56'
-      OR end_station_id = '1234.56';
-  ```
-  **Kỳ vọng**: Trip của station đã push có surrogate key trên NDS và không còn trên staging; `failed_rows_count` giảm tương ứng. Trip chỉ **một phía** thiếu `station_id` trên CSV vẫn được load với surrogate key null và không bị coi là late-arriving master; trip **cả hai** `station_id` null bị reject ở Source→Staging và không vào `stg_`*.
+   Kỳ vọng: station mới có trên NDS với `operation` path INSERT; trip pending chỉ resolve nếu `start/end_station_id` trùng `LATECHI*` / `LATENYC*` đã push. Trip chỉ **một phía** thiếu `station_id` trên CSV vẫn được load với surrogate key null; trip **cả hai** `station_id` null bị reject ở Source→Staging và không vào `stg_*`.
 
 
 | Bước                  | Pipeline                                                                          | Vai trò                                       |
