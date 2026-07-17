@@ -191,17 +191,20 @@ WHERE source_city_code_norm IS NOT NULL
     <connection>dw-control</connection>
     <schema>control</schema>
     <table>etl_dq_rule_result_details</table>
-    <commit>100</commit>
+    <commit>5000</commit>
     <truncate>N</truncate>
     <only_when_have_rows>N</only_when_have_rows>
     <ignore_errors>N</ignore_errors>
     <use_batch>Y</use_batch>
     <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_field/>
     <partitioning_daily>N</partitioning_daily>
     <partitioning_monthly>N</partitioning_monthly>
     <tablename_in_field>N</tablename_in_field>
+    <tablename_field/>
     <tablename_in_table>N</tablename_in_table>
     <return_keys>N</return_keys>
+    <return_field/>
     <specify_fields>Y</specify_fields>
     <auto_update_table_structure>N</auto_update_table_structure>
     <always_drop_and_recreate>N</always_drop_and_recreate>
@@ -396,11 +399,14 @@ FROM rules;</sql>
     <ignore_errors>N</ignore_errors>
     <use_batch>Y</use_batch>
     <partitioning_enabled>N</partitioning_enabled>
+    <partitioning_field/>
     <partitioning_daily>N</partitioning_daily>
     <partitioning_monthly>N</partitioning_monthly>
     <tablename_in_field>N</tablename_in_field>
+    <tablename_field/>
     <tablename_in_table>N</tablename_in_table>
     <return_keys>N</return_keys>
+    <return_field/>
     <specify_fields>Y</specify_fields>
     <auto_update_table_structure>N</auto_update_table_structure>
     <always_drop_and_recreate>N</always_drop_and_recreate>
@@ -696,7 +702,7 @@ var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now(
       <schema>staging</schema>
       <table>stg_gbfs_station</table>
     </lookup>
-    <commit>1000</commit>
+    <commit>5000</commit>
     <update_bypassed>N</update_bypassed>
     <connection>dw-staging</connection>
     <distribute>N</distribute>

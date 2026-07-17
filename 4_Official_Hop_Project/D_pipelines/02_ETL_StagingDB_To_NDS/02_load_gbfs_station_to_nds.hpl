@@ -447,7 +447,7 @@ if (city_sk == null || String(city_sk).length == 0) {
       <schema>nds</schema>
       <table>station</table>
     </lookup>
-    <commit>1000</commit>
+    <commit>5000</commit>
     <update_bypassed>N</update_bypassed>
     <connection>dw-nds</connection>
     <distribute>N</distribute>

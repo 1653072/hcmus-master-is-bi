@@ -208,7 +208,7 @@ if (_lsetStr != null &amp;&amp; String(_lsetStr).length > 0) {
       <schema>control</schema>
       <table>etl_extraction_control</table>
     </lookup>
-    <commit>10</commit>
+    <commit>1000</commit>
     <update_bypassed>N</update_bypassed>
     <connection>dw-control</connection>
     <distribute>N</distribute>

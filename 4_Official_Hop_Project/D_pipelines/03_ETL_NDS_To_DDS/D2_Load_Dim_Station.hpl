@@ -32,7 +32,7 @@
     row_status
 FROM nds.station
 WHERE is_current = TRUE AND row_status = 'active'
-  AND loaded_at &gt; '${LSET_NDS_TO_DDS}'::TIMESTAMP AND loaded_at &lt;= '${CET_NDS_TO_DDS}'::TIMESTAMP</sql>
+  AND loaded_at > '${LSET_NDS_TO_DDS}'::TIMESTAMP AND loaded_at &lt;= '${CET_NDS_TO_DDS}'::TIMESTAMP</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
     <variables_active>Y</variables_active>
@@ -136,7 +136,7 @@ FROM nds.station d
 WHERE d.row_status = 'deleted'
   AND d.is_current = FALSE
   AND d.effective_to IS NOT NULL
-  AND d.loaded_at &gt; '${LSET_NDS_TO_DDS}'::TIMESTAMP AND d.loaded_at &lt;= '${CET_NDS_TO_DDS}'::TIMESTAMP
+  AND d.loaded_at > '${LSET_NDS_TO_DDS}'::TIMESTAMP AND d.loaded_at &lt;= '${CET_NDS_TO_DDS}'::TIMESTAMP
   AND NOT EXISTS (
     SELECT 1
     FROM nds.station a
@@ -363,7 +363,7 @@ WHERE d.row_status = 'deleted'
       <schema>dds</schema>
       <table>dim_station</table>
     </lookup>
-    <commit>100</commit>
+    <commit>5000</commit>
     <update_bypassed>N</update_bypassed>
     <connection>dw-dds</connection>
     <distribute>N</distribute>

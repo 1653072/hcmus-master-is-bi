@@ -103,7 +103,7 @@ WHERE source_city_code IN ('CHI', 'NYC')</sql>
       <schema>nds</schema>
       <table>city</table>
     </lookup>
-    <commit>100</commit>
+    <commit>1000</commit>
     <update_bypassed>N</update_bypassed>
     <connection>dw-nds</connection>
     <distribute>N</distribute>
@@ -221,7 +221,7 @@ WHERE start_date IS NOT NULL
       <schema>nds</schema>
       <table>calendar_day</table>
     </lookup>
-    <commit>100</commit>
+    <commit>1000</commit>
     <update_bypassed>N</update_bypassed>
     <connection>dw-nds</connection>
     <distribute>N</distribute>
