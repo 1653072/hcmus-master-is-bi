@@ -53,7 +53,7 @@ help:
 	@echo "  make staging-dq          Run visible Hop workflow 01; fallback script if Hop CLI is unavailable"
 	@echo "  make nds-load            Run visible Hop workflow 02; fallback script if Hop CLI is unavailable"
 	@echo "  make runtime-checks      Check XML/schema artifacts and DB runtime counts"
-	@echo "  make mdm-start           Hop Server (-Xmx4g) + Go MDM pusher (all stations by default)"
+	@echo "  make mdm-start           Hop Server (-Xmx8g) + Go MDM pusher (all stations by default)"
 	@echo ""
 	@echo "Windows (CMD/PowerShell): Git for Windows + make"
 	@echo "Bien: FROM=$(FROM) TO=$(TO) SAMPLE_YEAR=$(SAMPLE_YEAR)"
