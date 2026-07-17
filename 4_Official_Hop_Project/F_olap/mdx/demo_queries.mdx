@@ -3,7 +3,7 @@
 -- Grain: Station x Hour
 -- Hierarchies:
 --   Time.Calendar       : Year -> Quarter -> Month
---   City.Geography      : City
+--   City.Geography      : City -> Station
 --   Weather.Weather     : Precipitation Band -> Weather Category
 -- Main measure: [Measures].[Trip Count] = SUM(trips_started)
 
@@ -18,7 +18,7 @@ SELECT
     [Time].[Calendar].[Month].Members,
     [City].[Geography].[City].Members
   ) ON ROWS
-FROM [Bike Share Trips];
+FROM [Bike Share Trips]
 
 -- Q2. ROLL-UP
 -- Aggregate Month -> Quarter.
@@ -28,7 +28,7 @@ SELECT
     [Time].[Calendar].[Quarter].Members,
     [City].[Geography].[City].Members
   ) ON ROWS
-FROM [Bike Share Trips];
+FROM [Bike Share Trips]
 
 -- Q3. DRILL-DOWN
 -- Start at year 2026, then display its descendant months.
@@ -44,7 +44,7 @@ SELECT
       [Weather].[Weather].[Weather Category]
     )
   ) ON ROWS
-FROM [Bike Share Trips];
+FROM [Bike Share Trips]
 
 -- Q4. SLICE
 -- Fix Weather = Rain; the remaining view is Month x City.
@@ -55,7 +55,7 @@ SELECT
     [City].[Geography].[City].Members
   ) ON ROWS
 FROM [Bike Share Trips]
-WHERE ([Weather].[Weather].[Rain]);
+WHERE ([Weather].[Weather].[Rain])
 
 -- Q5. DICE
 -- Sub-cube: Apr-May 2026 x Chicago/NYC x Clear/Rain.
@@ -77,7 +77,7 @@ SELECT
       [City].[Geography].[New York City]
     }
   ) ON ROWS
-FROM [Bike Share Trips];
+FROM [Bike Share Trips]
 
 -- Q6. PIVOT
 -- Same analytical content as a city/weather view, but swap axes.
@@ -85,7 +85,7 @@ SELECT
   NON EMPTY [City].[Geography].[City].Members ON COLUMNS,
   NON EMPTY [Weather].[Weather].[Weather Category].Members ON ROWS
 FROM [Bike Share Trips]
-WHERE ([Measures].[Trip Count]);
+WHERE ([Measures].[Trip Count])
 
 -- Q7. Multiple measures for a concrete comparison.
 SELECT
@@ -100,4 +100,16 @@ FROM [Bike Share Trips]
 WHERE (
   [Time].[Calendar].[2026],
   [Weather].[Weather].[Rain]
-);
+)
+
+-- Q8. STATION DETAIL
+-- Top 20 stations by trips started; Station properties expose source ID,
+-- operational status and capacity in Mondrian/Saiku.
+SELECT
+  { [Measures].[Trip Count] } ON COLUMNS,
+  NON EMPTY TopCount(
+    [City].[Geography].[Station].Members,
+    20,
+    [Measures].[Trip Count]
+  ) ON ROWS
+FROM [Bike Share Trips]

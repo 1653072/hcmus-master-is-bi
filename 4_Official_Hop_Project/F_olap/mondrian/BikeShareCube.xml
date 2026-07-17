@@ -59,6 +59,23 @@
                nameColumn="city_name"
                type="Numeric"
                uniqueMembers="true"/>
+        <Level name="Station"
+               caption="Station"
+               table="station"
+               column="station_sk"
+               nameColumn="station_name"
+               type="Numeric"
+               uniqueMembers="true">
+          <Property name="Source Station ID"
+                    column="source_station_id"
+                    type="String"/>
+          <Property name="Station Status"
+                    column="station_status"
+                    type="String"/>
+          <Property name="Capacity"
+                    column="capacity"
+                    type="Numeric"/>
+        </Level>
       </Hierarchy>
     </Dimension>
 

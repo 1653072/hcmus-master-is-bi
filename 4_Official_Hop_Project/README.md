@@ -933,7 +933,7 @@ erDiagram
 ### 8.5. DDS Snowflake (`dds.*` — 4 Dim + 1 Fact)
 
 - Port **5436** · SQL: `B3_dw_dds_postgresql/02_dds_schema.sql`
-- **Schema type:** **Snowflake** (không phải Star thuần) — fact nối `dim_station`, rồi `dim_station.city_sk` nối `dim_city`. Trong logical OLAP cube, Station không được công bố thành level; các hierarchy demo là Time `Year → Quarter → Month` và Weather `Precipitation Band → Weather Category`.
+- **Schema type:** **Snowflake** (không phải Star thuần) — fact nối `dim_station`, rồi `dim_station.city_sk` nối `dim_city`. Logical OLAP cube tổ chức Location thành hierarchy `City → Station`; các hierarchy chính là Time `Year → Quarter → Month`, Location `City → Station` và Weather `Precipitation Band → Weather Category`.
 - **Fact type:** Periodic Snapshot
 - **Fact Grain:** City × Station × Hour
 - **Unique Key in Fact table:** `(station_sk, datetime_sk)`
@@ -1502,23 +1502,24 @@ F_olap/
 
 ### 10.1 Cube, hypercube, hierarchies và measures
 
-Fact `dds.fact_station_hour_balance` có grain **Station × Hour**. Cube dùng một measure chính và ba dimensions; khi đồng thời phân tích trên cả ba dimensions, lát dữ liệu được trình bày như một **hypercube** `Time × Location × Weather × Measures`.
+Fact `dds.fact_station_hour_balance` có grain **Station × Hour**. Cube dùng một measure chính và ba dimensions; lát dữ liệu có thể được trình bày như một **hypercube** `Time × Location × Weather × Measures`, trong đó Location cho phép drill-down từ City xuống Station.
 
 
 | Dimension       | Đường join DDS                                                             | Hierarchy                               |
 | --------------- | -------------------------------------------------------------------------- | --------------------------------------- |
 | Time            | fact.`datetime_sk` → `dim_datetime.datetime_sk`                            | `Year → Quarter → Month`                |
-| City / Location | fact.`station_sk` → `dim_station.station_sk` → `dim_city.city_sk`          | `City`                                  |
+| City / Location | fact.`station_sk` → `dim_station.station_sk` → `dim_city.city_sk`          | `City → Station`                        |
 | Weather         | fact.`weather_condition_sk` → `dim_weather_condition.weather_condition_sk` | `Precipitation Band → Weather Category` |
 
 
 ```mermaid
 flowchart LR
   Y[Year] --> Q[Quarter] --> M[Month]
-  C[City]
+  C[City] --> S[Station]
   P[Precipitation Band] --> W[Weather Category]
   M --> F((Trip Count))
   C --> F
+  S --> F
   W --> F
 ```
 
@@ -1568,7 +1569,7 @@ PostgreSQL JDBC driver phải có trong classpath của Saiku/Tomcat. Sau mỗi 
 
 ### 10.4 Demo và MDX kiểm tra
 
-Trong Saiku, kéo `Time.Calendar.Month` và `City.Geography.City` vào Rows, `Weather.Weather Category` vào Columns, rồi chọn measure `Trip Count`.
+Trong Saiku, kéo `Time.Calendar.Month` và `City.Geography.City` vào Rows, sau đó drill-down City xuống `City.Geography.Station`; kéo `Weather.Weather Category` vào Columns và chọn measure `Trip Count`. Vì Station có nhiều member, nên lọc City hoặc dùng TopCount trước khi hiển thị toàn bộ trạm.
 
 Bộ MDX dùng để nộp và demo được lưu tại `F_olap/mdx/demo_queries.mdx`, gồm query hypercube tổng quan và các thao tác roll-up, drill-down, slice, dice, pivot.
 
@@ -1599,9 +1600,9 @@ FROM [Bike Share Trips]
 | Pivot      | Đổi trục trình bày mà không đổi số liệu  | City từ Rows sang Columns; Weather theo Rows | Q6                  |
 
 
-Query hypercube cơ sở Q1 trả về `Trip Count` cho mọi tổ hợp Month × City × Weather Category. Query Q7 minh họa nhiều measures trong cùng cell context: member/casual và electric/classic cho năm 2026 dưới thời tiết Rain.
+Query hypercube cơ sở Q1 trả về `Trip Count` cho mọi tổ hợp Month × City × Weather Category. Query Q7 minh họa nhiều measures trong cùng cell context: member/casual và electric/classic cho năm 2026 dưới thời tiết Rain. Query Q8 dùng `TopCount()` để lấy 20 station có nhiều chuyến bắt đầu nhất.
 
-`Station` vẫn là grain/FK trong DDS để bảo toàn khả năng phân tích chi tiết, nhưng không được công bố thành level của cube demo. Cách này tránh dimension cardinality cao trong Saiku; cube trình bày chỉ còn tối đa khoảng `5 tháng × 2 city × 4 weather category = 40` tổ hợp nghiệp vụ cho kỳ 01–05/2026. Mondrian vẫn tổng hợp từ các fact station-hour đang tồn tại, không materialize toàn bộ tích Descartes.
+Trong hierarchy Location, level Station nằm dưới City và được nối qua `fact.station_sk → dim_station.station_sk → dim_city.city_sk`. Level Station hiển thị `station_name` và cung cấp các property `Source Station ID`, `Station Status`, `Capacity`. Do level này có cardinality cao, truy vấn demo nên lọc theo City hoặc giới hạn bằng `TopCount()`; Mondrian chỉ tổng hợp từ các fact station-hour đang tồn tại, không materialize toàn bộ tích Descartes.
 
 SQL đối chiếu kết quả cube:
 
