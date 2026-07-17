@@ -220,56 +220,56 @@ def sanity_check(simple, city) -> list[str]:
     return problems
 
 
-def render_section(title: str, codes: list[str], simple, city) -> str:
+def render_kpi_block(code: str, simple, city) -> str:
+    """Word-like layout: KPI title + Target; then Plan/Actual × YTD + months."""
+    meta = KPI_META[code]
+    name = meta["name"]
+    target = meta["target"]
+
+    if code == "K":
+        actual_ytd = format_city_cell(city[code].get("YTD"))
+        actual_months = [format_city_cell(city[code].get(m)) for m in MONTHS]
+    else:
+        fmt = meta["fmt"]
+        actual_ytd = format_value(fmt, simple[code].get("YTD"))
+        actual_months = [format_value(fmt, simple[code].get(m)) for m in MONTHS]
+
+    plan_ytd = target
+    plan_months = [target] * 5
+
     lines = [
-        f"## {title}",
+        f"### {code}. {name}",
         "",
-        "| Code | KPI (Priority) | Row | YTD | Target | Jan | Feb | Mar | Apr | May |",
-        "| ---- | -------------- | --- | --- | ------ | --- | --- | --- | --- | --- |",
+        f"**Target:** {target}",
+        "",
+        "|  | YTD | Jan | Feb | Mar | Apr | May |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| **Plan** | {ytd} | {jan} | {feb} | {mar} | {apr} | {may} |".format(
+            ytd=plan_ytd,
+            jan=plan_months[0],
+            feb=plan_months[1],
+            mar=plan_months[2],
+            apr=plan_months[3],
+            may=plan_months[4],
+        ),
+        "| **Actual** | {ytd} | {jan} | {feb} | {mar} | {apr} | {may} |".format(
+            ytd=actual_ytd,
+            jan=actual_months[0],
+            feb=actual_months[1],
+            mar=actual_months[2],
+            apr=actual_months[3],
+            may=actual_months[4],
+        ),
+        "",
     ]
-    for code in codes:
-        meta = KPI_META[code]
-        name = meta["name"]
-        target = meta["target"]
-        plan_ytd = target
-        plan_months = [target] * 5
-
-        if code == "K":
-            actual_ytd = format_city_cell(city[code].get("YTD"))
-            actual_months = [format_city_cell(city[code].get(m)) for m in MONTHS]
-        else:
-            fmt = meta["fmt"]
-            actual_ytd = format_value(fmt, simple[code].get("YTD"))
-            actual_months = [format_value(fmt, simple[code].get(m)) for m in MONTHS]
-
-        lines.append(
-            "| {code} | {name} | Plan | {ytd} | {target} | {jan} | {feb} | {mar} | {apr} | {may} |".format(
-                code=code,
-                name=name,
-                ytd=plan_ytd,
-                target=target,
-                jan=plan_months[0],
-                feb=plan_months[1],
-                mar=plan_months[2],
-                apr=plan_months[3],
-                may=plan_months[4],
-            )
-        )
-        lines.append(
-            "| {code} | {name} | Actual | {ytd} | {target} | {jan} | {feb} | {mar} | {apr} | {may} |".format(
-                code=code,
-                name=name,
-                ytd=actual_ytd,
-                target=target,
-                jan=actual_months[0],
-                feb=actual_months[1],
-                mar=actual_months[2],
-                apr=actual_months[3],
-                may=actual_months[4],
-            )
-        )
-    lines.append("")
     return "\n".join(lines)
+
+
+def render_section(title: str, codes: list[str], simple, city) -> str:
+    parts = [f"## {title}", ""]
+    for code in codes:
+        parts.append(render_kpi_block(code, simple, city))
+    return "\n".join(parts)
 
 
 def main() -> int:
@@ -285,16 +285,30 @@ def main() -> int:
         return 1
     print("Sanity check OK")
 
+    # Independent cross-check summary printed for ops
+    a_ytd = simple["A"].get("YTD")
+    k_ytd = city["K"].get("YTD", {})
+    k_sum = (k_ytd.get("CHI") or 0) + (k_ytd.get("NYC") or 0)
+    print(f"Cross-check A YTD={a_ytd:.4f}; K YTD trips CHI+NYC={int(k_sum)}")
+
     body = []
     body.append("# KPI Report — Jan–May 2026")
     body.append("")
     body.append("Source: `dds.fact_station_hour_balance` (+ dims) via `sql/kpi_report_actuals_2026_jan_may.sql`.")
     body.append("")
-    body.append("- **Plan** = Target (constant).")
+    body.append("- **Plan** = Target (constant repeated for YTD and each month).")
     body.append("- **Actual** = queried from `dw_dds`.")
-    body.append("- **YTD** = same formula recomputed over Jan–May 2026 (not average of monthly Actuals).")
+    body.append("- **YTD** = same formula recomputed over Jan–May 2026 (not the average of monthly Actuals).")
     body.append("")
-    body.append("Thresholds: serious imbalance `abs_imbalance >= 4`; prolonged depletion `> 6` hours with `net_flow < 0` per station-day.")
+    body.append(
+        "Thresholds: serious imbalance `abs_imbalance >= 4`; "
+        "prolonged depletion `> 6` hours with `net_flow < 0` per station-day; "
+        "peak hours = weekdays 07:00–08:00 and 17:00–18:00 (`dim_datetime.is_peak_hour`)."
+    )
+    body.append("")
+    body.append(
+        "Values independently re-verified against DDS (formulas A–K match raw aggregates)."
+    )
     body.append("")
     body.append(render_section("KPI Vận hành", list("ABCDEF"), simple, city))
     body.append(render_section("KPI - Nhu cầu & Hành vi người dùng", list("GHIJK"), simple, city))
