@@ -9,7 +9,7 @@
     <parameters/>
     <name>02_load_citibike_trips_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 1: read Citi Bike CSV as all-TEXT, no type casting, truncate-and-load into staging.raw_citibike_trips.</description>
+    <description>Flow 1: read Citi Bike CSV as all-TEXT, no type casting, truncate-and-load into staging.raw_citibike_trips. Station DQ (both-null reject / one-null warn) is enforced in 02_validate_citibike_raw_to_staging.hpl; this load writes all CSV rows to raw_citibike_trips.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 19:20:45.786</created_date>
@@ -633,8 +633,10 @@ var source_row_number = _row_counter;</jsScript_script>
   </order>
   <notepads>
     <notepad>
-      <note>Flow 1 — no type casting. DQ validation and transformation to stg_citibike_trips happen in 02_validate_citibike_raw_to_staging.hpl.</note>
-      <fontsize>-1</fontsize>
+      <note>- Flow 1 — no type casting. All CSV rows land in raw_citibike_trips. 
+- Station DQ (both-null reject / one-null warn) and transformation to stg_citibike_trips happen in 02_validate_citibike_raw_to_staging.hpl.</note>
+      <fontname>.AppleSystemUIFont</fontname>
+      <fontsize>13</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
       <fontcolorred>14</fontcolorred>

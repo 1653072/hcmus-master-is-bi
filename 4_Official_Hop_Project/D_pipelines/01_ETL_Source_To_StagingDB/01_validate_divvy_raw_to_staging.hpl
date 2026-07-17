@@ -9,7 +9,7 @@
     <parameters/>
     <name>01_validate_divvy_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 2 — DQ gate for Divvy: 3 parallel streams from raw_divvy_trips. Stream A: row-level reject/warning details to etl_dq_rule_result_details. Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: clean rows cast and upserted into stg_divvy_trips.</description>
+    <description>Flow 2 — DQ gate for Divvy: 3 parallel streams from raw_divvy_trips. Stream A: row-level reject/warning details to etl_dq_rule_result_details (both-null station reject; one-null warning). Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: accepted rows (excluding both-null station) cast and upserted into stg_divvy_trips.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 01:10:35.638</created_date>
@@ -142,7 +142,31 @@ WHERE ride_id_norm IS NOT NULL
 
 UNION ALL
 
--- Rule 5: missing station ids (warning)
+-- Rule 5a: both station ids null (reject)
+SELECT
+    load_run_id,
+    'divvy_trips',
+    'raw_divvy_trips',
+    source_file,
+    source_row_number,
+    business_key,
+    'DIVVY_REJECT_BOTH_STATION_ID',
+    'null',
+    'reject',
+    'Both start_station_id and end_station_id are null',
+    raw_payload
+FROM src
+WHERE ride_id_norm IS NOT NULL
+  AND started_at_norm IS NOT NULL
+  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+  AND start_station_id_norm IS NULL
+  AND end_station_id_norm IS NULL
+
+UNION ALL
+
+-- Rule 5b: exactly one station id null (warning)
 SELECT
     load_run_id,
     'divvy_trips',
@@ -153,7 +177,7 @@ SELECT
     'DIVVY_WARN_STATION_ID',
     'null',
     'warning',
-    'Missing start_station_id or end_station_id',
+    'Exactly one of start_station_id / end_station_id is null',
     raw_payload
 FROM src
 WHERE ride_id_norm IS NOT NULL
@@ -162,8 +186,8 @@ WHERE ride_id_norm IS NOT NULL
   AND trip_month IS NOT NULL
   AND trip_month ~ '^[0-9]{6}$'
   AND (
-        start_station_id_norm IS NULL
-     OR end_station_id_norm IS NULL
+        (start_station_id_norm IS NULL AND end_station_id_norm IS NOT NULL)
+     OR (start_station_id_norm IS NOT NULL AND end_station_id_norm IS NULL)
       );</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
@@ -321,11 +345,21 @@ metrics AS (
               AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
               AND trip_month IS NOT NULL
               AND trip_month ~ '^[0-9]{6}$'
+              AND start_station_id_norm IS NULL
+              AND end_station_id_norm IS NULL
+        )::BIGINT AS both_station_id_null_count,
+
+        COUNT(*) FILTER (
+            WHERE ride_id_norm IS NOT NULL
+              AND started_at_norm IS NOT NULL
+              AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+              AND trip_month IS NOT NULL
+              AND trip_month ~ '^[0-9]{6}$'
               AND (
-                    start_station_id_norm IS NULL
-                 OR end_station_id_norm IS NULL
+                    (start_station_id_norm IS NULL AND end_station_id_norm IS NOT NULL)
+                 OR (start_station_id_norm IS NOT NULL AND end_station_id_norm IS NULL)
               )
-        )::BIGINT AS missing_station_id_count
+        )::BIGINT AS one_station_id_null_count
     FROM enriched
 ),
 
@@ -340,11 +374,12 @@ rules AS (
     FROM metrics AS m
     CROSS JOIN LATERAL (
         VALUES
-            ('DIVVY_NULL_REQUIRED',      'null',      'reject',  m.null_required_count,      0::BIGINT),
-            ('DIVVY_DUPLICATE_RIDE',     'duplicate', 'reject',  m.duplicate_ride_count,     0::BIGINT),
-            ('DIVVY_DATATYPE_TIMESTAMP', 'datatype',  'reject',  m.bad_timestamp_count,      0::BIGINT),
-            ('DIVVY_FORMAT_TRIP_MONTH',  'format',    'reject',  m.bad_trip_month_count,     0::BIGINT),
-            ('DIVVY_WARN_STATION_ID',    'null',      'warning', 0::BIGINT,                  m.missing_station_id_count)
+            ('DIVVY_NULL_REQUIRED',      	  'null',      'reject',  m.null_required_count,         0::BIGINT),
+            ('DIVVY_DUPLICATE_RIDE',          'duplicate', 'reject',  m.duplicate_ride_count,        0::BIGINT),
+            ('DIVVY_DATATYPE_TIMESTAMP', 	  'datatype',  'reject',  m.bad_timestamp_count,         0::BIGINT),
+            ('DIVVY_FORMAT_TRIP_MONTH',       'format',    'reject',  m.bad_trip_month_count,        0::BIGINT),
+            ('DIVVY_REJECT_BOTH_STATION_ID',  'null',      'reject',  m.both_station_id_null_count,  0::BIGINT),
+            ('DIVVY_WARN_STATION_ID',         'null',      'warning', 0::BIGINT,                     m.one_station_id_null_count)
     ) AS rule_def (
         rule_code,
         rule_type,
@@ -479,6 +514,10 @@ WHERE NULLIF(BTRIM(ride_id), '')          IS NOT NULL
   AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
   AND trip_month IS NOT NULL
   AND trip_month ~ '^[0-9]{6}$'
+  AND NOT (
+        NULLIF(BTRIM(start_station_id), '') IS NULL
+    AND NULLIF(BTRIM(end_station_id), '') IS NULL
+      )
 ORDER BY
     source_city_code,
     ride_id;</sql>
@@ -783,10 +822,11 @@ var loaded_at = Packages.java.sql.Timestamp.from(Packages.java.time.Instant.now(
   </order>
   <notepads>
     <notepad>
-      <note>Stream A → etl_dq_rule_result_details (row-level rejects + warnings)
+      <note>Stream A → etl_dq_rule_result_details (row-level rejects + warnings; both-null station = reject, one-null = warning)
 Stream B → etl_dq_rule_result_analysis (aggregate counts per rule)
-Stream C → stg_divvy_trips (clean rows, cast, deduplicated)</note>
-      <fontsize>-1</fontsize>
+Stream C → stg_divvy_trips (accepted rows excluding both-null start_station_id and end_station_id, cast, deduplicated)</note>
+      <fontname>.AppleSystemUIFont</fontname>
+      <fontsize>13</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
       <fontcolorred>14</fontcolorred>

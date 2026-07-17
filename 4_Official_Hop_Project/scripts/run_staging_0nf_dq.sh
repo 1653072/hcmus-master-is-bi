@@ -103,12 +103,14 @@ INSERT INTO control.dq_rule_catalog (rule_code, source_name, rule_type, severity
     ('DIVVY_DUPLICATE_RIDE',      'divvy_trips',    'duplicate', 'reject',  'duplicate source rows by source_city_code + ride_id'),
     ('DIVVY_DATATYPE_TIMESTAMP',  'divvy_trips',    'datatype',  'reject',  'started_at and ended_at must parse as timestamps'),
     ('DIVVY_FORMAT_TRIP_MONTH',   'divvy_trips',    'format',    'reject',  'trip_month must match YYYYMM'),
-    ('DIVVY_WARN_STATION_ID',     'divvy_trips',    'null',      'warning', 'missing start/end station id is retained as warning'),
+    ('DIVVY_REJECT_BOTH_STATION_ID', 'divvy_trips', 'null',      'reject',  'both start_station_id and end_station_id null/blank — keep raw only, exclude from stg'),
+    ('DIVVY_WARN_STATION_ID',     'divvy_trips',    'null',      'warning', 'exactly one of start/end station id null/blank — retained in stg with warning'),
     ('CITI_NULL_REQUIRED',        'citibike_trips', 'null',      'reject',  'ride_id, started_at, and source_city_code are required'),
     ('CITI_DUPLICATE_RIDE',       'citibike_trips', 'duplicate', 'reject',  'duplicate source rows by source_city_code + ride_id'),
     ('CITI_DATATYPE_TIMESTAMP',   'citibike_trips', 'datatype',  'reject',  'started_at and ended_at must parse as timestamps'),
     ('CITI_FORMAT_TRIP_MONTH',    'citibike_trips', 'format',    'reject',  'trip_month must match YYYYMM'),
-    ('CITI_WARN_STATION_ID',      'citibike_trips', 'null',      'warning', 'missing start/end station id is retained as warning'),
+    ('CITI_REJECT_BOTH_STATION_ID', 'citibike_trips', 'null',  'reject',  'both start_station_id and end_station_id null/blank — keep raw only, exclude from stg'),
+    ('CITI_WARN_STATION_ID',      'citibike_trips', 'null',      'warning', 'exactly one of start/end station id null/blank — retained in stg with warning'),
     ('NOAA_NULL_REQUIRED',        'noaa_lcd',       'null',      'reject',  'station id, observation timestamp, and city are required'),
     ('NOAA_DUPLICATE_HOUR',       'noaa_lcd',       'duplicate', 'reject',  'duplicate source rows by source_city_code + observation_ts'),
     ('NOAA_DATATYPE_NUMERIC',     'noaa_lcd',       'datatype',  'reject',  'temperature, precipitation, and wind speed must be numeric when present'),
@@ -262,17 +264,57 @@ SELECT :'load_run_id', 'citibike_trips', 'raw_citibike_trips', source_file, sour
 FROM staging.raw_citibike_trips r
 WHERE NULLIF(BTRIM(ride_id), '') IS NULL OR NULLIF(BTRIM(started_at), '') IS NULL OR NULLIF(BTRIM(source_city_code), '') IS NULL;
 
+INSERT INTO staging.dq_reject_row (load_run_id, source_name, source_table, source_file, source_row_number, business_key, rule_code, rule_type, reject_reason, raw_payload)
+SELECT :'load_run_id', 'divvy_trips', 'raw_divvy_trips', source_file, source_row_number, ride_id,
+       'DIVVY_REJECT_BOTH_STATION_ID', 'null', 'both start_station_id and end_station_id are null', to_jsonb(r)
+FROM staging.raw_divvy_trips r
+WHERE NULLIF(BTRIM(ride_id), '') IS NOT NULL
+  AND NULLIF(BTRIM(started_at), '') IS NOT NULL
+  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+  AND NULLIF(BTRIM(start_station_id), '') IS NULL
+  AND NULLIF(BTRIM(end_station_id), '') IS NULL;
+
+INSERT INTO staging.dq_reject_row (load_run_id, source_name, source_table, source_file, source_row_number, business_key, rule_code, rule_type, reject_reason, raw_payload)
+SELECT :'load_run_id', 'citibike_trips', 'raw_citibike_trips', source_file, source_row_number, ride_id,
+       'CITI_REJECT_BOTH_STATION_ID', 'null', 'both start_station_id and end_station_id are null', to_jsonb(r)
+FROM staging.raw_citibike_trips r
+WHERE NULLIF(BTRIM(ride_id), '') IS NOT NULL
+  AND NULLIF(BTRIM(started_at), '') IS NOT NULL
+  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+  AND NULLIF(BTRIM(start_station_id), '') IS NULL
+  AND NULLIF(BTRIM(end_station_id), '') IS NULL;
+
 INSERT INTO staging.dq_warning_row (load_run_id, source_name, source_table, source_file, source_row_number, business_key, rule_code, rule_type, warning_reason, raw_payload)
 SELECT :'load_run_id', 'divvy_trips', 'raw_divvy_trips', source_file, source_row_number, ride_id,
-       'DIVVY_WARN_STATION_ID', 'null', 'start_station_id or end_station_id is missing', to_jsonb(r)
+       'DIVVY_WARN_STATION_ID', 'null', 'exactly one of start_station_id / end_station_id is null', to_jsonb(r)
 FROM staging.raw_divvy_trips r
-WHERE NULLIF(BTRIM(start_station_id), '') IS NULL OR NULLIF(BTRIM(end_station_id), '') IS NULL;
+WHERE NULLIF(BTRIM(ride_id), '') IS NOT NULL
+  AND NULLIF(BTRIM(started_at), '') IS NOT NULL
+  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+  AND (
+        (NULLIF(BTRIM(start_station_id), '') IS NULL AND NULLIF(BTRIM(end_station_id), '') IS NOT NULL)
+     OR (NULLIF(BTRIM(start_station_id), '') IS NOT NULL AND NULLIF(BTRIM(end_station_id), '') IS NULL)
+      );
 
 INSERT INTO staging.dq_warning_row (load_run_id, source_name, source_table, source_file, source_row_number, business_key, rule_code, rule_type, warning_reason, raw_payload)
 SELECT :'load_run_id', 'citibike_trips', 'raw_citibike_trips', source_file, source_row_number, ride_id,
-       'CITI_WARN_STATION_ID', 'null', 'start_station_id or end_station_id is missing', to_jsonb(r)
+       'CITI_WARN_STATION_ID', 'null', 'exactly one of start_station_id / end_station_id is null', to_jsonb(r)
 FROM staging.raw_citibike_trips r
-WHERE NULLIF(BTRIM(start_station_id), '') IS NULL OR NULLIF(BTRIM(end_station_id), '') IS NULL;
+WHERE NULLIF(BTRIM(ride_id), '') IS NOT NULL
+  AND NULLIF(BTRIM(started_at), '') IS NOT NULL
+  AND started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+  AND trip_month IS NOT NULL
+  AND trip_month ~ '^[0-9]{6}$'
+  AND (
+        (NULLIF(BTRIM(start_station_id), '') IS NULL AND NULLIF(BTRIM(end_station_id), '') IS NOT NULL)
+     OR (NULLIF(BTRIM(start_station_id), '') IS NOT NULL AND NULLIF(BTRIM(end_station_id), '') IS NULL)
+      );
 SQL
 
 psql_control -c "DELETE FROM control.etl_dq_rule_result_details WHERE load_run_id = '${LOAD_RUN_ID}';"
@@ -282,12 +324,14 @@ divvy_total="$(scalar_stg "SELECT COUNT(*) FROM staging.raw_divvy_trips;")"
 divvy_null="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_reject_row WHERE rule_code = 'DIVVY_NULL_REQUIRED';")"
 divvy_dup="$(scalar_stg "SELECT COUNT(*) FROM (SELECT source_city_code, ride_id FROM staging.raw_divvy_trips GROUP BY source_city_code, ride_id HAVING COUNT(*) > 1) d;")"
 divvy_bad_month="$(scalar_stg "SELECT COUNT(*) FROM staging.raw_divvy_trips WHERE trip_month !~ '^[0-9]{6}$' OR trip_month IS NULL;")"
+divvy_reject_both="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_reject_row WHERE rule_code = 'DIVVY_REJECT_BOTH_STATION_ID';")"
 divvy_warn="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_warning_row WHERE rule_code = 'DIVVY_WARN_STATION_ID';")"
 
 citi_total="$(scalar_stg "SELECT COUNT(*) FROM staging.raw_citibike_trips;")"
 citi_null="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_reject_row WHERE rule_code = 'CITI_NULL_REQUIRED';")"
 citi_dup="$(scalar_stg "SELECT COUNT(*) FROM (SELECT source_city_code, ride_id FROM staging.raw_citibike_trips GROUP BY source_city_code, ride_id HAVING COUNT(*) > 1) d;")"
 citi_bad_month="$(scalar_stg "SELECT COUNT(*) FROM staging.raw_citibike_trips WHERE trip_month !~ '^[0-9]{6}$' OR trip_month IS NULL;")"
+citi_reject_both="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_reject_row WHERE rule_code = 'CITI_REJECT_BOTH_STATION_ID';")"
 citi_warn="$(scalar_stg "SELECT COUNT(*) FROM staging.dq_warning_row WHERE rule_code = 'CITI_WARN_STATION_ID';")"
 
 noaa_total="$(scalar_stg "SELECT COUNT(*) FROM staging.raw_noaa_weather;")"
@@ -305,12 +349,14 @@ insert_rule_result "divvy_trips" "DIVVY_NULL_REQUIRED" "$((divvy_total - divvy_n
 insert_rule_result "divvy_trips" "DIVVY_DUPLICATE_RIDE" "$((divvy_total - divvy_dup))" "$divvy_dup" 0
 insert_rule_result "divvy_trips" "DIVVY_DATATYPE_TIMESTAMP" "$divvy_total" 0 0
 insert_rule_result "divvy_trips" "DIVVY_FORMAT_TRIP_MONTH" "$((divvy_total - divvy_bad_month))" "$divvy_bad_month" 0
+insert_rule_result "divvy_trips" "DIVVY_REJECT_BOTH_STATION_ID" "$((divvy_total - divvy_reject_both))" "$divvy_reject_both" 0
 insert_rule_result "divvy_trips" "DIVVY_WARN_STATION_ID" "$((divvy_total - divvy_warn))" 0 "$divvy_warn"
 
 insert_rule_result "citibike_trips" "CITI_NULL_REQUIRED" "$((citi_total - citi_null))" "$citi_null" 0
 insert_rule_result "citibike_trips" "CITI_DUPLICATE_RIDE" "$((citi_total - citi_dup))" "$citi_dup" 0
 insert_rule_result "citibike_trips" "CITI_DATATYPE_TIMESTAMP" "$citi_total" 0 0
 insert_rule_result "citibike_trips" "CITI_FORMAT_TRIP_MONTH" "$((citi_total - citi_bad_month))" "$citi_bad_month" 0
+insert_rule_result "citibike_trips" "CITI_REJECT_BOTH_STATION_ID" "$((citi_total - citi_reject_both))" "$citi_reject_both" 0
 insert_rule_result "citibike_trips" "CITI_WARN_STATION_ID" "$((citi_total - citi_warn))" 0 "$citi_warn"
 
 insert_rule_result "noaa_lcd" "NOAA_NULL_REQUIRED" "$((noaa_total - noaa_null))" "$noaa_null" 0
@@ -326,11 +372,13 @@ insert_rule_result "gbfs_station" "GBFS_FORMAT_COORDINATE" "$((gbfs_total - gbfs
 insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_NULL_REQUIRED" "null" "reject" "ride_id, started_at, and source_city_code are required" "$divvy_null"
 insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_DUPLICATE_RIDE" "duplicate" "reject" "duplicate source rows by source_city_code and ride_id" "$divvy_dup"
 insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_FORMAT_TRIP_MONTH" "format" "reject" "trip_month must match YYYYMM" "$divvy_bad_month"
-insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_WARN_STATION_ID" "null" "warning" "start_station_id or end_station_id is missing" "$divvy_warn"
+insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_REJECT_BOTH_STATION_ID" "null" "reject" "both start_station_id and end_station_id are null" "$divvy_reject_both"
+insert_detail_result "divvy_trips" "raw_divvy_trips" "DIVVY_WARN_STATION_ID" "null" "warning" "exactly one of start_station_id / end_station_id is null" "$divvy_warn"
 insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_NULL_REQUIRED" "null" "reject" "ride_id, started_at, and source_city_code are required" "$citi_null"
 insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_DUPLICATE_RIDE" "duplicate" "reject" "duplicate source rows by source_city_code and ride_id" "$citi_dup"
 insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_FORMAT_TRIP_MONTH" "format" "reject" "trip_month must match YYYYMM" "$citi_bad_month"
-insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_WARN_STATION_ID" "null" "warning" "start_station_id or end_station_id is missing" "$citi_warn"
+insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_REJECT_BOTH_STATION_ID" "null" "reject" "both start_station_id and end_station_id are null" "$citi_reject_both"
+insert_detail_result "citibike_trips" "raw_citibike_trips" "CITI_WARN_STATION_ID" "null" "warning" "exactly one of start_station_id / end_station_id is null" "$citi_warn"
 insert_detail_result "noaa_lcd" "raw_noaa_weather" "NOAA_NULL_REQUIRED" "null" "reject" "station id, observation timestamp, and city are required" "$noaa_null"
 insert_detail_result "noaa_lcd" "raw_noaa_weather" "NOAA_DUPLICATE_HOUR" "duplicate" "reject" "duplicate source rows by source_city_code and observation_ts" "$noaa_dup"
 insert_detail_result "noaa_lcd" "raw_noaa_weather" "NOAA_FORMAT_REPORT_TYPE" "format" "reject" "report_type must be FM-15, FM-16, or FM-12" "$noaa_bad_report"
@@ -341,4 +389,4 @@ insert_detail_result "gbfs_station" "raw_gbfs_station" "GBFS_FORMAT_COORDINATE" 
 
 printf 'load_run_id=%s\n' "$LOAD_RUN_ID"
 printf 'raw_divvy=%s raw_citibike=%s raw_noaa=%s raw_gbfs=%s\n' "$divvy_total" "$citi_total" "$noaa_total" "$gbfs_total"
-printf 'dq_warnings=%s dq_rejects=%s\n' "$((divvy_warn + citi_warn))" "$((divvy_null + citi_null + noaa_null + gbfs_null))"
+printf 'dq_warnings=%s dq_rejects=%s\n' "$((divvy_warn + citi_warn))" "$((divvy_null + citi_null + divvy_reject_both + citi_reject_both + noaa_null + gbfs_null))"

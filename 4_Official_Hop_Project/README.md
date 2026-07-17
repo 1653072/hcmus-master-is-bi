@@ -147,7 +147,7 @@ Luồng chính hiện là Hop workflow nhìn thấy được trong GUI, không p
 
 Workflow 02 không dùng bảng trip buffer trong `dw_nds`; toàn bộ mapping/upsert trip được thể hiện trực tiếp bằng các transform Hop để dễ đọc và trình bày. Đây là lựa chọn ưu tiên tính minh bạch của đồ án; không xem là tuyên bố nhanh hơn set-based SQL nếu chưa benchmark cùng điều kiện.
 
-**DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
+**DQ rule coverage:** null, duplicate, datatype, format; reject và warning row-level details ghi `control.etl_dq_rule_result_details` (field `dq_verdict = reject|warning`), rule-level summary ghi `control.etl_dq_rule_result_analysis`. Trip có **cả hai** `start_station_id` và `end_station_id` null/blank bị **reject** (`*_REJECT_BOTH_STATION_ID`) — chỉ giữ trên `raw_`*, không vào* `stg_`**. Trip chỉ thiếu **một phía** null/blank là **warning** (*`*_WARN_STATION_ID`*) và vẫn vào* `stg_` → NDS/DDS. Các script `scripts/run_staging_0nf_dq.sh` và `scripts/run_staging_to_nds.sh` vẫn được giữ làm fallback/manual verification khi môi trường chưa có Hop CLI hoặc cần backfill nhanh, nhưng không còn là luồng chính trong workflow.
 
 **Citi Bike validation runtime:** `02_validate_citibike_raw_to_staging.hpl` có 2 parameter optional: `CITIBIKE_VALIDATE_MONTH` mặc định `ALL` và `CITIBIKE_RESULT_LOAD_RUN_ID` mặc định `bootstrap_202601_202605`. Khi cần proof nhanh, chạy pipeline Citi trực tiếp với `CITIBIKE_VALIDATE_MONTH=202602` và một `CITIBIKE_RESULT_LOAD_RUN_ID` riêng; workflow 01 không truyền gì thêm nên vẫn validate full kỳ 202601–202605.
 
@@ -277,17 +277,17 @@ Lệnh này sinh lại `development_configs.json` từ `development_configs.loca
 ## 6. Trạng thái triển khai
 
 
-| Hạng mục                               | Ghi chú                                                                                                                                                                                      |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01–2026-05** qua `download_datasets.sh`                                                                                                                                |
-| NOAA LCD v1 → v2                       | V1 deprecated; V2 giữ cùng cột hourly cho Fact table                                                                                                                                         |
-| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                                                                                                                                                |
-| Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds)                                                                                                                    |
-| Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                                                                                                                                                  |
-| Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines                             |
-| Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification                                             |
+| Hạng mục                               | Ghi chú                                                                                                                                                                                                                                               |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ba dataset PDF (Divvy, Citi, NOAA LCD) | Trip + NOAA v2 **2026-01–2026-05** qua `download_datasets.sh`                                                                                                                                                                                         |
+| NOAA LCD v1 → v2                       | V1 deprecated; V2 giữ cùng cột hourly cho Fact table                                                                                                                                                                                                  |
+| GBFS                                   | Tùy chọn `--gbfs`; phục vụ `Dim_Station` Push                                                                                                                                                                                                         |
+| Schema DW (STG / NDS / DDS)            | SQL init + Docker + seed 2026 H1 — [mục 8](#8-schema-dw--staging-nds-dds)                                                                                                                                                                             |
+| Hop metadata (connections + MDM)       | `metadata/rdbms/*.json`, `mdm-station.json`                                                                                                                                                                                                           |
+| Hop ETL Source Files → StagingDB       | Đã có pipeline/workflow đầu tiên — `D_pipelines/01_ETL_Source_To_StagingDB`, `E_workflows/01_etl_source_to_stagingdb.hwf`; folder có nhiều `.hpl` step pipelines                                                                                      |
+| Raw 0NF + DQ Validation                | Đã có raw tables, reject/warning tables, rule catalog/result và Hop `.hpl` visible trong workflow 01; script chỉ là fallback/manual verification                                                                                                      |
 | ETL StagingDB → NDS                    | Đã có Hop workflow visible load `nds.city`, `nds.calendar_day`, `nds.station`, `nds.weather`, `nds.trip`, audit (kể cả trip pending master), rồi cleanup có điều kiện (giữ trip late master trên staging); script chỉ là fallback/manual verification |
-| Hop ETL end-to-end                     | Workflow 01 Source → Staging, workflow 02 Staging → NDS, workflow 03 NDS → DDS; cube Mondrian nằm trong `F_olap/mondrian/`                                                                  |
+| Hop ETL end-to-end                     | Workflow 01 Source → Staging, workflow 02 Staging → NDS, workflow 03 NDS → DDS; cube Mondrian nằm trong `F_olap/mondrian/`                                                                                                                            |
 
 
 ---
@@ -1078,12 +1078,12 @@ metadata/
 **DB credentials** (local dev — khớp SQL init `B_databases/`):
 
 
-| Layer    | User                    | Password               |
-| -------- | ----------------------- | ---------------------- |
-| Staging  | `hop_staging_user`      | `hop_staging@123`      |
-| Control  | `hop_control_user`      | `hop_control@123`      |
-| NDS      | `hop_nds_user`          | `hop_nds@123`          |
-| DDS      | `hop_dds_user`          | `hop_dds@123`          |
+| Layer                          | User                    | Password               |
+| ------------------------------ | ----------------------- | ---------------------- |
+| Staging                        | `hop_staging_user`      | `hop_staging@123`      |
+| Control                        | `hop_control_user`      | `hop_control@123`      |
+| NDS                            | `hop_nds_user`          | `hop_nds@123`          |
+| DDS                            | `hop_dds_user`          | `hop_dds@123`          |
 | Analytics (Tableau / Power BI) | `analytics_reader_user` | `analytics_reader@123` |
 
 
@@ -1173,8 +1173,6 @@ Các cột dưới đây dùng `VARCHAR` (không phải PostgreSQL `ENUM`). Giá
 
 ---
 
-
-
 ## 9. Push MDM Station
 
 Luồng này cho phép **Go MDM Station** gửi thay đổi master data GBFS (thông tin trạm) tới Apache Hop theo thời gian thực. Backend POST từng trạm một tới **Hop Sync Web Service**. Hop kiểm tra API key, đối chiếu `INSERT` / `UPDATE` / `DELETE` với `nds.station`, rồi upsert `staging.stg_gbfs_station` (kèm cột `operation`). Các bước Staging→NDS và NDS→DDS phía sau xử lý soft-delete / tái kích hoạt (reactivation).
@@ -1249,6 +1247,8 @@ sequenceDiagram
   WF_NDS->>STG: Pipeline cleanup - xoa trip da vao nds.trip
 ```
 
+
+
 **Giả lập tình huống (timeline):**
 
 1. **16/07 17:00** — Trạm `CHI02042` vận hành thực tế; dịch vụ MDM backend bị lỗi → chưa push master data trạm.
@@ -1265,13 +1265,18 @@ sequenceDiagram
 - MDM push → `staging.stg_gbfs_station` → lần chạy Workflow ETL Staging → NDS sau load station → lookup trip lại.
 - **Độ trễ chấp nhận:** resolve trong lần batch Staging → NDS kế tiếp (tối đa khoảng một ngày); không bắt buộc chạy lại load trips ngay sau MDM push.
 
-**Phân biệt ba loại “thiếu station”:**
+**Phân biệt bốn loại “thiếu station”:**
 
-| Loại | Điều kiện | Xử lý |
-|------|-----------|--------|
-| **Master đến trễ (trip pending)** | `station_id` có trên trip, nhưng **chưa từng có** bản ghi nào trên `nds.station` | Giữ trên staging; chờ lần chạy Workflow ETL Staging → NDS sau |
-| **Trạm chỉ còn bản ghi lịch sử** | `station_id` khớp bản ghi `nds.station` với `is_current = false` | **Không** pending — load NDS với `station_sk` lịch sử |
-| **Thiếu ID trên file trip** | `start_station_id` / `end_station_id` null trên CSV | Cảnh báo Data Quality; vẫn load NDS (surrogate key null) |
+
+| Loại                              | Điều kiện                                                                        | Xử lý                                                                                                                                                                                              |
+| --------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Master đến trễ (trip pending)** | `station_id` có trên trip, nhưng **chưa từng có** bản ghi nào trên `nds.station` | Giữ trên staging; chờ lần chạy Workflow ETL Staging → NDS sau                                                                                                                                      |
+| **Trạm chỉ còn bản ghi lịch sử**  | `station_id` khớp bản ghi `nds.station` với `is_current = false`                 | **Không** pending — load NDS với `station_sk` lịch sử                                                                                                                                              |
+| **Cả hai station_id null**        | `start_station_id` và `end_station_id` đều null/blank                            | DQ **reject** (`*_REJECT_BOTH_STATION_ID`); chỉ giữ trên `raw`_* rồi sau đó sẽ bị xóa ở bước cuối khi ETL StagingDB -> NDS hoàn tất. Do đó, dữ liệu sẽ **không** được đưa vào `stg_`* / NDS / DDS. |
+| **Một phía station_id null**      | Dữ liệu hợp lệ khi một trong hai null/blank                                      | DQ **warning** (`*_WARN_STATION_ID`). Dữ liệu vẫn được lưu vào `stg`_* → NDS/DDS với surrogate key null phía thiếu                                                                                 |
+
+
+Ghi chú lịch sử: khoảng ~153k trip both-null đã từng vào `nds.trip` trước rule mới; batch Source→Staging mới không nạp thêm — không purge dữ liệu cũ trong scope này.
 
 #### Cách kiểm thử Late-Arriving Station Master Data
 
@@ -1285,24 +1290,18 @@ File `A_datasets/A4_mdm_station_info/new_mdm_station_information.json` chứa ma
 Quy trình test phải giữ đúng thứ tự **trip đến trước, master data đến sau**:
 
 1. Khởi động database và Hop Server, nhưng **chưa push station master**:
-
-   ```bash
+  ```bash
    cd 4_Official_Hop_Project
    make db-up
    SKIP_GO_PUSH=1 make mdm-start
-   ```
-
+  ```
 2. Trên Hop GUI, chạy **Workflow ETL Source → Staging**, sau đó chạy **Workflow ETL Staging → NDS**.
-
-   Kỳ vọng sau lần chạy đầu:
-
-   - Trip có `station_id` chưa tồn tại trong `nds.station` không được upsert mới vào `nds.trip`.
-   - Các trip này vẫn còn trong `staging.stg_divvy_trips` hoặc `staging.stg_citibike_trips` sau cleanup.
-   - `control.etl_job_log.failed_rows_count` của job `etl_stagingdb_to_nds` lớn hơn `0`.
-
+  Kỳ vọng sau lần chạy đầu:
+  - Trip có `station_id` chưa tồn tại trong `nds.station` không được upsert mới vào `nds.trip`.
+  - Các trip này vẫn còn trong `staging.stg_divvy_trips` hoặc `staging.stg_citibike_trips` sau cleanup.
+  - `control.etl_job_log.failed_rows_count` của job `etl_stagingdb_to_nds` lớn hơn `0`.
 3. Giữ Hop Server đang chạy. Mở terminal khác và push master data giả lập:
-
-   ```bash
+  ```bash
    cd 4_Official_Hop_Project/C_backend/C1_mdm_station_info
 
    # Smoke test nhanh: push 20 station đầu tiên
@@ -1310,31 +1309,23 @@ Quy trình test phải giữ đúng thứ tự **trip đến trước, master da
 
    # Hoặc push toàn bộ 3.869 station (sẽ mất nhiều thời gian vì gửi từng HTTP request)
    go run . -city ALL -operation INSERT
-   ```
-
+  ```
    Với `-city ALL`, Go backend xác định city theo từng station: `CHI*` → `CHI`, còn lại → `NYC`.
-
 4. Kiểm tra station đã được MDM ghi vào staging. Ví dụ station NYC `1234.56` nằm trong nhóm đầu của file:
-
-   ```sql
+  ```sql
    -- Chạy trên dw_staging (port 5434)
    SELECT source_city_code, short_name, station_name, operation
    FROM staging.stg_gbfs_station
    WHERE source_city_code = 'NYC'
      AND short_name = '1234.56';
-   ```
-
+  ```
 5. Chạy lại **Workflow ETL Staging → NDS**.
-
-   Trong lần chạy này:
-
-   - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
-   - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk`.
-   - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
-
+  Trong lần chạy này:
+  - Pipeline `02_load_gbfs_station_to_nds.hpl` tạo `nds.station` và `station_sk`.
+  - Pipeline `04_load_trips_to_nds.hpl` lookup lại station và upsert trip với `start_station_sk` / `end_station_sk`.
+  - Pipeline `06_cleanup_staging_after_nds.hpl` xóa các trip đã resolve khỏi staging; trip vẫn thiếu master tiếp tục được giữ lại.
 6. Xác minh kết quả trên NDS:
-
-   ```sql
+  ```sql
    -- Chạy trên dw_nds (port 5435)
    SELECT city_sk, source_station_id, station_sk, is_current, row_status
    FROM nds.station
@@ -1349,11 +1340,9 @@ Quy trình test phải giữ đúng thứ tự **trip đến trước, master da
    FROM nds.trip
    WHERE start_station_id = '1234.56'
       OR end_station_id = '1234.56';
-   ```
-
+  ```
 7. Xác minh audit và cleanup:
-
-   ```sql
+  ```sql
    -- Chạy trên dw_control (port 5434)
    SELECT job_name, status, total_rows_count, success_rows_count,
           failed_rows_count, finished_at
@@ -1373,9 +1362,9 @@ Quy trình test phải giữ đúng thứ tự **trip đến trước, master da
    ) t
    WHERE start_station_id = '1234.56'
       OR end_station_id = '1234.56';
-   ```
+  ```
+  **Kỳ vọng**: Trip của station đã push có surrogate key trên NDS và không còn trên staging; `failed_rows_count` giảm tương ứng. Trip chỉ **một phía** thiếu `station_id` trên CSV vẫn được load với surrogate key null và không bị coi là late-arriving master; trip **cả hai** `station_id` null bị reject ở Source→Staging và không vào `stg_`*.
 
-   Kỳ vọng: trip của station đã push có surrogate key trên NDS và không còn trên staging; `failed_rows_count` giảm tương ứng. Các trip thiếu `station_id` trên CSV vẫn được load với surrogate key null và không bị coi là late-arriving master.
 
 | Bước                  | Pipeline                                                                          | Vai trò                                       |
 | --------------------- | --------------------------------------------------------------------------------- | --------------------------------------------- |
@@ -1501,6 +1490,8 @@ Load file hàng loạt (`04_load_gbfs` → raw → validate → stg) vẫn dùng
 
 ---
 
+
+
 ## 10. OLAP Cube — Mondrian và Saiku
 
 Cube demo đọc trực tiếp tầng DDS sau khi workflow `03_etl_nds_to_dds.hwf` hoàn tất. Mondrian schema được quản lý cùng source code tại:
@@ -1513,15 +1504,19 @@ F_olap/
     └── demo_queries.mdx
 ```
 
+
+
 ### 10.1 Cube, hypercube, hierarchies và measures
 
 Fact `dds.fact_station_hour_balance` có grain **Station × Hour**. Cube dùng một measure chính và ba dimensions; khi đồng thời phân tích trên cả ba dimensions, lát dữ liệu được trình bày như một **hypercube** `Time × Location × Weather × Measures`.
 
-| Dimension | Đường join DDS | Hierarchy |
-| --- | --- | --- |
-| Time | fact.`datetime_sk` → `dim_datetime.datetime_sk` | `Year → Quarter → Month` |
-| City / Location | fact.`station_sk` → `dim_station.station_sk` → `dim_city.city_sk` | `City` |
-| Weather | fact.`weather_condition_sk` → `dim_weather_condition.weather_condition_sk` | `Precipitation Band → Weather Category` |
+
+| Dimension       | Đường join DDS                                                             | Hierarchy                               |
+| --------------- | -------------------------------------------------------------------------- | --------------------------------------- |
+| Time            | fact.`datetime_sk` → `dim_datetime.datetime_sk`                            | `Year → Quarter → Month`                |
+| City / Location | fact.`station_sk` → `dim_station.station_sk` → `dim_city.city_sk`          | `City`                                  |
+| Weather         | fact.`weather_condition_sk` → `dim_weather_condition.weather_condition_sk` | `Precipitation Band → Weather Category` |
+
 
 ```mermaid
 flowchart LR
@@ -1532,6 +1527,8 @@ flowchart LR
   C --> F
   W --> F
 ```
+
+
 
 Measure chính là `Trip Count = SUM(trips_started)`. Không dùng `COUNT(*)`, vì một record fact là một station-hour chứ không phải một chuyến xe. Schema cũng cung cấp `Trips Ended`, `Member Trips`, `Casual Trips`, `Electric Trips`, `Classic Trips` và `Absolute Imbalance`.
 
@@ -1555,19 +1552,23 @@ SELECT COUNT(*) AS fact_rows,
 FROM dds.fact_station_hour_balance;
 ```
 
+
+
 ### 10.3 Kết nối Saiku với DDS PostgreSQL
 
 Upload `F_olap/mondrian/BikeShareCube.xml` trong Saiku Administration, sau đó tạo Mondrian data source:
 
-| Field | Giá trị local |
-| --- | --- |
-| Connection type | `Mondrian` |
-| JDBC URL khi Saiku chạy trên máy host | `jdbc:postgresql://localhost:5436/dw_dds` |
-| JDBC URL khi Saiku chạy trong Docker | `jdbc:postgresql://host.docker.internal:5436/dw_dds` |
-| JDBC driver | `org.postgresql.Driver` |
-| Username | `analytics_reader_user` |
-| Password | `analytics_reader@123` |
-| Schema/Catalog | `BikeShareCube.xml` đã upload |
+
+| Field                                 | Giá trị local                                        |
+| ------------------------------------- | ---------------------------------------------------- |
+| Connection type                       | `Mondrian`                                           |
+| JDBC URL khi Saiku chạy trên máy host | `jdbc:postgresql://localhost:5436/dw_dds`            |
+| JDBC URL khi Saiku chạy trong Docker  | `jdbc:postgresql://host.docker.internal:5436/dw_dds` |
+| JDBC driver                           | `org.postgresql.Driver`                              |
+| Username                              | `analytics_reader_user`                              |
+| Password                              | `analytics_reader@123`                               |
+| Schema/Catalog                        | `BikeShareCube.xml` đã upload                        |
+
 
 PostgreSQL JDBC driver phải có trong classpath của Saiku/Tomcat. Sau mỗi lần ETL cập nhật DDS, refresh Mondrian/Saiku cache trước khi kiểm tra số liệu mới.
 
@@ -1590,15 +1591,19 @@ SELECT
 FROM [Bike Share Trips]
 ```
 
+
+
 ### 10.5 Các thao tác truy vấn OLAP
 
-| Thao tác | Ý nghĩa trong cube | Ví dụ dữ liệu cụ thể | MDX trong file demo |
-| --- | --- | --- | --- |
-| Roll-up | Tổng hợp từ level chi tiết lên level cha | Month → Quarter | Q2 |
-| Drill-down | Đi từ level tổng hợp xuống chi tiết | Year 2026 → Quarter → Month | Q3 |
-| Slice | Cố định một member của một chiều | Weather = Rain, xem Month × City | Q4 |
-| Dice | Chọn tập con member trên nhiều chiều | Apr–May 2026 × Chicago/NYC × Clear/Rain | Q5 |
-| Pivot | Đổi trục trình bày mà không đổi số liệu | City từ Rows sang Columns; Weather theo Rows | Q6 |
+
+| Thao tác   | Ý nghĩa trong cube                       | Ví dụ dữ liệu cụ thể                         | MDX trong file demo |
+| ---------- | ---------------------------------------- | -------------------------------------------- | ------------------- |
+| Roll-up    | Tổng hợp từ level chi tiết lên level cha | Month → Quarter                              | Q2                  |
+| Drill-down | Đi từ level tổng hợp xuống chi tiết      | Year 2026 → Quarter → Month                  | Q3                  |
+| Slice      | Cố định một member của một chiều         | Weather = Rain, xem Month × City             | Q4                  |
+| Dice       | Chọn tập con member trên nhiều chiều     | Apr–May 2026 × Chicago/NYC × Clear/Rain      | Q5                  |
+| Pivot      | Đổi trục trình bày mà không đổi số liệu  | City từ Rows sang Columns; Weather theo Rows | Q6                  |
+
 
 Query hypercube cơ sở Q1 trả về `Trip Count` cho mọi tổ hợp Month × City × Weather Category. Query Q7 minh họa nhiều measures trong cùng cell context: member/casual và electric/classic cho năm 2026 dưới thời tiết Rain.
 
