@@ -9,10 +9,11 @@
     <parameters/>
     <name>00_start_etl_source_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Captures ETL start time and reads LSET/CET watermarks from control.etl_extraction_control.
+    <description>Captures ETL start time and prepares LSET/CET windows from control.etl_extraction_control.
+LSET_* = previous control.lset. CET_* = CLOCK_TIMESTAMP() for this run.
 Sets JVM variables: ETL_STARTED_AT, LSET_DIVVY_TRIPS, CET_DIVVY_TRIPS, LSET_CITIBIKE_TRIPS, CET_CITIBIKE_TRIPS,
 LSET_NOAA_LCD, CET_NOAA_LCD, LSET_GBFS_STATION, CET_GBFS_STATION.
-All variables are available to downstream pipelines via getVariable() in ScriptValueMod.</description>
+Load-to-raw reads full source files. Raw-to-staging Stream C filters event_ts >= (LSET - LookbackDays) AND event_ts &lt;= CET. GBFS remains full snapshot.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 01:05:30.673</created_date>
@@ -102,7 +103,7 @@ var etl_started_at = _fmt.format(new java.util.Date());</jsScript_script>
     <name>Read divvy_trips watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(COALESCE(cet,  TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
 FROM control.etl_extraction_control
 WHERE source_name = 'divvy_trips' AND table_name = 'stg_divvy_trips'</sql>
     <limit>1</limit>
@@ -158,7 +159,7 @@ WHERE source_name = 'divvy_trips' AND table_name = 'stg_divvy_trips'</sql>
     <name>Read citibike_trips watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(COALESCE(cet,  TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
 FROM control.etl_extraction_control
 WHERE source_name = 'citibike_trips' AND table_name = 'stg_citibike_trips'</sql>
     <limit>1</limit>
@@ -214,7 +215,7 @@ WHERE source_name = 'citibike_trips' AND table_name = 'stg_citibike_trips'</sql>
     <name>Read noaa_lcd watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(COALESCE(cet,  TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
 FROM control.etl_extraction_control
 WHERE source_name = 'noaa_lcd' AND table_name = 'stg_weather'</sql>
     <limit>1</limit>
@@ -270,7 +271,7 @@ WHERE source_name = 'noaa_lcd' AND table_name = 'stg_weather'</sql>
     <name>Read gbfs_station watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(COALESCE(cet,  TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
 FROM control.etl_extraction_control
 WHERE source_name = 'gbfs_station' AND table_name = 'stg_gbfs_station'</sql>
     <limit>1</limit>
@@ -327,6 +328,7 @@ WHERE source_name = 'gbfs_station' AND table_name = 'stg_gbfs_station'</sql>
     <connection>dw-control</connection>
     <sql>DELETE FROM control.etl_dq_rule_result_details
 WHERE load_run_id = 'bootstrap_202601_202605';
+
 DELETE FROM control.etl_dq_rule_result_analysis
 WHERE load_run_id = 'bootstrap_202601_202605';</sql>
     <execute_each_row>N</execute_each_row>
@@ -342,8 +344,8 @@ WHERE load_run_id = 'bootstrap_202601_202605';</sql>
     <distribute>N</distribute>
     <copies>1</copies>
     <GUI>
-      <xloc>688</xloc>
-      <yloc>544</yloc>
+      <xloc>736</xloc>
+      <yloc>288</yloc>
     </GUI>
     <partitioning>
       <method>none</method>
@@ -394,9 +396,17 @@ WHERE load_run_id = 'bootstrap_202601_202605';</sql>
 6. Reset current load_run_id rows in control.etl_dq_rule_result_* before DQ validation appends fresh evidence
 
 All variables are JVM-level → available to all downstream pipelines via getVariable().
-Load pipelines use LSET_*/CET_* for incremental filtering (WHERE raw_loaded_at BETWEEN LSET AND CET).
-05_audit_staging_load_counts uses CET_* as the new LSET when updating etl_extraction_control.</note>
-      <fontsize>-1</fontsize>
+Window this run: LSET_* = control.lset, CET_* = CLOCK_TIMESTAMP().
+
+Load-to-raw pipelines retain the full daily source file. Raw-to-staging Stream C keeps:
+===> event_ts >= (LSET_* - LookbackDays) AND event_ts &lt;= CET_*
+(Divvy/Citi started_at with LOOKBACK_DAYS_TRIPS; NOAA observation_ts with LOOKBACK_DAYS_NOAA; defaults = 3).
+
+GBFS station is a full snapshot and has no row-level event-time filter.
+
+05_audit_staging_load_counts advances control.lset/cet to this run CET_* after success.</note>
+      <fontname>.AppleSystemUIFont</fontname>
+      <fontsize>13</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
       <fontcolorred>14</fontcolorred>

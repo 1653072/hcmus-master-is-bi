@@ -9,7 +9,7 @@
     <parameters/>
     <name>01_load_divvy_trips_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 1: read Divvy CSV as all-TEXT, no type casting, truncate-and-load into staging.raw_divvy_trips. Station DQ (both-null reject / one-null warn) is enforced in 01_validate_divvy_raw_to_staging.hpl; this load writes all CSV rows to raw_divvy_trips.</description>
+    <description>Flow 1: read Divvy CSV as all-TEXT (full file into raw_divvy_trips; no LSET/CET filter here). LSET/CET + LookbackDays are applied later in 01_validate_divvy_raw_to_staging when writing stg_divvy_trips. Station DQ is also enforced in validate.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 18:50:31.920</created_date>

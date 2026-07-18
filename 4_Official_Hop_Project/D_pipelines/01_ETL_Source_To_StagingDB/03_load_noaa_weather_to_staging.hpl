@@ -9,7 +9,7 @@
     <parameters/>
     <name>03_load_noaa_weather_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 1: read NOAA LCD CSV as all-TEXT (no cast, no FM filter), truncate-and-load into staging.raw_noaa_weather. FM-type filtering happens in 03_validate_noaa_raw_to_staging.hpl.</description>
+    <description>Flow 1: read NOAA LCD CSV as all-TEXT (full file into raw_noaa_weather; no LSET/CET filter here). LSET/CET + LookbackDays and FM-type filtering are applied in 03_validate_noaa_raw_to_staging when writing stg_weather.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 22:19:34.740</created_date>

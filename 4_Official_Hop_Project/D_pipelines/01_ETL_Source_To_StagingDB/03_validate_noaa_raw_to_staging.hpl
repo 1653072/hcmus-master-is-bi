@@ -9,7 +9,7 @@
     <parameters/>
     <name>03_validate_noaa_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 2 — DQ gate for NOAA: 3 parallel streams from raw_noaa_weather. Stream A: row-level reject details to etl_dq_rule_result_details. Stream B: aggregate counts to etl_dq_rule_result_analysis. Stream C: clean rows cast and upserted into stg_weather.</description>
+    <description>Flow 2 — DQ gate for NOAA: Stream A/B evaluate full raw; Stream C filters clean rows by LSET/CET + LookbackDays (LOOKBACK_DAYS_NOAA) on observation_ts, then upserts stg_weather.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 22:27:14.458</created_date>
@@ -453,12 +453,16 @@ WHERE NULLIF(BTRIM(source_city_code), '') IS NOT NULL
        OR hourly_precipitation ~ '^-?[0-9]+(\.[0-9]+)?$')
   AND (hourly_wind_speed IS NULL
        OR hourly_wind_speed ~ '^-?[0-9]+(\.[0-9]+)?$')
+  AND replace(BTRIM(observation_ts), 'T', ' ')::TIMESTAMP
+        &gt;= ('${LSET_NOAA_LCD}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_NOAA}', ''), '3') || ' days')::INTERVAL)
+  AND replace(BTRIM(observation_ts), 'T', ' ')::TIMESTAMP
+        &lt;= '${CET_NOAA_LCD}'::TIMESTAMP
 ORDER BY
     source_city_code,
     observation_ts;</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
+    <variables_active>Y</variables_active>
     <connection>dw-staging</connection>
     <lookup/>
     <sql_from_file/>

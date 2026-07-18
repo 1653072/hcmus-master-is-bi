@@ -9,7 +9,7 @@
     <parameters/>
     <name>04_load_gbfs_station_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 1: parse GBFS station JSON, keep all fields as STRING (no numeric cast), truncate-and-load into staging.raw_gbfs_station.</description>
+    <description>Flow 1: parse GBFS station JSON (full snapshot each run — no row-level LSET/CET filter), keep fields as STRING, truncate-and-load into staging.raw_gbfs_station. Watermarks LSET_GBFS_STATION/CET_GBFS_STATION are still set by 00_start and advanced by 05_audit.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 22:18:11.733</created_date>

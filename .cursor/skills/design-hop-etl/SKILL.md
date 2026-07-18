@@ -311,6 +311,9 @@ Full XML snippets: [reference.md](reference.md).
 | Wrong Hop Server `-e` name | `HOP_ENV=dev` ≠ lifecycle env | Use `-e "Hop_ETL_Test_Configs"` (Hop GUI environment name) |
 | Hop Server not started | Connection refused on 8080 | Start `hop-server.sh` before Go push or curl |
 | Basic Auth only (no API key) | Passes servlet but pipeline 401 | Send **both** `-u cluster:cluster` and `X-API-Key` header |
+| File-source CET = `MAX(raw_loaded_at)` | Watermark jumps to wall-clock; next LSET skips all historical CSV rows | For file pulls, filter on business ts (`started_at` / `observation_ts`); set `CET_*=CLOCK_TIMESTAMP()` at start and advance `control.lset/cet` to that CET |
+| Filter file→raw on business event time | Late-arriving rows with old `started_at` / `observation_ts` disappear before DQ and staging | Keep the full delivered file in raw; apply `[LSET - LookbackDays, CET]` only in the accepted raw→staging stream |
+| Advance watermark to effective lookback LSET | Watermark moves backward and repeatedly widens the extract | Commit `control.lset/cet` to the run CET; Lookback only widens the read window |
 
 ## Additional resources
 

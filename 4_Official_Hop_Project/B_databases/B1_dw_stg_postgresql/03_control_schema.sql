@@ -9,9 +9,12 @@ CREATE TABLE control.etl_extraction_control (
     table_name        VARCHAR(100) NOT NULL,
     lset              TIMESTAMP,
     cet               TIMESTAMP,
+    lookback_days     INTEGER NOT NULL DEFAULT 0,
     last_run_status   VARCHAR(20),
     rows_extracted    INTEGER DEFAULT 0,
     updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_etl_extraction_lookback_days
+        CHECK (lookback_days BETWEEN 0 AND 365),
     CONSTRAINT uq_etl_extraction_source_table UNIQUE (source_name, table_name)
 );
 
@@ -52,12 +55,14 @@ CREATE TABLE control.etl_dq_rule_result_analysis (
         FOREIGN KEY (rule_code) REFERENCES control.dq_rule_catalog (rule_code)
 );
 
-INSERT INTO control.etl_extraction_control (source_name, table_name, lset, cet, last_run_status, rows_extracted) VALUES
-    ('divvy_trips',    'stg_divvy_trips',    '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
-    ('citibike_trips', 'stg_citibike_trips', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
-    ('noaa_lcd',       'stg_weather',        '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
-    ('gbfs_station',   'stg_gbfs_station',   '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0),
-    ('nds_to_dds',     'fact_station_hour_balance', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'SUCCESS', 0);
+INSERT INTO control.etl_extraction_control
+    (source_name, table_name, lset, cet, lookback_days, last_run_status, rows_extracted)
+VALUES
+    ('divvy_trips',    'stg_divvy_trips',    '2026-01-01 00:00:00', '2026-01-01 00:00:00', 3, 'SUCCESS', 0),
+    ('citibike_trips', 'stg_citibike_trips', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 3, 'SUCCESS', 0),
+    ('noaa_lcd',       'stg_weather',        '2026-01-01 00:00:00', '2026-01-01 00:00:00', 3, 'SUCCESS', 0),
+    ('gbfs_station',   'stg_gbfs_station',   '2026-01-01 00:00:00', '2026-01-01 00:00:00', 0, 'SUCCESS', 0),
+    ('nds_to_dds',     'fact_station_hour_balance', '2026-01-01 00:00:00', '2026-01-01 00:00:00', 0, 'SUCCESS', 0);
 
 INSERT INTO control.dq_rule_catalog (rule_code, source_name, rule_type, severity, rule_description) VALUES
     ('DIVVY_NULL_REQUIRED',       'divvy_trips',    'null',      'reject',  'ride_id, started_at, and source_city_code are required'),

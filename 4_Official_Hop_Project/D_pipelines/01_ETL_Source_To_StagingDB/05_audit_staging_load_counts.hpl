@@ -18,34 +18,89 @@
   <transform>
     <type>TableInput</type>
     <name>Read staging.raw_* row counts</name>
-    <sql>SELECT
-    s.source_name,
-    s.table_name,
-    r.raw_count              AS total_rows_count,
-    s.stg_count              AS success_rows_count,
-    (r.raw_count - s.stg_count) AS failed_rows_count,
-    r.max_raw_loaded_at      AS cet_value
-FROM (
-    SELECT 'divvy_trips'   AS source_name, 'stg_divvy_trips'   AS table_name, COUNT(*)::INTEGER AS stg_count FROM staging.stg_divvy_trips
-    UNION ALL
-    SELECT 'citibike_trips', 'stg_citibike_trips', COUNT(*)::INTEGER FROM staging.stg_citibike_trips
-    UNION ALL
-    SELECT 'noaa_lcd',       'stg_weather',         COUNT(*)::INTEGER FROM staging.stg_weather
-    UNION ALL
-    SELECT 'gbfs_station',   'stg_gbfs_station',    COUNT(*)::INTEGER FROM staging.stg_gbfs_station
-) s
-JOIN (
-    SELECT 'divvy_trips'   AS source_name, COUNT(*)::INTEGER AS raw_count, MAX(raw_loaded_at) AS max_raw_loaded_at FROM staging.raw_divvy_trips
-    UNION ALL
-    SELECT 'citibike_trips', COUNT(*)::INTEGER, MAX(raw_loaded_at) FROM staging.raw_citibike_trips
-    UNION ALL
-    SELECT 'noaa_lcd',       COUNT(*)::INTEGER, MAX(raw_loaded_at) FROM staging.raw_noaa_weather
-    UNION ALL
-    SELECT 'gbfs_station',   COUNT(*)::INTEGER, MAX(raw_loaded_at) FROM staging.raw_gbfs_station
-) r ON s.source_name = r.source_name</sql>
+    <sql>WITH counts AS (
+  SELECT
+    'divvy_trips' AS source_name,
+    'stg_divvy_trips' AS table_name,
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.raw_divvy_trips
+      WHERE started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+        AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
+              &gt;= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_TRIPS}', ''), '3') || ' days')::INTERVAL)
+        AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
+              &lt;= '${CET_DIVVY_TRIPS}'::TIMESTAMP
+    ) AS raw_count,
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.stg_divvy_trips
+      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+        AND loaded_at &lt;= '${CET_DIVVY_TRIPS}'::TIMESTAMP
+    ) AS stg_count
+
+  UNION ALL
+  SELECT
+    'citibike_trips',
+    'stg_citibike_trips',
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.raw_citibike_trips
+      WHERE started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+        AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
+              &gt;= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_TRIPS}', ''), '3') || ' days')::INTERVAL)
+        AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
+              &lt;= '${CET_CITIBIKE_TRIPS}'::TIMESTAMP
+    ),
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.stg_citibike_trips
+      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+        AND loaded_at &lt;= '${CET_CITIBIKE_TRIPS}'::TIMESTAMP
+    )
+
+  UNION ALL
+  SELECT
+    'noaa_lcd',
+    'stg_weather',
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.raw_noaa_weather
+      WHERE NULLIF(BTRIM(observation_ts), '') IS NOT NULL
+        AND replace(BTRIM(observation_ts), 'T', ' ')::TIMESTAMP
+              &gt;= ('${LSET_NOAA_LCD}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_NOAA}', ''), '3') || ' days')::INTERVAL)
+        AND replace(BTRIM(observation_ts), 'T', ' ')::TIMESTAMP
+              &lt;= '${CET_NOAA_LCD}'::TIMESTAMP
+    ),
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.stg_weather
+      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+        AND loaded_at &lt;= '${CET_NOAA_LCD}'::TIMESTAMP
+    )
+
+  UNION ALL
+  SELECT
+    'gbfs_station',
+    'stg_gbfs_station',
+    (SELECT COUNT(*)::INTEGER FROM staging.raw_gbfs_station),
+    (
+      SELECT COUNT(*)::INTEGER
+      FROM staging.stg_gbfs_station
+      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+        AND loaded_at &lt;= '${CET_GBFS_STATION}'::TIMESTAMP
+    )
+)
+SELECT
+  source_name,
+  table_name,
+  raw_count AS total_rows_count,
+  stg_count AS success_rows_count,
+  GREATEST(raw_count - stg_count, 0)::INTEGER AS failed_rows_count,
+  '${CET_DIVVY_TRIPS}'::TIMESTAMP AS cet_value
+FROM counts</sql>
     <limit>0</limit>
     <execute_each_row>N</execute_each_row>
-    <variables_active>N</variables_active>
+    <variables_active>Y</variables_active>
     <connection>dw-staging</connection>
     <lookup/>
     <sql_from_file/>
@@ -79,15 +134,17 @@ try {
 }
 var error_message = null;
 
-// LSET/CET watermark update:
-// lset_value = old CET (read at start by 00_start_etl_source_to_staging and stored as JVM variable)
-// cet_value  = MAX(raw_loaded_at) from SQL above
-// Convention: variable name = "CET_" + source_name.toUpperCase()
+// LSET/CET watermark update after successful extract window:
+// This run used LSET_* (from control.lset) and CET_* (= CLOCK_TIMESTAMP at 00_start).
+// Advance both control.lset and control.cet to this run's CET so the next run starts after it.
 var _srcUpper = String(source_name).toUpperCase();
-var _lsetStr = getVariable("CET_" + _srcUpper, null);
+var _cetStr = getVariable("CET_" + _srcUpper, null);
 var lset_value = null;
-if (_lsetStr != null &amp;&amp; String(_lsetStr).length > 0) {
-  try { lset_value = Packages.java.sql.Timestamp.valueOf(String(_lsetStr)); } catch(e2) {}
+if (_cetStr != null &amp;&amp; String(_cetStr).length > 0) {
+  try {
+    cet_value = Packages.java.sql.Timestamp.valueOf(String(_cetStr));
+    lset_value = cet_value;
+  } catch(e2) {}
 }</jsScript_script>
       </jsScript>
     </jsScripts>
@@ -139,6 +196,14 @@ if (_lsetStr != null &amp;&amp; String(_lsetStr).length > 0) {
         <length>-1</length>
         <precision>-1</precision>
         <replace>N</replace>
+      </field>
+      <field>
+        <name>cet_value</name>
+        <rename>cet_value</rename>
+        <type>Timestamp</type>
+        <length>-1</length>
+        <precision>-1</precision>
+        <replace>Y</replace>
       </field>
     </fields>
     <optimizationLevel>9</optimizationLevel>
@@ -319,10 +384,11 @@ if (_lsetStr != null &amp;&amp; String(_lsetStr).length > 0) {
 etl_extraction_control.rows_extracted = success_rows_count (accepted rows).
 started_at comes from ETL_STARTED_AT JVM variable (set by 00_start_etl_source_to_staging).
 LSET/CET watermark update pattern:
-  lset_value = old CET (read from JVM variable CET_{SOURCE_NAME} set by 00_start)
-  cet_value  = MAX(raw_loaded_at) from SQL query
-  => After this run: lset = old cet, cet = new max raw_loaded_at
-Incremental load in future: load pipelines use LSET_*/CET_* JVM vars to filter source records.</note>
+  Raw keeps the full source file.
+  Raw-to-staging window: event_ts &gt;= (LSET_* - LookbackDays) AND event_ts &lt;= CET_*.
+  LookbackDays defaults to 3 for trips and NOAA; it does not move the committed watermark backward.
+  After success: control.lset = control.cet = CET_* (this run end).
+  Next run therefore starts after this CET. Re-bootstrap sample files: reset control.lset to 2026-01-01 00:00:00.</note>
       <fontsize>-1</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
