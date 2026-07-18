@@ -62,22 +62,22 @@
       <value>
         <name>city_name</name>
         <rename>city_name</rename>
-        <update>N</update>
+        <update>Y</update>
       </value>
       <value>
         <name>timezone</name>
         <rename>timezone</rename>
-        <update>N</update>
+        <update>Y</update>
       </value>
       <value>
         <name>noaa_station_id</name>
         <rename>noaa_station_id</rename>
-        <update>N</update>
+        <update>Y</update>
       </value>
       <value>
         <name>gbfs_system_id</name>
         <rename>gbfs_system_id</rename>
-        <update>N</update>
+        <update>Y</update>
       </value>
       <schema>dds</schema>
       <table>dim_city</table>
