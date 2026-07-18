@@ -8,8 +8,6 @@
     { "name" : "DATASETS_CSV_FOLDER", "value" : "${PROJECT_HOME}/A_datasets", "description" : "Base path for CSV/JSON dataset folders" },
     { "name" : "DIVVY_TRIPS_DIR", "value" : "${PROJECT_HOME}/A_datasets/A2_divvy/extracted", "description" : "Divvy trip CSV (extracted monthly folders)" },
     { "name" : "CITIBIKE_TRIPS_DIR", "value" : "${PROJECT_HOME}/A_datasets/A1_citibike/extracted", "description" : "Citi Bike trip CSV (extracted monthly folders)" },
-    { "name" : "LOOKBACK_DAYS_TRIPS", "value" : "3", "description" : "Late-arriving trip lookback window applied from raw to typed staging" },
-    { "name" : "LOOKBACK_DAYS_NOAA", "value" : "3", "description" : "Late-arriving weather lookback window applied from raw to typed staging" },
     { "name" : "NOAA_LCD_DIR", "value" : "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2", "description" : "NOAA LCD v2 filtered CSV directory" },
     { "name" : "NOAA_LCD_CHICAGO", "value" : "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00014819_2026_01-05.csv", "description" : "Chicago NOAA LCD v2 filtered file" },
     { "name" : "NOAA_LCD_NYC", "value" : "${PROJECT_HOME}/A_datasets/A3_noaa_lcd_v2/LCD_USW00094728_2026_01-05.csv", "description" : "NYC NOAA LCD v2 filtered file" },

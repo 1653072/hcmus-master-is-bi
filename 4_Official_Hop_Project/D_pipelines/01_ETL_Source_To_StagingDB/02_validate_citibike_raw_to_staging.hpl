@@ -20,7 +20,7 @@
     </parameters>
     <name>02_validate_citibike_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 2 — DQ gate for Citi Bike: Stream A/B DQ on full raw; Stream C filters accepted rows by LSET/CET + LookbackDays (LOOKBACK_DAYS_TRIPS) on started_at, then InsertUpdate into stg_citibike_trips.</description>
+    <description>Flow 2 — DQ gate for Citi Bike: Stream A/B DQ on full raw; Stream C filters accepted rows by LSET/CET + LookbackDays (LOOKBACK_DAYS_CITIBIKE_TRIPS) on started_at, then InsertUpdate into stg_citibike_trips.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 19:58:23.064</created_date>
@@ -551,7 +551,7 @@ accepted AS (
         AND end_station_id_norm IS NULL
           )
       AND split_part(started_at_norm, '.', 1)::TIMESTAMP
-            &gt;= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_TRIPS}', ''), '3') || ' days')::INTERVAL)
+            &gt;= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_CITIBIKE_TRIPS}', ''), '3') || ' days')::INTERVAL)
       AND split_part(started_at_norm, '.', 1)::TIMESTAMP
             &lt;= '${CET_CITIBIKE_TRIPS}'::TIMESTAMP
     ORDER BY

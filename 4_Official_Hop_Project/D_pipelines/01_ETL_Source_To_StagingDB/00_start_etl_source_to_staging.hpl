@@ -9,10 +9,10 @@
     <parameters/>
     <name>00_start_etl_source_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Captures ETL start time and prepares LSET/CET windows from control.etl_extraction_control.
+    <description>Captures ETL start time and prepares LSET/CET/lookback windows from control.etl_extraction_control.
 LSET_* = previous control.lset. CET_* = CLOCK_TIMESTAMP() for this run.
-Sets JVM variables: ETL_STARTED_AT, LSET_DIVVY_TRIPS, CET_DIVVY_TRIPS, LSET_CITIBIKE_TRIPS, CET_CITIBIKE_TRIPS,
-LSET_NOAA_LCD, CET_NOAA_LCD, LSET_GBFS_STATION, CET_GBFS_STATION.
+LookbackDays_* = control.lookback_days per source (set with each watermark branch).
+Sets JVM variables: ETL_STARTED_AT, LSET/CET/LOOKBACK for Divvy, Citi Bike, NOAA, GBFS watermarks.
 Load-to-raw reads full source files. Raw-to-staging Stream C filters event_ts >= (LSET - LookbackDays) AND event_ts &lt;= CET. GBFS remains full snapshot.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
@@ -103,7 +103,8 @@ var etl_started_at = _fmt.format(new java.util.Date());</jsScript_script>
     <name>Read divvy_trips watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value,
+  COALESCE(lookback_days, 3)::VARCHAR AS lookback_days_value
 FROM control.etl_extraction_control
 WHERE source_name = 'divvy_trips' AND table_name = 'stg_divvy_trips'</sql>
     <limit>1</limit>
@@ -140,6 +141,12 @@ WHERE source_name = 'divvy_trips' AND table_name = 'stg_divvy_trips'</sql>
         <variable_type>JVM</variable_type>
         <default_value>2026-01-01 00:00:00.000</default_value>
       </field>
+      <field>
+        <field_name>lookback_days_value</field_name>
+        <variable_name>LOOKBACK_DAYS_DIVVY_TRIPS</variable_name>
+        <variable_type>JVM</variable_type>
+        <default_value>3</default_value>
+      </field>
     </fields>
     <use_formatting>N</use_formatting>
     <distribute>N</distribute>
@@ -159,7 +166,8 @@ WHERE source_name = 'divvy_trips' AND table_name = 'stg_divvy_trips'</sql>
     <name>Read citibike_trips watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value,
+  COALESCE(lookback_days, 3)::VARCHAR AS lookback_days_value
 FROM control.etl_extraction_control
 WHERE source_name = 'citibike_trips' AND table_name = 'stg_citibike_trips'</sql>
     <limit>1</limit>
@@ -196,6 +204,12 @@ WHERE source_name = 'citibike_trips' AND table_name = 'stg_citibike_trips'</sql>
         <variable_type>JVM</variable_type>
         <default_value>2026-01-01 00:00:00.000</default_value>
       </field>
+      <field>
+        <field_name>lookback_days_value</field_name>
+        <variable_name>LOOKBACK_DAYS_CITIBIKE_TRIPS</variable_name>
+        <variable_type>JVM</variable_type>
+        <default_value>3</default_value>
+      </field>
     </fields>
     <use_formatting>N</use_formatting>
     <distribute>N</distribute>
@@ -215,7 +229,8 @@ WHERE source_name = 'citibike_trips' AND table_name = 'stg_citibike_trips'</sql>
     <name>Read noaa_lcd watermarks</name>
     <sql>SELECT
   TO_CHAR(COALESCE(lset, TIMESTAMP '2026-01-01 00:00:00'), 'YYYY-MM-DD HH24:MI:SS.MS') AS lset_value,
-  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value
+  TO_CHAR(CLOCK_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.MS') AS cet_value,
+  COALESCE(lookback_days, 3)::VARCHAR AS lookback_days_value
 FROM control.etl_extraction_control
 WHERE source_name = 'noaa_lcd' AND table_name = 'stg_weather'</sql>
     <limit>1</limit>
@@ -251,6 +266,12 @@ WHERE source_name = 'noaa_lcd' AND table_name = 'stg_weather'</sql>
         <variable_name>CET_NOAA_LCD</variable_name>
         <variable_type>JVM</variable_type>
         <default_value>2026-01-01 00:00:00.000</default_value>
+      </field>
+      <field>
+        <field_name>lookback_days_value</field_name>
+        <variable_name>LOOKBACK_DAYS_NOAA</variable_name>
+        <variable_type>JVM</variable_type>
+        <default_value>3</default_value>
       </field>
     </fields>
     <use_formatting>N</use_formatting>
@@ -389,18 +410,18 @@ WHERE load_run_id = 'bootstrap_202601_202605';</sql>
     <notepad>
       <note>6 parallel branches (all run simultaneously, pipeline waits for all to finish):
 1. RowGenerator → Compute ETL_STARTED_AT → Set ETL_STARTED_AT
-2. Read divvy_trips watermarks   → Set LSET_DIVVY_TRIPS,   CET_DIVVY_TRIPS
-3. Read citibike_trips watermarks → Set LSET_CITIBIKE_TRIPS, CET_CITIBIKE_TRIPS
-4. Read noaa_lcd watermarks      → Set LSET_NOAA_LCD,      CET_NOAA_LCD
-5. Read gbfs_station watermarks  → Set LSET_GBFS_STATION,  CET_GBFS_STATION
+2. Read divvy_trips watermarks   → Set LSET/CET/LOOKBACK_DAYS_DIVVY_TRIPS
+3. Read citibike_trips watermarks → Set LSET/CET/LOOKBACK_DAYS_CITIBIKE_TRIPS
+4. Read noaa_lcd watermarks      → Set LSET/CET/LOOKBACK_DAYS_NOAA
+5. Read gbfs_station watermarks  → Set LSET_GBFS_STATION, CET_GBFS_STATION
 6. Reset current load_run_id rows in control.etl_dq_rule_result_* before DQ validation appends fresh evidence
 
 All variables are JVM-level → available to all downstream pipelines via getVariable().
-Window this run: LSET_* = control.lset, CET_* = CLOCK_TIMESTAMP().
+Window this run: LSET_* = control.lset, CET_* = CLOCK_TIMESTAMP(), LookbackDays_* = control.lookback_days (per source).
 
 Load-to-raw pipelines retain the full daily source file. Raw-to-staging Stream C keeps:
-===> event_ts >= (LSET_* - LookbackDays) AND event_ts &lt;= CET_*
-(Divvy/Citi started_at with LOOKBACK_DAYS_TRIPS; NOAA observation_ts with LOOKBACK_DAYS_NOAA; defaults = 3).
+===> event_ts >= (LSET_* - LookbackDays_*) AND event_ts &lt;= CET_*
+(Divvy started_at + LOOKBACK_DAYS_DIVVY_TRIPS; Citi started_at + LOOKBACK_DAYS_CITIBIKE_TRIPS; NOAA observation_ts + LOOKBACK_DAYS_NOAA; SQL fallback = 3).
 
 GBFS station is a full snapshot and has no row-level event-time filter.
 
@@ -418,8 +439,8 @@ GBFS station is a full snapshot and has no row-level event-time filter.
       <bordercolorred>14</bordercolorred>
       <bordercolorgreen>58</bordercolorgreen>
       <bordercolorblue>90</bordercolorblue>
-      <xloc>64</xloc>
-      <yloc>544</yloc>
+      <xloc>48</xloc>
+      <yloc>592</yloc>
       <width>760</width>
       <height>-1</height>
     </notepad>

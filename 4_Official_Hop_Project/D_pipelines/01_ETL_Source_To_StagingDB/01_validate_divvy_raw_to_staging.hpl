@@ -9,7 +9,7 @@
     <parameters/>
     <name>01_validate_divvy_raw_to_staging</name>
     <name_sync_with_filename>Y</name_sync_with_filename>
-    <description>Flow 2 — DQ gate for Divvy: 3 parallel streams from raw_divvy_trips. Stream A/B: DQ evidence on full raw. Stream C: accepted rows filtered by LSET/CET + LookbackDays (LOOKBACK_DAYS_TRIPS) on started_at, then upserted into stg_divvy_trips.</description>
+    <description>Flow 2 — DQ gate for Divvy: 3 parallel streams from raw_divvy_trips. Stream A/B: DQ evidence on full raw. Stream C: accepted rows filtered by LSET/CET + LookbackDays (LOOKBACK_DAYS_DIVVY_TRIPS) on started_at, then upserted into stg_divvy_trips.</description>
     <created_user>-</created_user>
     <modified_user>-</modified_user>
     <created_date>2026/07/09 01:10:35.638</created_date>
@@ -519,7 +519,7 @@ WHERE NULLIF(BTRIM(ride_id), '')          IS NOT NULL
     AND NULLIF(BTRIM(end_station_id), '') IS NULL
       )
   AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
-        &gt;= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_TRIPS}', ''), '3') || ' days')::INTERVAL)
+        &gt;= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_DIVVY_TRIPS}', ''), '3') || ' days')::INTERVAL)
   AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
         &lt;= '${CET_DIVVY_TRIPS}'::TIMESTAMP
 ORDER BY

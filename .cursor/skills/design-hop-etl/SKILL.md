@@ -314,6 +314,7 @@ Full XML snippets: [reference.md](reference.md).
 | File-source CET = `MAX(raw_loaded_at)` | Watermark jumps to wall-clock; next LSET skips all historical CSV rows | For file pulls, filter on business ts (`started_at` / `observation_ts`); set `CET_*=CLOCK_TIMESTAMP()` at start and advance `control.lset/cet` to that CET |
 | Filter file→raw on business event time | Late-arriving rows with old `started_at` / `observation_ts` disappear before DQ and staging | Keep the full delivered file in raw; apply `[LSET - LookbackDays, CET]` only in the accepted raw→staging stream |
 | Advance watermark to effective lookback LSET | Watermark moves backward and repeatedly widens the extract | Commit `control.lset/cet` to the run CET; Lookback only widens the read window |
+| Parallel source branches set the same JVM lookback variable | Last-writer-wins race makes the runtime window nondeterministic | Prefer per-source JVM vars (`LOOKBACK_DAYS_DIVVY_TRIPS`, `LOOKBACK_DAYS_CITIBIKE_TRIPS`, `LOOKBACK_DAYS_NOAA`) set from each watermark branch; never share one lookback var across parallel writers |
 
 ## Additional resources
 

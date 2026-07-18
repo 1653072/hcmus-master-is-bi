@@ -27,7 +27,7 @@
       FROM staging.raw_divvy_trips
       WHERE started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
-              &gt;= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_TRIPS}', ''), '3') || ' days')::INTERVAL)
+              &gt;= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_DIVVY_TRIPS}', ''), '3') || ' days')::INTERVAL)
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
               &lt;= '${CET_DIVVY_TRIPS}'::TIMESTAMP
     ) AS raw_count,
@@ -47,7 +47,7 @@
       FROM staging.raw_citibike_trips
       WHERE started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
-              &gt;= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_TRIPS}', ''), '3') || ' days')::INTERVAL)
+              &gt;= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_CITIBIKE_TRIPS}', ''), '3') || ' days')::INTERVAL)
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
               &lt;= '${CET_CITIBIKE_TRIPS}'::TIMESTAMP
     ),
