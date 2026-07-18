@@ -1191,28 +1191,81 @@ Luồng này cho phép **Go MDM Station** gửi thay đổi master data GBFS (th
 **Không** gắn các pipeline MDM vào `01_etl_source_to_stagingdb.hwf`. Workflow là batch (chạy xong rồi thoát); **Hop Server** mới là listener nhận HTTP.
 
 ```mermaid
-flowchart TB
-  subgraph BE [Go Backend]
-    GoPush["C1_mdm_station_info go run ."]
-    JSON["A_datasets/A4_mdm_station_info/new_mdm_station_information.json"]
+flowchart LR
+  subgraph Source["MDM Source"]
+    JSON["GBFS station JSON"]
+    GoPush["Go Backend<br/>C1_mdm_station_info"]
+    JSON -->|"Read station records"| GoPush
   end
-  subgraph HopServer [Hop Server :8080]
-    WS["/hop/webService/?service=mdm-station"]
+
+  subgraph HopServer["Hop Server :8080 - Online Listener"]
+    WS["POST /hop/webService/<br/>?service=mdm-station"]
+    BasicAuth{"Basic Auth<br/>valid?"}
     Entry["00_mdm_service_redirection.hpl"]
-    Store["01_store_pushed_mdm_station_from_backend_to_staging.hpl"]
+    APIKey{"X-API-Key<br/>valid?"}
+    Store["01_store_pushed_mdm_station<br/>from_backend_to_staging.hpl"]
+    Reject["HTTP 401"]
+
+    WS --> BasicAuth
+    BasicAuth -->|"No"| Reject
+    BasicAuth -->|"Yes"| Entry
+    Entry --> APIKey
+    APIKey -->|"No"| Reject
+    APIKey -->|"Yes"| Store
   end
-  subgraph DW [Data Warehouse]
+
+  subgraph Staging["Online landing"]
     STG[(staging.stg_gbfs_station)]
+  end
+
+  subgraph Batch["Batch ETL"]
+    WF2["Workflow 02<br/>Staging to NDS"]
+    WF3["Workflow 03<br/>NDS to DDS"]
+  end
+
+  subgraph DW["Data Warehouse"]
     NDS[(nds.station)]
     DDS[(dds.dim_station)]
   end
-  JSON --> GoPush
-  GoPush -->|"POST + Basic Auth + X-API-Key"| WS
-  WS --> Entry
-  Entry -->|PipelineExecutor| Store
-  Store --> STG
-  STG -->|"02 ETL Staging to NDS"| NDS
-  NDS -->|"03 D2 Load Dim Station"| DDS
+
+  GoPush -->|"One POST per station<br/>{operation, sent_at, data}"| WS
+  Store -->|"Validate + reconcile<br/>INSERT / UPDATE / DELETE"| STG
+  STG -.->|"Next batch"| WF2
+  WF2 -->|"Soft-delete / reactivate"| NDS
+  NDS -.->|"Next batch"| WF3
+  WF3 -->|"SCD2 synchronization"| DDS
+
+  classDef online fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+  classDef storage fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
+  classDef reject fill:#FFEBEE,stroke:#C62828,color:#B71C1C;
+  class GoPush,WS,BasicAuth,Entry,APIKey,Store online;
+  class STG,NDS,DDS storage;
+  class Reject reject;
+```
+
+**Sơ đồ component rút gọn (không thể hiện nguồn dữ liệu đầu vào của Backend):**
+
+```mermaid
+flowchart LR
+  Backend["Golang Backend<br/><b>Station MDM</b>"]
+
+  subgraph Hop["Hop Server"]
+    Listener["Port: 8080<br/>Endpoint: /hop/webService/?service=mdm-station"]
+    Pipeline["Execute pipeline:<br/>01_store_pushed_mdm_station_<br/>from_backend_to_staging.hpl"]
+    Listener --> Pipeline
+  end
+
+  Database[("Database<br/><b>staging.stg_gbfs_station</b><br/>Stored pushed Station MDM data")]
+
+  Backend -->|"POST<br/>Basic Auth + X-API-Key"| Listener
+  Pipeline -->|"Database connection<br/>Upsert by source_city_code + short_name"| Database
+
+  classDef backend fill:#FFF3E0,stroke:#EF6C00,color:#E65100;
+  classDef hop fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+  classDef database fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
+  class Backend backend;
+  class Listener,Pipeline hop;
+  class Database database;
 ```
 
 
