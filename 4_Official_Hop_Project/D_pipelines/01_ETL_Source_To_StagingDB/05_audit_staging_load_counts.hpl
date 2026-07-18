@@ -27,14 +27,14 @@
       FROM staging.raw_divvy_trips
       WHERE started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
-              &gt;= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_DIVVY_TRIPS}', ''), '3') || ' days')::INTERVAL)
+              >= ('${LSET_DIVVY_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_DIVVY_TRIPS}', ''), '3') || ' days')::INTERVAL)
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
               &lt;= '${CET_DIVVY_TRIPS}'::TIMESTAMP
     ) AS raw_count,
     (
       SELECT COUNT(*)::INTEGER
       FROM staging.stg_divvy_trips
-      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+      WHERE loaded_at >= '${ETL_STARTED_AT}'::TIMESTAMP
         AND loaded_at &lt;= '${CET_DIVVY_TRIPS}'::TIMESTAMP
     ) AS stg_count
 
@@ -47,14 +47,14 @@
       FROM staging.raw_citibike_trips
       WHERE started_at ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
-              &gt;= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_CITIBIKE_TRIPS}', ''), '3') || ' days')::INTERVAL)
+              >= ('${LSET_CITIBIKE_TRIPS}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_CITIBIKE_TRIPS}', ''), '3') || ' days')::INTERVAL)
         AND split_part(BTRIM(started_at), '.', 1)::TIMESTAMP
               &lt;= '${CET_CITIBIKE_TRIPS}'::TIMESTAMP
     ),
     (
       SELECT COUNT(*)::INTEGER
       FROM staging.stg_citibike_trips
-      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+      WHERE loaded_at >= '${ETL_STARTED_AT}'::TIMESTAMP
         AND loaded_at &lt;= '${CET_CITIBIKE_TRIPS}'::TIMESTAMP
     )
 
@@ -67,14 +67,14 @@
       FROM staging.raw_noaa_weather
       WHERE NULLIF(BTRIM(observation_ts), '') IS NOT NULL
         AND replace(BTRIM(observation_ts), 'T', ' ')::TIMESTAMP
-              &gt;= ('${LSET_NOAA_LCD}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_NOAA}', ''), '3') || ' days')::INTERVAL)
+              >= ('${LSET_NOAA_LCD}'::TIMESTAMP - (COALESCE(NULLIF('${LOOKBACK_DAYS_NOAA}', ''), '3') || ' days')::INTERVAL)
         AND replace(BTRIM(observation_ts), 'T', ' ')::TIMESTAMP
               &lt;= '${CET_NOAA_LCD}'::TIMESTAMP
     ),
     (
       SELECT COUNT(*)::INTEGER
       FROM staging.stg_weather
-      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+      WHERE loaded_at >= '${ETL_STARTED_AT}'::TIMESTAMP
         AND loaded_at &lt;= '${CET_NOAA_LCD}'::TIMESTAMP
     )
 
@@ -86,7 +86,7 @@
     (
       SELECT COUNT(*)::INTEGER
       FROM staging.stg_gbfs_station
-      WHERE loaded_at &gt;= '${ETL_STARTED_AT}'::TIMESTAMP
+      WHERE loaded_at >= '${ETL_STARTED_AT}'::TIMESTAMP
         AND loaded_at &lt;= '${CET_GBFS_STATION}'::TIMESTAMP
     )
 )
@@ -380,16 +380,19 @@ if (_cetStr != null &amp;&amp; String(_cetStr).length > 0) {
   </order>
   <notepads>
     <notepad>
-      <note>Staging audit: total_rows_count = raw_* count, success_rows_count = stg_* count (clean rows), failed_rows_count = raw - stg.
+      <note>1/ Staging audit: total_rows_count = raw_* count, success_rows_count = stg_* count (clean rows), failed_rows_count = raw - stg.
 etl_extraction_control.rows_extracted = success_rows_count (accepted rows).
-started_at comes from ETL_STARTED_AT JVM variable (set by 00_start_etl_source_to_staging).
-LSET/CET watermark update pattern:
-  Raw keeps the full source file.
-  Raw-to-staging window: event_ts &gt;= (LSET_* - LookbackDays) AND event_ts &lt;= CET_*.
-  LookbackDays defaults to 3 for trips and NOAA; it does not move the committed watermark backward.
-  After success: control.lset = control.cet = CET_* (this run end).
-  Next run therefore starts after this CET. Re-bootstrap sample files: reset control.lset to 2026-01-01 00:00:00.</note>
-      <fontsize>-1</fontsize>
+
+2/ started_at comes from ETL_STARTED_AT JVM variable (set by 00_start_etl_source_to_staging).
+
+3/ LSET/CET watermark update pattern:
+- Raw keeps the full source file.
+- Raw-to-staging window: event_ts >= (LSET_* - LookbackDays) AND event_ts &lt;= CET_*.
+- LookbackDays defaults to 3 for trips and NOAA; it does not move the committed watermark backward.
+- After success: control.lset = control.cet = CET_* (this run end).
+- Next run therefore starts after this CET. Re-bootstrap sample files: reset control.lset to 2026-01-01 00:00:00.</note>
+      <fontname>.AppleSystemUIFont</fontname>
+      <fontsize>13</fontsize>
       <fontbold>N</fontbold>
       <fontitalic>N</fontitalic>
       <fontcolorred>14</fontcolorred>
