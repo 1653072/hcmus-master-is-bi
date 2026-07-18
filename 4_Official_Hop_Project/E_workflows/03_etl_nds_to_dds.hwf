@@ -22,8 +22,8 @@
       <description/>
       <type>SPECIAL</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>40</yloc>
+      <xloc>32</xloc>
+      <yloc>128</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -47,8 +47,8 @@
       <name>00_start_etl_nds_to_dds.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>120</yloc>
+      <xloc>160</xloc>
+      <yloc>128</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -72,8 +72,8 @@
       <name>D1_Load_Dim_City.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>208</yloc>
+      <xloc>336</xloc>
+      <yloc>128</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -97,8 +97,8 @@
       <name>D2_Load_Dim_Station.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>304</yloc>
+      <xloc>512</xloc>
+      <yloc>128</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -122,8 +122,8 @@
       <name>D3_Aggregate_Fact_StationHourBalance.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>400</yloc>
+      <xloc>752</xloc>
+      <yloc>128</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -149,8 +149,8 @@
       <name>04_data_leakage_check.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>496</yloc>
+      <xloc>752</xloc>
+      <yloc>240</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -174,8 +174,8 @@
       <name>05_audit_nds_to_dds.hpl</name>
       <type>PIPELINE</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>592</yloc>
+      <xloc>560</xloc>
+      <yloc>240</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
@@ -184,8 +184,8 @@
       <description/>
       <type>SUCCESS</type>
       <attributes/>
-      <xloc>224</xloc>
-      <yloc>704</yloc>
+      <xloc>400</xloc>
+      <yloc>240</yloc>
       <parallel>N</parallel>
       <attributes_hac/>
     </action>
